@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Customer_Segments')" :folder="$t('Marketing_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -17,13 +17,13 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="New_Segment()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
             <lucide-icon name="plus" /> {{ $t('New_Segment') }}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'all_customers'">
             <span class="badge" :class="props.row.all_customers ? 'badge-outline-success' : 'badge-outline-secondary'">
               {{ props.row.all_customers ? $t('All_Customers') : $t('Specific_Segment') }}
@@ -41,17 +41,17 @@
       </vue-good-table>
     </b-card>
 
-    <validation-observer ref="Segment_Form">
+    <px-validation-observer ref="Segment_Form">
       <b-modal hide-footer size="lg" id="New_Segment" :title="editmode ? $t('Edit_Segment') : $t('New_Segment')">
         <b-form @submit.prevent="Submit_Segment">
           <b-row>
             <b-col md="12">
-              <validation-provider name="name" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="name" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Segment_Name') + ' *'">
                   <b-form-input :state="getValidationState(validationContext)" v-model="segment.name"></b-form-input>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <b-col md="12">
               <b-form-group :label="$t('Description')">
@@ -105,28 +105,30 @@
               <b-button size="sm" variant="outline-info" @click="Preview_Segment()">
                 <lucide-icon name="search" /> {{ $t('Preview_Segment') }}
               </b-button>
-              <span v-if="previewCount !== null" class="ml-2 font-weight-bold text-info">
+              <span v-if="previewCount !== null" class="ms-2 fw-bold text-info">
                 {{ previewCount }} {{ $t('Matching_Customers') }}
               </span>
             </b-col>
 
             <b-col md="12">
               <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-                <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('Save_Segment') }}
+                <lucide-icon class="me-2 fw-bold" name="check" /> {{ $t('Save_Segment') }}
               </b-button>
               <div v-if="SubmitProcessing" class="spinner sm spinner-primary mt-3"></div>
             </b-col>
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 
 <script>
+import { BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback, vBTooltip, BModal, BButton, BCard, BCol, BRow, BForm } from "@/platform/bootstrap";
+import { confirmDialog, modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip }, components: { BForm, BButton, BCard, BCol, BRow, BModal, BFormGroup, BFormInput, BFormCheckbox, BFormInvalidFeedback },
   metaInfo: { title: "Customer Segments" },
   data() {
     return {
@@ -145,10 +147,10 @@ export default {
   computed: {
     columns() {
       return [
-        { label: this.$t("Segment_Name"), field: "name", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Type"), field: "all_customers", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Matching_Customers"), field: "customers_count", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("Segment_Name"), field: "name", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Type"), field: "all_customers", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Matching_Customers"), field: "customers_count", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     }
   },
@@ -160,7 +162,7 @@ export default {
       };
     },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title: title, variant: variant, solid: true }); },
     onAllChange() { this.previewCount = null; },
     updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
     onPageChange({ currentPage }) {
@@ -179,7 +181,7 @@ export default {
       this.segment = this.empty_segment();
       this.previewCount = null;
       this.editmode = false;
-      this.$bvModal.show("New_Segment");
+      modals.show("New_Segment");
     },
     Edit_Segment(row) {
       this.segment = {
@@ -189,7 +191,7 @@ export default {
       };
       this.previewCount = null;
       this.editmode = true;
-      this.$bvModal.show("New_Segment");
+      modals.show("New_Segment");
     },
 
     Preview_Segment() {
@@ -235,7 +237,7 @@ export default {
           : axios.post("marketing/segments", payload);
         req.then(() => {
           this.SubmitProcessing = false;
-          this.$bvModal.hide("New_Segment");
+          modals.hide("New_Segment");
           this.makeToast("success", this.$t(this.editmode ? "Updated_in_successfully" : "Created_in_successfully"), this.$t("Success"));
           this.Get_Segments(this.serverParams.page);
         }).catch(() => {
@@ -246,12 +248,12 @@ export default {
     },
 
     Remove_Segment(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete("marketing/segments/" + id).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             this.Get_Segments(this.serverParams.page);

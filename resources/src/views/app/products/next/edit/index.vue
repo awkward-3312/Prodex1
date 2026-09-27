@@ -162,33 +162,34 @@
                 <draggable
                   v-else
                   v-model="product_images"
+                  :item-key="row => row._uid || ('id-' + row.id)"
                   handle=".pxe-gal__handle"
                   :disabled="hasPendingGalleryUploads"
                   class="pxe-gal"
                   @end="touchGalleryOrder"
                 >
-                  <div
-                    v-for="(row, idx) in product_images"
-                    :key="row._uid || ('id-' + row.id)"
-                    class="pxe-gal__item"
-                    :class="{ 'is-main': row.is_main }"
-                  >
-                    <span class="pxe-gal__handle" title="Reordenar"><lucide-icon name="grip-vertical" :size="16" /></span>
-                    <button
-                      type="button"
-                      class="pxe-gal__thumb pxn-ring"
+                  <template #item="{ element: row, index: idx }">
+                    <div
+                      class="pxe-gal__item"
                       :class="{ 'is-main': row.is_main }"
-                      :title="'Marcar como principal'"
-                      @click="setGalleryMain(row)"
                     >
-                      <img :src="row.url || (row.image_path ? $imgUrl('products', row.image_path) : '')" alt="" />
-                    </button>
-                    <div class="pxe-gal__meta">
-                      <div class="pxe-gal__name">{{ row.image_path }}</div>
-                      <px-badge v-if="row.is_main" tone="success" icon="check">Imagen principal</px-badge>
+                      <span class="pxe-gal__handle" title="Reordenar"><lucide-icon name="grip-vertical" :size="16" /></span>
+                      <button
+                        type="button"
+                        class="pxe-gal__thumb pxn-ring"
+                        :class="{ 'is-main': row.is_main }"
+                        :title="'Marcar como principal'"
+                        @click="setGalleryMain(row)"
+                      >
+                        <img :src="row.url || (row.image_path ? $imgUrl('products', row.image_path) : '')" alt="" />
+                      </button>
+                      <div class="pxe-gal__meta">
+                        <div class="pxe-gal__name">{{ row.image_path }}</div>
+                        <px-badge v-if="row.is_main" tone="success" icon="check">Imagen principal</px-badge>
+                      </div>
+                      <px-button type="button" variant="danger" size="sm" icon-only icon="x" aria-label="Quitar" @click="removeGalleryRow(idx)" />
                     </div>
-                    <px-button type="button" variant="danger" size="sm" icon-only icon="x" aria-label="Quitar" @click="removeGalleryRow(idx)" />
-                  </div>
+                  </template>
                 </draggable>
               </px-card>
 
@@ -529,8 +530,8 @@
                       </tr>
                     </thead>
                     <tbody>
-                      <template v-for="row in opening_rows">
-                        <tr :key="openingRowKey(row)">
+                      <template v-for="row in opening_rows" :key="openingRowKey(row)">
+                        <tr>
                           <td>{{ row.warehouse_name }}</td>
                           <td v-if="openingHasVariants">{{ row.variant_name || '—' }}</td>
                           <td class="is-right pxn-num">{{ row.stock_qty }}</td>
@@ -766,6 +767,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import draggable from "vuedraggable";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
@@ -980,7 +982,7 @@ export default {
     this._onScrollSpy = () => this.updateActiveSection();
     window.addEventListener("scroll", this._onScrollSpy, true);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this._onScrollSpy) window.removeEventListener("scroll", this._onScrollSpy, true);
   },
   methods: {
@@ -1032,7 +1034,7 @@ export default {
       this.product_images.splice(index, 1);
       this.touchGalleryOrder();
       if (!this.product_images.some(r => r && r.is_main) && this.product_images.length) {
-        this.$set(this.product_images[0], "is_main", true);
+        (this.product_images[0])["is_main"] = true;
       }
     },
     onGalleryExtraSelected(e) {
@@ -1051,7 +1053,7 @@ export default {
       });
       this.touchGalleryOrder();
       if (!this.product_images.some(r => r && r.is_main) && this.product_images.length) {
-        this.$set(this.product_images[0], "is_main", true);
+        (this.product_images[0])["is_main"] = true;
       }
       e.target.value = "";
     },
@@ -1120,8 +1122,8 @@ export default {
       const s = Array.isArray(this.product.assigned_subcategory_ids) ? this.product.assigned_subcategory_ids : [];
       const firstCat = c.length ? c[0] : "";
       const firstSub = s.length ? s[0] : "";
-      this.$set(this.product, "category_id", firstCat === "" || firstCat == null ? "" : firstCat);
-      this.$set(this.product, "sub_category_id", firstSub === "" || firstSub == null ? "" : firstSub);
+      (this.product)["category_id"] = firstCat === "" || firstCat == null ? "" : firstCat;
+      (this.product)["sub_category_id"] = firstSub === "" || firstSub == null ? "" : firstSub;
     },
     pruneInvalidSubcategories() {
       const catSet = new Set((this.product.assigned_category_ids || []).map(id => String(id)));
@@ -1132,7 +1134,7 @@ export default {
         return sc && catSet.has(String(sc.category_id));
       });
       if (filtered.length !== subs.length) {
-        this.$set(this.product, "assigned_subcategory_ids", filtered);
+        (this.product)["assigned_subcategory_ids"] = filtered;
       }
     },
 
@@ -1183,9 +1185,9 @@ export default {
           if (newLoc && newLoc.id) {
             const wid = newLoc.warehouse_id;
             const label = newLoc.name ? `${newLoc.code} - ${newLoc.name}` : newLoc.code;
-            if (!this.locationsByWarehouse[wid]) this.$set(this.locationsByWarehouse, wid, []);
+            if (!this.locationsByWarehouse[wid]) (this.locationsByWarehouse)[wid] = [];
             this.locationsByWarehouse[wid].push({ id: newLoc.id, label, is_active: true });
-            this.$set(this.warehouse_location_map, wid, newLoc.id);
+            (this.warehouse_location_map)[wid] = newLoc.id;
           }
           this.quickLocOpen = false;
           this.makeToast("success", this.$t("Successfully_Created"), this.$t("Success"));
@@ -1198,7 +1200,7 @@ export default {
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
 
     add_variant(tag) {
@@ -1268,8 +1270,8 @@ export default {
         event.target.value = "";
         return;
       }
-      this.$set(variant, "imageFile", file);
-      this.$set(variant, "imagePreview", URL.createObjectURL(file));
+      (variant)["imageFile"] = file;
+      (variant)["imagePreview"] = URL.createObjectURL(file);
     },
 
     GetElements() {
@@ -1311,27 +1313,27 @@ export default {
             existing[r.warehouse_id] = r.warehouse_location_id || null;
           });
           this.warehouses.forEach(wh => {
-            this.$set(this.warehouse_location_map, wh.id, existing[wh.id] || null);
+            (this.warehouse_location_map)[wh.id] = existing[wh.id] || null;
           });
           this.categories = response.data.categories;
           this.allSubcategories = response.data.all_subcategories || [];
           if (!Array.isArray(this.product.assigned_category_ids)) {
-            this.$set(this.product, "assigned_category_ids", []);
+            (this.product)["assigned_category_ids"] = [];
           }
           if (!Array.isArray(this.product.assigned_subcategory_ids)) {
-            this.$set(this.product, "assigned_subcategory_ids", []);
+            (this.product)["assigned_subcategory_ids"] = [];
           }
           if (
             (!this.product.assigned_category_ids || !this.product.assigned_category_ids.length) &&
             this.product.category_id
           ) {
-            this.$set(this.product, "assigned_category_ids", [this.product.category_id]);
+            (this.product)["assigned_category_ids"] = [this.product.category_id];
           }
           if (
             (!this.product.assigned_subcategory_ids || !this.product.assigned_subcategory_ids.length) &&
             this.product.sub_category_id
           ) {
-            this.$set(this.product, "assigned_subcategory_ids", [this.product.sub_category_id]);
+            (this.product)["assigned_subcategory_ids"] = [this.product.sub_category_id];
           }
           this.$nextTick(() => {
             this.pruneInvalidSubcategories();

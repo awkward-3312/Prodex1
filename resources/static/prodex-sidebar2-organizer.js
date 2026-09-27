@@ -64,24 +64,26 @@
     return window.getComputedStyle(li).display !== 'none';
   }
 
-  function vmFor(rootEl) {
-    if (!rootEl) return null;
-    if (rootEl.__vue__) return rootEl.__vue__;
-    var el = rootEl.querySelector('.vertical-sidebar');
-    return el && el.__vue__ ? el.__vue__ : null;
+  // Contexto explícito (permisos, plan y navegación) que registra la app en window.__prodexBridge
+  // (resources/src/platform/legacy-bridge.js). Antes se leía de la instancia interna de Vue que Vue 2 cuelga del elemento del DOM.
+  function contextFor(rootEl) {
+    var bridge = window.__prodexBridge;
+    if (!rootEl || !bridge) return null;
+    return bridge;
   }
 
-  function permissions(vm) {
-    return vm && Array.isArray(vm.currentUserPermissions) ? vm.currentUserPermissions : [];
+  function permissions(ctx) {
+    var list = ctx && typeof ctx.getPermissions === 'function' ? ctx.getPermissions() : null;
+    return Array.isArray(list) ? list : [];
   }
 
   function has(perms, permission) {
     return perms.indexOf(permission) !== -1;
   }
 
-  function planEnabled(vm, key) {
+  function planEnabled(ctx, key) {
     try {
-      return !vm || typeof vm.planFeature !== 'function' ? true : !!vm.planFeature(key);
+      return !ctx || typeof ctx.planFeature !== 'function' ? true : !!ctx.planFeature(key);
     } catch (e) {
       return true;
     }
@@ -100,21 +102,21 @@
     return '<svg viewBox="0 0 24 24" aria-hidden="true">' + (paths[name] || paths.list) + '</svg>';
   }
 
-  function makeLink(vm, href, text, icon) {
+  function makeLink(ctx, href, text, icon) {
     var a = document.createElement('a');
     a.href = href;
     a.className = 'prodex-sidebar2-section-link';
     a.innerHTML = '<span class="prodex-sidebar2-mini-icon">' + iconSvg(icon) + '</span><span>' + text + '</span>';
     a.addEventListener('click', function (event) {
-      if (vm && vm.$router) {
+      if (ctx && typeof ctx.navigate === 'function') {
         event.preventDefault();
-        vm.$router.push(href).catch(function () {});
+        ctx.navigate(href);
       }
     });
     return a;
   }
 
-  function ensureSection(host, key, title, links, vm) {
+  function ensureSection(host, key, title, links, ctx) {
     if (!host || !links.length) return;
     var marker = 'prodex-sidebar2-section-' + key;
     if (host.querySelector('.' + marker)) return;
@@ -127,12 +129,12 @@
     links.forEach(function (entry) {
       var li = document.createElement('li');
       li.className = 'submenu-item prodex-sidebar2-generated';
-      li.appendChild(makeLink(vm, entry[0], entry[1], entry[2]));
+      li.appendChild(makeLink(ctx, entry[0], entry[1], entry[2]));
       host.appendChild(li);
     });
   }
 
-  function applyLabelsAndTopLevel(rootEl, vm) {
+  function applyLabelsAndTopLevel(rootEl, ctx) {
     var navList = list(rootEl);
     if (!navList) return null;
 
@@ -165,9 +167,9 @@
     return { products: products, sales: sales };
   }
 
-  function enhanceOpenSubmenus(rootEl, vm, found) {
+  function enhanceOpenSubmenus(rootEl, ctx, found) {
     if (!found) return;
-    var perms = permissions(vm);
+    var perms = permissions(ctx);
 
     if (found.products) {
       var inv = found.products.querySelector(':scope > .submenu');
@@ -175,13 +177,13 @@
         var stockLinks = [];
         if (has(perms, 'adjustment_add')) stockLinks.push(['/app/adjustments/store', 'Nuevo ajuste', 'plus']);
         if (has(perms, 'adjustment_view')) stockLinks.push(['/app/adjustments/list', 'Ajustes de stock', 'list']);
-        if (planEnabled(vm, 'transfers') && has(perms, 'transfer_add')) stockLinks.push(['/app/transfers/store', 'Nueva transferencia', 'arrows']);
-        if (planEnabled(vm, 'transfers') && has(perms, 'transfer_view')) stockLinks.push(['/app/transfers/list', 'Transferencias de stock', 'arrows']);
+        if (planEnabled(ctx, 'transfers') && has(perms, 'transfer_add')) stockLinks.push(['/app/transfers/store', 'Nueva transferencia', 'arrows']);
+        if (planEnabled(ctx, 'transfers') && has(perms, 'transfer_view')) stockLinks.push(['/app/transfers/list', 'Transferencias de stock', 'arrows']);
         if (has(perms, 'damage_view')) {
           stockLinks.push(['/app/damages/store', 'Registrar daño', 'alert']);
           stockLinks.push(['/app/damages/list', 'Daños', 'alert']);
         }
-        ensureSection(inv, 'movimientos', 'Movimientos de inventario', stockLinks, vm);
+        ensureSection(inv, 'movimientos', 'Movimientos de inventario', stockLinks, ctx);
       }
     }
 
@@ -192,18 +194,18 @@
         if (has(perms, 'Purchases_add')) purchases.push(['/app/purchases/store', 'Nueva compra', 'plus']);
         if (has(perms, 'Purchases_view')) purchases.push(['/app/purchases/list', 'Lista de compras', 'list']);
         if (has(perms, 'Purchases_add')) purchases.push(['/app/purchases/import_purchases', 'Importar compras', 'download']);
-        ensureSection(ops, 'compras', 'Compras', purchases, vm);
+        ensureSection(ops, 'compras', 'Compras', purchases, ctx);
 
         var quotes = [];
-        if (planEnabled(vm, 'quotations') && has(perms, 'Quotations_add')) quotes.push(['/app/quotations/store', 'Nueva cotización', 'plus']);
-        if (planEnabled(vm, 'quotations') && has(perms, 'Quotations_view')) quotes.push(['/app/quotations/list', 'Cotizaciones', 'list']);
-        ensureSection(ops, 'cotizaciones', 'Cotizaciones', quotes, vm);
+        if (planEnabled(ctx, 'quotations') && has(perms, 'Quotations_add')) quotes.push(['/app/quotations/store', 'Nueva cotización', 'plus']);
+        if (planEnabled(ctx, 'quotations') && has(perms, 'Quotations_view')) quotes.push(['/app/quotations/list', 'Cotizaciones', 'list']);
+        ensureSection(ops, 'cotizaciones', 'Cotizaciones', quotes, ctx);
 
         var returns = [];
         if (has(perms, 'Sale_Returns_view')) returns.push(['/app/sale_return/list', 'Devoluciones de ventas', 'rotate']);
         if (has(perms, 'Purchase_Returns_view')) returns.push(['/app/purchase_return/list', 'Devoluciones de compras', 'rotate']);
-        if (planEnabled(vm, 'promotions') && has(perms, 'promotion')) returns.push(['/app/promotions', 'Promociones', 'tag']);
-        ensureSection(ops, 'devoluciones', 'Devoluciones y promociones', returns, vm);
+        if (planEnabled(ctx, 'promotions') && has(perms, 'promotion')) returns.push(['/app/promotions', 'Promociones', 'tag']);
+        ensureSection(ops, 'devoluciones', 'Devoluciones y promociones', returns, ctx);
       }
     }
   }
@@ -212,9 +214,9 @@
     installStyle();
     var rootEl = root();
     if (!rootEl) return;
-    var vm = vmFor(rootEl);
-    var found = applyLabelsAndTopLevel(rootEl, vm);
-    enhanceOpenSubmenus(rootEl, vm, found);
+    var ctx = contextFor(rootEl);
+    var found = applyLabelsAndTopLevel(rootEl, ctx);
+    enhanceOpenSubmenus(rootEl, ctx, found);
   }
 
   function schedule() {

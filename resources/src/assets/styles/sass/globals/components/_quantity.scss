@@ -15,15 +15,6 @@
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
   }
 
-  .input-group-prepend,
-  .input-group-append {
-    flex: 0 0 auto;
-    display: flex;
-    margin: 0 !important; /* kill Bootstrap's -1px shift that clips the + button */
-  }
-
-  .input-group > .input-group-prepend > .btn,
-  .input-group > .input-group-append  > .btn,
   .input-group .btn {
     box-sizing: border-box;
     flex: 0 0 25px !important;
@@ -50,23 +41,17 @@
     z-index: auto;
   }
 
-  .input-group .btn:hover,
-  .input-group-prepend .btn:hover,
-  .input-group-append .btn:hover {
+  .input-group .btn:hover {
     background: #4f46e5;
     color: #fff;
   }
 
-  .input-group .btn:focus,
-  .input-group-prepend .btn:focus,
-  .input-group-append .btn:focus {
+  .input-group .btn:focus {
     outline: none;
     box-shadow: none;
   }
 
-  .input-group .btn:active,
-  .input-group-prepend .btn:active,
-  .input-group-append .btn:active {
+  .input-group .btn:active {
     background: #4338ca;
     color: #fff;
   }

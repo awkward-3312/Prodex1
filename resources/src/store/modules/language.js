@@ -1,20 +1,17 @@
-import Vue from 'vue';
-import VueLocalStorage from 'vue-localstorage';
+import { localStorageGet, localStorageSet } from '../../platform/storage';
 
-Vue.use(VueLocalStorage);
-
-const storedLanguage = Vue.localStorage.get('language');
-const spanishDefaultApplied = Vue.localStorage.get('prodex_spanish_default_v1');
+const storedLanguage = localStorageGet('language');
+const spanishDefaultApplied = localStorageGet('prodex_spanish_default_v1');
 
 // One-time normalization for browsers that inherited the old platform default.
 // After this marker is stored, users remain free to choose another language.
 if (!spanishDefaultApplied && (!storedLanguage || storedLanguage === 'en')) {
-  Vue.localStorage.set('language', 'es');
-  Vue.localStorage.set('prodex_spanish_default_v1', '1');
+  localStorageSet('language', 'es');
+  localStorageSet('prodex_spanish_default_v1', '1');
 }
 
 const state = {
-  language: Vue.localStorage.get('language') || 'es',
+  language: localStorageGet('language') || 'es',
 };
 
 const getters = {
@@ -23,8 +20,8 @@ const getters = {
 
 const mutations = {
   SET_LANGUAGE(state, lang) {
-    Vue.localStorage.set('language', lang);
-    Vue.localStorage.set('prodex_spanish_default_v1', '1');
+    localStorageSet('language', lang);
+    localStorageSet('prodex_spanish_default_v1', '1');
     state.language = lang;
   },
 };

@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Warehouse_report')" :folder="$t('Reports')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-row class="justify-content-center mb-5" v-if="!isLoading">
       <!-- warehouse -->
@@ -63,15 +63,15 @@
                 }"
                 styleClass="order-table vgt-table mt-2"
               >
-               <div slot="table-actions" class="mt-2 mb-3">
+               <template #table-actions><div class="mt-2 mb-3">
                 <b-button @click="printTableOnly('quotations')" size="sm" variant="outline-secondary ripple m-1">
                   <lucide-icon name="printer" /> {{ $t("print") }}
                 </b-button>
                 <b-button @click="Quotation_PDF()" size="sm" variant="outline-success ripple m-1">
                   <lucide-icon name="copy" /> PDF
                 </b-button>
-              </div>
-                <template slot="table-row" slot-scope="props">
+              </div></template>
+                <template #table-row="props">
                   <div v-if="props.column.field == 'statut'">
                     <span
                       v-if="props.row.statut == 'sent'"
@@ -86,7 +86,7 @@
                     <router-link
                       :to="'/app/quotations/detail/'+props.row.id"
                     >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
+                      <span class="ul-btn__text ms-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
                   <span v-else>
@@ -122,15 +122,15 @@
                 }"
                 styleClass="order-table vgt-table mt-2"
               >
-               <div slot="table-actions" class="mt-2 mb-3">
+               <template #table-actions><div class="mt-2 mb-3">
                 <b-button @click="printTableOnly('sales')" size="sm" variant="outline-secondary ripple m-1">
                   <lucide-icon name="printer" /> {{ $t("print") }}
                 </b-button>
                 <b-button @click="Sales_PDF()" size="sm" variant="outline-success ripple m-1">
                   <lucide-icon name="copy" /> PDF
                 </b-button>
-              </div>
-                <template slot="table-row" slot-scope="props">
+              </div></template>
+                <template #table-row="props">
                   <div v-if="props.column.field == 'statut'">
                     <span
                       v-if="props.row.statut == 'completed'"
@@ -189,7 +189,7 @@
                     <router-link
                       :to="'/app/sales/detail/'+props.row.id"
                     >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
+                      <span class="ul-btn__text ms-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
                   <span v-else>
@@ -225,15 +225,15 @@
                 }"
                 styleClass="order-table vgt-table mt-2"
               >
-               <div slot="table-actions" class="mt-2 mb-3">
+               <template #table-actions><div class="mt-2 mb-3">
                 <b-button @click="printTableOnly('purchases')" size="sm" variant="outline-secondary ripple m-1">
                   <lucide-icon name="printer" /> {{ $t("print") }}
                 </b-button>
                 <b-button @click="Purchases_PDF()" size="sm" variant="outline-success ripple m-1">
                   <lucide-icon name="copy" /> PDF
                 </b-button>
-              </div>
-                <template slot="table-row" slot-scope="props">
+              </div></template>
+                <template #table-row="props">
                   <div v-if="props.column.field == 'statut'">
                     <span
                       v-if="props.row.statut == 'received'"
@@ -269,7 +269,7 @@
                     <router-link
                       :to="'/app/purchases/detail/'+props.row.id"
                     >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
+                      <span class="ul-btn__text ms-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
                   <span v-else>
@@ -305,15 +305,15 @@
                 }"
                 styleClass="order-table vgt-table mt-2"
               >
-               <div slot="table-actions" class="mt-2 mb-3">
+               <template #table-actions><div class="mt-2 mb-3">
                 <b-button @click="printTableOnly('returns_sale')" size="sm" variant="outline-secondary ripple m-1">
                   <lucide-icon name="printer" /> {{ $t("print") }}
                 </b-button>
                 <b-button @click="Sale_Return_PDF()" size="sm" variant="outline-success ripple m-1">
                   <lucide-icon name="copy" /> PDF
                 </b-button>
-              </div>
-                <template slot="table-row" slot-scope="props">
+              </div></template>
+                <template #table-row="props">
                   <div v-if="props.column.field == 'statut'">
                     <span
                       v-if="props.row.statut == 'received'"
@@ -346,14 +346,14 @@
                     <router-link
                       :to="'/app/sale_return/detail/'+props.row.id"
                     >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
+                      <span class="ul-btn__text ms-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
                   <div v-else-if="props.column.field == 'sale_ref' && props.row.sale_id">
                   <router-link
                     :to="'/app/sales/detail/'+props.row.sale_id"
                   >
-                    <span class="ul-btn__text ml-1">{{props.row.sale_ref}}</span>
+                    <span class="ul-btn__text ms-1">{{props.row.sale_ref}}</span>
                   </router-link>
                 </div>
                 <span v-else>
@@ -389,15 +389,15 @@
                 }"
                 styleClass="order-table vgt-table mt-2"
               >
-               <div slot="table-actions" class="mt-2 mb-3">
+               <template #table-actions><div class="mt-2 mb-3">
                 <b-button @click="printTableOnly('returns_purchase')" size="sm" variant="outline-secondary ripple m-1">
                   <lucide-icon name="printer" /> {{ $t("print") }}
                 </b-button>
                 <b-button @click="Returns_Purchase_PDF()" size="sm" variant="outline-success ripple m-1">
                   <lucide-icon name="copy" /> PDF
                 </b-button>
-              </div>
-                <template slot="table-row" slot-scope="props">
+              </div></template>
+                <template #table-row="props">
                   <div v-if="props.column.field == 'statut'">
                     <span
                       v-if="props.row.statut == 'completed'"
@@ -430,14 +430,14 @@
                     <router-link
                       :to="'/app/purchase_return/detail/'+props.row.id"
                     >
-                      <span class="ul-btn__text ml-1">{{props.row.Ref}}</span>
+                      <span class="ul-btn__text ms-1">{{props.row.Ref}}</span>
                     </router-link>
                   </div>
                    <div v-else-if="props.column.field == 'purchase_ref' && props.row.purchase_id">
                     <router-link
                       :to="'/app/purchases/detail/'+props.row.purchase_id"
                     >
-                      <span class="ul-btn__text ml-1">{{props.row.purchase_ref}}</span>
+                      <span class="ul-btn__text ms-1">{{props.row.purchase_ref}}</span>
                     </router-link>
                   </div>
                   <span v-else>
@@ -473,15 +473,15 @@
                 }"
                 styleClass="order-table vgt-table mt-2"
               >
-               <div slot="table-actions" class="mt-2 mb-3">
+               <template #table-actions><div class="mt-2 mb-3">
                 <b-button @click="printTableOnly('expenses')" size="sm" variant="outline-secondary ripple m-1">
                   <lucide-icon name="printer" /> {{ $t("print") }}
                 </b-button>
                 <b-button @click="Expense_PDF()" size="sm" variant="outline-success ripple m-1">
                   <lucide-icon name="copy" /> PDF
                 </b-button>
-              </div>
-              <template slot="table-row" slot-scope="props">
+              </div></template>
+              <template #table-row="props">
                 <span v-if="props.column.field == 'amount'">
                   {{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.amount, 2) }}
                 </span>
@@ -518,8 +518,9 @@
 
 
 <script>
+import { BButton, BCard, BCol, BRow, BTab, BTabs, BFormGroup } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
-import VueApexCharts from "vue-apexcharts";
+import VueApexCharts from "vue3-apexcharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -529,24 +530,13 @@ import {
 } from "../../../../utils/priceFormat";
 
 export default {
-  components: {
+  components: { BFormGroup, BButton, BCard, BCol, BRow, BTab, BTabs,
     apexchart: VueApexCharts,
     StatTile: {
       name: "StatTile",
-      functional: true,
+      compilerOptions: { whitespace: 'condense' },
       props: { icon:String, label:String, sub:String, value:[String,Number], theme:{type:String,default:'blue'} },
-      render(h,{props}){
-        return h('div',{class:['stat-card',`theme-${props.theme}`,'shadow-soft','rounded-xl']},[
-          h('div',{class:'stat-inner'},[
-            h('div',{class:'stat-icon'},[ h('lucide-icon', { props: { name: props.icon } }) ]),
-            h('div',{class:'stat-content'},[
-              h('div',{class:'stat-label'},props.label),
-              props.sub ? h('div',{class:'stat-sub text-muted'},props.sub) : null,
-              h('div',{class:'stat-value'},props.value),
-            ])
-          ])
-        ]);
-      }
+      template: `<div :class="['stat-card', 'theme-' + theme, 'shadow-soft', 'rounded-xl']"><div class="stat-inner"><div class="stat-icon"><lucide-icon :name="icon" /></div><div class="stat-content"><div class="stat-label">{{ label }}</div><div v-if="sub" class="stat-sub text-muted">{{ sub }}</div><div class="stat-value">{{ value }}</div></div></div></div>`
     }
   },
   metaInfo: {
@@ -660,42 +650,42 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Customer"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Total"),
           field: "GrandTotal",
           headerField: this.sumQuotationsGrandTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Status"),
           field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -705,66 +695,66 @@ export default {
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Customer"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         
         {
           label: this.$t("Total"),
           field: "GrandTotal",
           headerField: this.sumSalesGrandTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Paid"),
           field: "paid_amount",
           headerField: this.sumSalesPaidAmount,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Due"),
           field: "due",
           headerField: this.sumSalesDue,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Status"),
           field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
          {
           label: this.$t("Shipping_status"),
           field: "shipping_status",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
       ];
     },
@@ -773,65 +763,65 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Supplier"),
           field: "provider_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Total"),
           field: "GrandTotal",
           headerField: this.sumPurchasesGrandTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Paid"),
           field: "paid_amount",
           headerField: this.sumPurchasesPaidAmount,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Due"),
           field: "due",
           headerField: this.sumPurchasesDue,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Status"),
           field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -841,66 +831,66 @@ export default {
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Customer"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Sale_Ref"),
           field: "sale_ref",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
        
         {
           label: this.$t("Total"),
           field: "GrandTotal",
           headerField: this.sumReturnsSaleGrandTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Paid"),
           field: "paid_amount",
           headerField: this.sumReturnsSalePaidAmount,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Due"),
           field: "due",
           headerField: this.sumReturnsSaleDue,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
          {
           label: this.$t("Status"),
           field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -910,66 +900,66 @@ export default {
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Supplier"),
           field: "provider_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Purchase_Ref"),
           field: "purchase_ref",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         
         {
           label: this.$t("Total"),
           field: "GrandTotal",
           headerField: this.sumReturnsPurchaseGrandTotal,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Paid"),
           field: "paid_amount",
           headerField: this.sumReturnsPurchasePaidAmount,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Due"),
           field: "due",
           headerField: this.sumReturnsPurchaseDue,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Status"),
           field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -979,43 +969,43 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Details"),
           field: "details",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Amount"),
           field: "amount",
           headerField: this.sumExpenseAmount,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Categorie"),
           field: "category_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

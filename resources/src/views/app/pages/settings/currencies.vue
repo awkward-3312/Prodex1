@@ -32,7 +32,7 @@
           :rows="currencies"
           row-key="id"
           selectable
-          :selected.sync="selectedIds"
+          :selected="selectedIds" @update:selected="selectedIds = $event"
           :sort-key="serverParams.sort.field"
           :sort-dir="serverParams.sort.type"
           has-row-actions
@@ -94,6 +94,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxToolbar from "@/components/px-next/PxToolbar.vue";
@@ -216,7 +217,7 @@ export default {
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

@@ -1,20 +1,21 @@
 <template>
-  <div class="pxn-input-wrap" :class="{ 'has-prefix': !!prefix || !!iconLead, 'has-suffix': !!suffix || !!iconTrail }">
+  <div class="pxn-input-wrap" :class="[{ 'has-prefix': !!prefix || !!iconLead, 'has-suffix': !!suffix || !!iconTrail }, $attrs.class]" :style="$attrs.style">
     <span v-if="iconLead" class="pxn-input__ico pxn-input__ico--lead"><lucide-icon :name="iconLead" :size="15" /></span>
     <span v-else-if="prefix" class="pxn-input__aff pxn-input__aff--lead">{{ prefix }}</span>
     <input
+      v-bind="listeners()"
       :id="id"
       class="pxn-input pxn-ring"
       :class="{ 'pxn-num': numeric }"
       :type="type"
-      :value="value"
+      :value="internalValue"
       :placeholder="placeholder"
       :disabled="disabled"
       :readonly="readonly"
       :inputmode="inputmode"
       :aria-invalid="invalid ? 'true' : null"
       :aria-describedby="describedby"
-      v-on="listeners"
+      @input="onInput"
     />
     <span v-if="iconTrail" class="pxn-input__ico pxn-input__ico--trail"><lucide-icon :name="iconTrail" :size="15" /></span>
     <span v-else-if="suffix" class="pxn-input__aff pxn-input__aff--trail">{{ suffix }}</span>
@@ -22,11 +23,15 @@
 </template>
 
 <script>
+import { forwardListeners } from "@/utils/forwardListeners";
+
 export default {
   name: "PxInput",
   inheritAttrs: false,
+  emits: ["update:modelValue", "input"],
   props: {
-    value: { type: [String, Number], default: "" },
+    modelValue: { type: [String, Number], default: undefined },
+    value: { type: [String, Number], default: undefined },
     type: { type: String, default: "text" },
     id: { type: String, default: null },
     placeholder: { type: String, default: null },
@@ -42,9 +47,16 @@ export default {
     describedby: { type: String, default: null }
   },
   computed: {
-    listeners() {
-      return { ...this.$listeners, input: e => this.$emit("input", e.target.value) };
+    // `modelValue` (v-model nativo) manda; `value` es el alias de la API explícita vieja (`:value` + `@input`
+    // sin v-model, usada en varias vistas), solo si no llega el otro.
+    internalValue() {
+      const v = this.modelValue !== undefined ? this.modelValue : this.value;
+      return v === undefined ? "" : v;
     }
+  },
+  methods: {
+    listeners() { return forwardListeners(this.$attrs); },
+    onInput(e) { this.$emit("update:modelValue", e.target.value); this.$emit("input", e.target.value); }
   }
 };
 </script>

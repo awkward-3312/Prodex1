@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Asset_Category')" :folder="$t('Assets')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <vue-good-table
@@ -18,7 +18,7 @@
         :pagination-options="{ enabled: true, mode: 'records' }"
         styleClass="tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button
             v-if="currentUserPermissions && currentUserPermissions.includes('assets')"
             @click="New_Category()"
@@ -28,9 +28,9 @@
             <lucide-icon name="plus" />
             {{$t('Add')}}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
             <a
               @click="Edit_Category(props.row)"
@@ -55,17 +55,17 @@
       </vue-good-table>
     </div>
 
-    <validation-observer ref="Create_Category">
+    <px-validation-observer ref="Create_Category">
       <b-modal hide-footer size="lg" id="New_Asset_Category" :title="editmode?$t('Edit'):$t('Add')">
         <b-form @submit.prevent="Submit_Category">
           <b-row>
             <b-col md="12">
-              <validation-provider name="Name" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="Name" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Name') + ' *'">
                   <b-form-input :state="getValidationState(validationContext)" aria-describedby="name-feedback" v-model="category.name"></b-form-input>
                   <b-form-invalid-feedback id="name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
             <b-col md="12">
@@ -75,7 +75,7 @@
             </b-col>
 
             <b-col md="12" class="mt-3">
-              <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+              <b-button variant="primary" type="submit" :disabled="SubmitProcessing"><lucide-icon class="me-2 fw-bold" name="check" /> {{$t('submit')}}</b-button>
               <div v-once class="typo__p" v-if="SubmitProcessing">
                 <div class="spinner sm spinner-primary mt-3"></div>
               </div>
@@ -83,16 +83,18 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
   
 </template>
 
 <script>
+import { BFormGroup, BFormInput, BFormInvalidFeedback, vBTooltip, BModal, BButton, BCol, BRow, BForm } from "@/platform/bootstrap";
+import { confirmDialog, modals, notifications } from "@/platform";
 import { mapGetters } from 'vuex';
 import NProgress from 'nprogress';
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip }, components: { BForm, BButton, BCol, BRow, BModal, BFormGroup, BFormInput, BFormInvalidFeedback },
   name: 'AssetCategoryIndex',
   data() {
     return {
@@ -115,9 +117,9 @@ export default {
     ...mapGetters(['currentUserPermissions']),
     columns() {
       return [
-        { label: this.$t('Name'), field: 'name', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Description'), field: 'description', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Action'), field: 'actions', tdClass: 'text-left', thClass: 'text-left', sortable: false },
+        { label: this.$t('Name'), field: 'name', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Description'), field: 'description', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Action'), field: 'actions', tdClass: 'text-start', thClass: 'text-start', sortable: false },
       ];
     }
   },
@@ -125,7 +127,7 @@ export default {
     this.Get_Categories(1);
     Fire.$on('Create_Asset_Category', () => {
       this.Get_Categories(this.serverParams.page);
-      this.$bvModal.hide('New_Asset_Category');
+      modals.hide('New_Asset_Category');
     });
     Fire.$on('Delete_Asset_Category', () => {
       this.Get_Categories(this.serverParams.page);
@@ -142,7 +144,7 @@ export default {
       });
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
     onPageChange({ currentPage }) {
       this.serverParams.page = currentPage;
@@ -169,13 +171,13 @@ export default {
     New_Category() {
       this.reset_Form();
       this.editmode = false;
-      this.$bvModal.show('New_Asset_Category');
+      modals.show('New_Asset_Category');
     },
     Edit_Category(cat) {
       this.reset_Form();
       this.category = { id: cat.id, name: cat.name, description: cat.description };
       this.editmode = true;
-      this.$bvModal.show('New_Asset_Category');
+      modals.show('New_Asset_Category');
     },
     reset_Form() {
       this.category = { id: '', name: '', description: '' };
@@ -230,7 +232,7 @@ export default {
         });
     },
     Delete_Category(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t('Delete_Title'),
         text: this.$t('Delete_Text'),
         type: 'warning',
@@ -239,8 +241,8 @@ export default {
         cancelButtonColor: '#d33',
         cancelButtonText: this.$t('Delete_cancelButtonText'),
         confirmButtonText: this.$t('Delete_confirmButtonText')
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete('assets_category/' + id)
             .then(() => {
               this.$swal(this.$t('Delete_Deleted'), this.$t('Deleted_in_successfully'), 'success');

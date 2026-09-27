@@ -1,0 +1,314 @@
+[
+ {
+  "file": "views/app/pages/adjustment/Create_Adjustment",
+  "route": "/app/adjustments/store-classic",
+  "ids": [
+   "open_scan"
+  ]
+ },
+ {
+  "file": "views/app/pages/assets/index_asset_category",
+  "route": "/app/assets/category",
+  "ids": [
+   "New_Asset_Category"
+  ]
+ },
+ {
+  "file": "views/app/pages/bookings/BookingCalendar",
+  "route": "/app/bookings/calendar",
+  "ids": [
+   "booking-calendar-detail-modal"
+  ]
+ },
+ {
+  "file": "views/app/pages/bookings/index_booking",
+  "route": "/app/bookings/list",
+  "ids": [
+   "booking-detail-modal"
+  ]
+ },
+ {
+  "file": "views/app/pages/damage/Create_Damage",
+  "route": "/app/damages/store-classic",
+  "ids": [
+   "open_scan"
+  ]
+ },
+ {
+  "file": "views/app/pages/damage/index_Damage",
+  "route": "/app/damages/list-classic",
+  "ids": [
+   "showDetails"
+  ]
+ },
+ {
+  "file": "views/app/pages/hrm/payrolls",
+  "route": "/app/hrm/payrolls",
+  "ids": [
+   "Modal_New_Payroll",
+   "Payroll_Details",
+   "Payroll_Documents"
+  ]
+ },
+ {
+  "file": "views/app/pages/inventory/stock_intake",
+  "route": "/app/operations/stock-intake",
+  "ids": [
+   "manual-scan-modal"
+  ]
+ },
+ {
+  "file": "views/app/pages/marketing/segments",
+  "route": "/app/marketing/segments",
+  "ids": [
+   "New_Segment"
+  ]
+ },
+ {
+  "file": "views/app/pages/marketing/templates",
+  "route": "/app/marketing/templates/sms",
+  "ids": [
+   "New_Template"
+  ]
+ },
+ {
+  "file": "views/app/pages/meeting/meetings",
+  "route": "/app/meeting/meetings",
+  "ids": [
+   "New_Meeting"
+  ]
+ },
+ {
+  "file": "views/app/pages/organization/branches",
+  "route": "/app/organization/branches",
+  "ids": [
+   "branch-modal",
+   "location-modal"
+  ]
+ },
+ {
+  "file": "views/app/pages/organization/employee_access",
+  "route": "/app/organization/employee-access",
+  "ids": [
+   "create-access-modal"
+  ]
+ },
+ {
+  "file": "views/app/pages/people/Customers_without_ecommerce",
+  "route": "/app/People/Customers_without_ecommerce",
+  "ids": [
+   "New_Customer"
+  ]
+ },
+ {
+  "file": "views/app/pages/people/customers",
+  "route": "/app/People/Customers",
+  "ids": [
+   "Show_invoice",
+   "Show_invoice_return",
+   "adjust-opening-balance-modal",
+   "adjust-points-modal",
+   "form_Edit_Online_Store_Account",
+   "importClients",
+   "modal_Pay_due",
+   "modal_Pay_return_due",
+   "modal_portal_client",
+   "showDetails"
+  ]
+ },
+ {
+  "file": "views/app/pages/people/providers",
+  "route": "/app/People/Suppliers",
+  "ids": [
+   "Show_invoice",
+   "Show_invoice_return",
+   "importProviders",
+   "modal_Pay_due",
+   "modal_Pay_return_due",
+   "showDetails"
+  ]
+ },
+ {
+  "file": "views/app/pages/pos",
+  "route": "/app/pos",
+  "ids": [
+   "CloseRegisterModal",
+   "New_Customer",
+   "OnlineReloadModal",
+   "OpenRegisterModal",
+   "Quick_Add_Customer",
+   "Show_invoice",
+   "form_Update_Detail",
+   "modal_pos_settings",
+   "modal_today_sales",
+   "open_scan",
+   "pos-confirm-clear-cart",
+   "pos-keyboard-shortcuts-help",
+   "pos_calculator",
+   "show_draft_sales",
+   "store-credit-voucher-generated"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/Add_product",
+  "route": "/app/products/store-classic",
+  "ids": [
+   "Quick_Add_Brand",
+   "Quick_Add_Category",
+   "Quick_Add_Unit",
+   "Quick_Add_Warehouse_Location",
+   "open_scan"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/batches",
+  "route": "/app/products/Batches-classic",
+  "ids": [
+   "Edit_batch",
+   "WriteOff_batch"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/count_stock",
+  "route": "/app/products/count_stock-classic",
+  "ids": [
+   "New_count"
+  ]
+ },
+ {
+  "file": "views/app/pages/products/index_products",
+  "route": "/app/products/list-classic",
+  "ids": [
+   "importProducts"
+  ]
+ },
+ {
+  "file": "views/app/pages/realestate/categories",
+  "route": "/app/realestate/categories",
+  "ids": [
+   "categoryModal"
+  ]
+ },
+ {
+  "file": "views/app/pages/realestate/inquiries",
+  "route": "/app/realestate/inquiries",
+  "ids": [
+   "inquiryModal"
+  ]
+ },
+ {
+  "file": "views/app/pages/sales/create_sale",
+  "route": "/app/sales/store",
+  "ids": [
+   "Quick_Add_Customer",
+   "form_Update_Detail",
+   "open_scan"
+  ]
+ },
+ {
+  "file": "views/app/pages/service/ServiceChecklists",
+  "route": "/app/service/checklists",
+  "ids": [
+   "modal_Item"
+  ]
+ },
+ {
+  "file": "views/app/pages/settings/system_settings",
+  "route": "/app/settings/System_settings",
+  "ids": [
+   "customFieldEditmode ? ",
+   "pos-shortcuts-guide"
+  ]
+ },
+ {
+  "file": "views/app/pages/settings/warehouse_locations",
+  "route": "/app/settings/Warehouse_Locations-classic",
+  "ids": [
+   "New_Warehouse_Location"
+  ]
+ },
+ {
+  "file": "views/app/pages/settings/warehouses",
+  "route": "/app/settings/Warehouses-classic",
+  "ids": [
+   "New_Warehouse"
+  ]
+ },
+ {
+  "file": "views/app/pages/transfers/create_transfer",
+  "route": "/app/transfers/store-classic",
+  "ids": [
+   "form_Update_Detail",
+   "open_scan"
+  ]
+ },
+ {
+  "file": "views/app/pages/adjustment/Edit_Adjustment",
+  "route": "/app/adjustments/edit-classic/1",
+  "ids": [
+   "open_scan"
+  ],
+  "param": true
+ },
+ {
+  "file": "views/app/pages/products/Edit_product",
+  "route": "/app/products/edit-classic/1",
+  "ids": [
+   "open_scan",
+   "Quick_Add_Warehouse_Location"
+  ],
+  "param": true
+ },
+ {
+  "file": "views/app/pages/sales/edit_sale",
+  "route": "/app/sales/edit/1",
+  "ids": [
+   "open_scan",
+   "form_Update_Detail"
+  ],
+  "param": true
+ },
+ {
+  "file": "views/app/pages/transfers/edit_transfer",
+  "route": "/app/transfers/edit-classic/1",
+  "ids": [
+   "open_scan",
+   "form_Update_Detail"
+  ],
+  "param": true
+ },
+ {
+  "file": "views/app/pages/damage/Edit_Damage",
+  "route": "/app/damages/edit-classic/1",
+  "ids": [
+   "open_scan"
+  ],
+  "param": true
+ },
+ {
+  "file": "views/app/pages/contracts/View_contract",
+  "route": "/app/contracts/view/1",
+  "ids": [
+   "contract-template-modal",
+   "pdf-preview-modal"
+  ],
+  "param": true
+ },
+ {
+  "file": "views/app/pages/meeting/details",
+  "route": "/app/meeting/details/1",
+  "ids": [
+   "Note_Modal"
+  ],
+  "param": true
+ },
+ {
+  "file": "views/app/pages/hrm/employees/employee_details",
+  "route": "/app/hrm/employees/detail/1",
+  "ids": [
+   "Experience_Modal",
+   "Account_Modal"
+  ],
+  "param": true
+ }
+]

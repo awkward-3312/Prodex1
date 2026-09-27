@@ -125,6 +125,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxTable from "@/components/px-next/PxTable.vue";
@@ -216,7 +217,7 @@ export default {
       return dirty || validated ? valid : null;
     },
     toast(variant, message, title) {
-      this.$root.$bvToast.toast(message, { title, variant, solid: true });
+      notifications.notify(message, { title, variant, solid: true });
     },
     errorMessage(error) {
       const data = (error && error.response && error.response.data) || (error && typeof error === 'object' ? error : null);

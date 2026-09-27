@@ -1,0 +1,11 @@
+/* @vuepic/vue-datepicker's own `.dp--icon` (the trigger/clear <svg> itself) only sets stroke/fill, not a size — it
+   relies on its wrapping container (`.dp--input-icons`) for that. A global reset elsewhere in the app (Bootstrap
+   5's base stylesheet) makes bare, unconstrained `svg` elements stretch to fill their container, blowing this one
+   up to full width instead of a small inline icon. Forcing the size directly on `.dp--icon` fixes it regardless of
+   cascade order. */
+.dp--icon {
+  width: var(--dp-font-size, 1rem) !important;
+  height: var(--dp-font-size, 1rem) !important;
+  max-width: var(--dp-font-size, 1rem) !important;
+  flex-shrink: 0;
+}

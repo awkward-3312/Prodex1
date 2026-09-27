@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Internal_Location_Report')" :folder="$t('Reports')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-row class="justify-content-center mb-4" v-if="!isLoading">
       <b-col lg="4" md="6" sm="12">
@@ -32,7 +32,7 @@
       :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
       styleClass="table-hover tableOne vgt-table"
     >
-      <template slot="table-row" slot-scope="props">
+      <template #table-row="props">
         <span v-if="props.column.field === 'location'">
           <span v-if="props.row.location_code">
             {{ props.row.location_code }}<span v-if="props.row.location_name"> - {{ props.row.location_name }}</span>
@@ -48,9 +48,10 @@
 </template>
 
 <script>
+import { BCol, BRow, BFormGroup } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BFormGroup, BCol, BRow },
   metaInfo: {
     title: "Internal Location Report"
   },
@@ -73,10 +74,10 @@ export default {
   computed: {
     columns() {
       return [
-        { label: this.$t("warehouse"), field: "warehouse", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("CodeProduct"), field: "code", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("ProductName"), field: "name", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Internal_Location_Rack_Shelf"), field: "location", tdClass: "text-left", thClass: "text-left", sortable: false },
+        { label: this.$t("warehouse"), field: "warehouse", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("CodeProduct"), field: "code", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("ProductName"), field: "name", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Internal_Location_Rack_Shelf"), field: "location", tdClass: "text-start", thClass: "text-start", sortable: false },
       ];
     }
   },

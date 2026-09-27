@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Messages')" :folder="$t('Store')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else class="wrapper">
 
@@ -15,12 +15,10 @@
               :placeholder="$t('Search_by_name_email_subject') + '…'"
               @input="debouncedSearch"
             />
-            <b-input-group-append>
               <b-button variant="primary" :disabled="searching" @click="fetch">
                 <span v-if="searching" class="spinner-border spinner-border-sm"></span>
                 <lucide-icon name="search" v-else />
               </b-button>
-            </b-input-group-append>
           </b-input-group>
 
           <b-form-checkbox v-model="onlyUnread" class="messages-unread" switch @change="fetch">
@@ -45,7 +43,7 @@
         @on-sort-change="onSortChange"
         styleClass="table-hover tableOne vgt-table"
       >
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field === 'is_read'">
             <b-badge :variant="props.row.is_read ? 'secondary' : 'warning'">
               {{ props.row.is_read ? $t('Read') : $t('Unread') }}
@@ -63,7 +61,7 @@
             <a
               v-b-tooltip.hover
               :title="$t('Delete')"
-              class="ml-2"
+              class="ms-2"
               @click="remove(props.row.id)"
             >
               <lucide-icon class="text-20 text-danger" name="x" />
@@ -124,8 +122,10 @@
 </template>
 
 <script>
+import { vBTooltip, BModal, BBadge, BButton, BCard, BInputGroup, BFormInput, BFormCheckbox } from "@/platform/bootstrap";
+import { modals } from "@/platform";
 
-export default {
+export default { components: { BInputGroup, BFormInput, BFormCheckbox, BBadge, BButton, BCard, BModal }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Store Messages"
   },
@@ -237,7 +237,7 @@ export default {
         }
 
         // Show modal
-        if (this.$bvModal) this.$bvModal.show('messageModal')
+        modals.show('messageModal')
       } finally {
         this.loadingOne = false
       }
@@ -337,23 +337,5 @@ export default {
   font-size: 13px;
   color: #1f2937;
   user-select: none;
-}
-
-.messages-unread.custom-switch {
-  padding-left: 2.25rem;
-}
-
-.messages-unread .custom-control-label {
-  cursor: pointer;
-  line-height: 36px; /* match search input height */
-}
-
-.messages-unread .custom-control-input:checked ~ .custom-control-label::before {
-  background-color: #4f46e5;
-  border-color: #4f46e5;
-}
-
-.messages-unread .custom-control-input:focus ~ .custom-control-label::before {
-  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
 }
 </style>

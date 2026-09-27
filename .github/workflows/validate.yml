@@ -195,11 +195,12 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v5
         with:
-          # Build runtime de PRODEX: se mantiene en Node 20 (webpack antiguo /
-          # Laravel Mix). NO cambiar a Node 24 sin validar compatibilidad completa.
-          # (El runtime interno de las actions sí es Node 24 desde checkout@v5 /
-          # setup-node@v5 — eso es independiente de esta node-version.)
-          node-version: '20'
+          # Build runtime de PRODEX: baseline Node >=22 (package.json engines),
+          # confirmado por la migración vue3-pure-runtime. NO cambiar a Node 24
+          # sin validar compatibilidad completa. (El runtime interno de las
+          # actions sí es Node 24 desde checkout@v5 / setup-node@v5 — eso es
+          # independiente de esta node-version.)
+          node-version: '22'
           cache: npm
       - name: Install frontend dependencies
         run: npm ci

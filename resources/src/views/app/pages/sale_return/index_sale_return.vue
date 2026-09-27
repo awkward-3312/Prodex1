@@ -81,7 +81,7 @@
           :rows="sales_return"
           row-key="id"
           selectable
-          :selected.sync="selectedIds"
+          :selected="selectedIds" @update:selected="selectedIds = $event"
           :sort-key="serverParams.sort.field"
           :sort-dir="serverParams.sort.type"
           has-row-actions
@@ -228,6 +228,8 @@
 </template>
 
 <script>
+import { BForm } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
@@ -253,7 +255,7 @@ import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
-  components: {
+  components: { BForm,
     PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu, PxKebab, PxBadge,
     PxField, PxInput, PxTextarea, PxModal, PxEmptyState, "vs-px": VsPx
   },
@@ -495,7 +497,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

@@ -137,11 +137,10 @@
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import DateRangePicker from "vue2-daterange-picker";
-import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
+import DateRangePicker from "@/components/DateRangePicker.vue";
 import moment from "moment";
 import { mapGetters } from "vuex";
-import VueApexCharts from "vue-apexcharts";
+import VueApexCharts from "vue3-apexcharts";
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
   getPriceFormatSetting,
@@ -488,7 +487,7 @@ export default {
       let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
       tableHtml += `<thead><tr>`;
       this.columns.forEach(col => {
-        tableHtml += `<th class="text-left">${col.label}</th>`;
+        tableHtml += `<th class="text-start">${col.label}</th>`;
       });
       tableHtml += `</tr></thead>`;
 
@@ -500,7 +499,7 @@ export default {
           if (this.isPriceField(col.key)) {
             cellContent = this.formatPriceDisplay(row[col.key], 2);
           }
-          tableHtml += `<td class="text-left">${cellContent || ''}</td>`;
+          tableHtml += `<td class="text-start">${cellContent || ''}</td>`;
         });
         tableHtml += `</tr>`;
       });
@@ -508,11 +507,11 @@ export default {
 
       const totalSales = this.sumTotalSales(this.rows[0]);
       tableHtml += `<tfoot><tr>`;
-      tableHtml += `<td class="text-left font-weight-bold">${this.$t('Total')}</td>`;
-      tableHtml += `<td class="text-left font-weight-bold">${totalSales}</td>`;
+      tableHtml += `<td class="text-start fw-bold">${this.$t('Total')}</td>`;
+      tableHtml += `<td class="text-start fw-bold">${totalSales}</td>`;
       (this.paymentMethods || []).forEach(method => {
         const total = this.sumPaymentMethod(this.rows[0], method);
-        tableHtml += `<td class="text-left font-weight-bold">${total}</td>`;
+        tableHtml += `<td class="text-start fw-bold">${total}</td>`;
       });
       tableHtml += `</tr></tfoot>`;
       tableHtml += `</table>`;

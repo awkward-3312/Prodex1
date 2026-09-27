@@ -60,6 +60,7 @@
 </template>
 
 <script>
+import { defineAsyncComponent } from 'vue';
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
 import PxBadge from "@/components/px-next/PxBadge.vue";
@@ -69,13 +70,15 @@ export default {
   metaInfo: { title: 'Shopify Settings' },
   components: {
     PxPageHeader, PxCard, PxBadge, VsPx,
-    StoresTab: () => import(/* webpackChunkName: "shopify-stores-tab" */ './shopify/StoresTab.vue'),
-    ProductsTab: () => import(/* webpackChunkName: "shopify-products-tab" */ './shopify/ProductsTab.vue'),
-    InventoryTab: () => import(/* webpackChunkName: "shopify-inventory-tab" */ './shopify/InventoryTab.vue'),
-    CustomersTab: () => import(/* webpackChunkName: "shopify-customers-tab" */ './shopify/CustomersTab.vue'),
-    OrdersTab: () => import(/* webpackChunkName: "shopify-orders-tab" */ './shopify/OrdersTab.vue'),
-    LogsTab: () => import(/* webpackChunkName: "shopify-logs-tab" */ './shopify/LogsTab.vue'),
-    GuideTab: () => import(/* webpackChunkName: "shopify-guide-tab" */ './shopify/GuideTab.vue'),
+    // Vue 3 real: a diferencia de Vue 2/@vue/compat y de las rutas de vue-router 4, el registro local de
+    // componentes de esta opción no detecta una función simple como cargador async — hay que envolverla.
+    StoresTab: defineAsyncComponent(() => import(/* webpackChunkName: "shopify-stores-tab" */ './shopify/StoresTab.vue')),
+    ProductsTab: defineAsyncComponent(() => import(/* webpackChunkName: "shopify-products-tab" */ './shopify/ProductsTab.vue')),
+    InventoryTab: defineAsyncComponent(() => import(/* webpackChunkName: "shopify-inventory-tab" */ './shopify/InventoryTab.vue')),
+    CustomersTab: defineAsyncComponent(() => import(/* webpackChunkName: "shopify-customers-tab" */ './shopify/CustomersTab.vue')),
+    OrdersTab: defineAsyncComponent(() => import(/* webpackChunkName: "shopify-orders-tab" */ './shopify/OrdersTab.vue')),
+    LogsTab: defineAsyncComponent(() => import(/* webpackChunkName: "shopify-logs-tab" */ './shopify/LogsTab.vue')),
+    GuideTab: defineAsyncComponent(() => import(/* webpackChunkName: "shopify-guide-tab" */ './shopify/GuideTab.vue')),
   },
   data() {
     return {

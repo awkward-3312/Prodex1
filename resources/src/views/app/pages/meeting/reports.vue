@@ -19,7 +19,7 @@
       </div>
     </div>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else>
       <!-- Summary cards -->
@@ -179,9 +179,10 @@
 </template>
 
 <script>
+import { vBTooltip } from "@/platform/bootstrap";
 import moment from "moment";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: { title: "Meeting Reports" },
   data() {
     return {

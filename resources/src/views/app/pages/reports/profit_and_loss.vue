@@ -94,8 +94,7 @@
 <script>
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
-import DateRangePicker from "vue2-daterange-picker";
-import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
+import DateRangePicker from "@/components/DateRangePicker.vue";
 import moment from "moment";
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
@@ -154,7 +153,7 @@ export default {
     this.updatePickerPlacement();
     window.addEventListener('resize', this.updatePickerPlacement);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     window.removeEventListener('resize', this.updatePickerPlacement);
   },
   methods: {

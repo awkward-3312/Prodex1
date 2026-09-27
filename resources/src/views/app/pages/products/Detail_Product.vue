@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('ProductDetails')" :folder="$t('Products')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div
       v-if="!isLoading"
@@ -734,7 +734,7 @@
 
 
 <script>
-import VueBarcode from "vue-barcode";
+import VueBarcode from "@/components/Barcode.vue";
 import { mapActions, mapGetters } from "vuex";
 import {
   formatPriceDisplay as formatPriceDisplayHelper,

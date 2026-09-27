@@ -115,9 +115,10 @@
 </template>
 
 <script>
+import { confirmDialog, notifications } from "@/platform";
 import { mapGetters } from 'vuex';
 import NProgress from 'nprogress';
-import VueApexCharts from 'vue-apexcharts';
+import VueApexCharts from 'vue3-apexcharts';
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
 import PxStat from "@/components/px-next/PxStat.vue";
@@ -325,11 +326,11 @@ export default {
     },
     cancelSelected() {
       if (!this.selectedIds.length) return;
-      this.$bvModal.msgBoxConfirm(this.$t('Confirm_delete')).then((ok) => {
+      confirmDialog(this.$t('Confirm_delete'), { presentation: 'modal' }).then((ok) => {
         if (ok) axios.post('commissions/cancel', { commission_ids: this.selectedIds }).then(() => { this.makeToast('success', this.$t('Success')); this.selectedIds = []; this.load(this.serverParams.page); this.loadSummary(); this.loadCharts(); }).catch((e) => this.makeToast('danger', (e.response && e.response.data && e.response.data.message) || this.$t('Error')));
       });
     },
-    makeToast(variant, msg) { this.$bvToast.toast(msg, { title: this.$t('Notice'), variant, solid: true }); },
+    makeToast(variant, msg) { notifications.notify(msg, { title: this.$t('Notice'), variant, solid: true }); },
   },
 };
 </script>

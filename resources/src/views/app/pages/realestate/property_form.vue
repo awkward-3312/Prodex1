@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="editMode ? $t('Edit_Property') : $t('Add_Property')" :folder="$t('Real_Estate')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-form @submit.prevent="submit" v-if="!isLoading">
       <b-row>
@@ -120,14 +120,12 @@
             <div class="d-flex flex-wrap mb-2">
               <span v-for="(a, i) in form.amenities" :key="i" class="badge badge-primary p-2 m-1 d-inline-flex align-items-center">
                 {{ a }}
-                <a class="text-white ml-2 cursor-pointer" @click="removeAmenity(i)">&times;</a>
+                <a class="text-white ms-2 cursor-pointer" @click="removeAmenity(i)">&times;</a>
               </span>
             </div>
             <b-input-group>
               <b-form-input v-model="amenityInput" :placeholder="$t('Add_Amenity')" @keydown.enter.prevent="addAmenity" />
-              <b-input-group-append>
                 <b-button variant="primary" @click="addAmenity">{{ $t('Add') }}</b-button>
-              </b-input-group-append>
             </b-input-group>
           </b-card>
 
@@ -192,7 +190,7 @@
 
           <b-card class="wrapper mb-3">
             <b-button type="submit" variant="primary" block :disabled="saving">
-              <span v-if="saving" class="spinner-border spinner-border-sm mr-1"></span>
+              <span v-if="saving" class="spinner-border spinner-border-sm me-1"></span>
               {{ editMode ? $t('Update') : $t('Save') }}
             </b-button>
             <b-button variant="outline-secondary" block @click="$router.push({ name: 'realestate_properties' })">{{ $t('Cancel') }}</b-button>
@@ -204,7 +202,9 @@
 </template>
 
 <script>
-export default {
+import { BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormSelect, BFormSelectOption, BFormTextarea, BInputGroup, BFormFile, BFormCheckbox } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
+export default { components: { BForm, BFormGroup, BFormInput, BFormSelect, BFormSelectOption, BFormTextarea, BInputGroup, BFormFile, BFormCheckbox, BButton, BCard, BCol, BRow },
   metaInfo: { title: "Property Form" },
   data() {
     return {
@@ -233,7 +233,7 @@ export default {
   },
   methods: {
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+      notifications.notify(msg, { title: title, variant: variant, solid: true });
     },
     addAmenity() {
       const v = (this.amenityInput || "").trim();

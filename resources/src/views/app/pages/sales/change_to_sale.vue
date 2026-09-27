@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('AddSale')" :folder="$t('ListSales')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <validation-observer ref="create_sale" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Sale">
@@ -42,7 +42,7 @@
                 <!-- Customer -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="Customer" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Customer') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Customer') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -52,14 +52,14 @@
                         :options="clients.map(clients => ({label: clients.name, value: clients.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                 <!-- warehouse -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="warehouse" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('warehouse') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('warehouse') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -71,14 +71,14 @@
                         :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                 <!-- Sales Agent -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="Sales Agent">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Sales_Agent')">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Sales_Agent')">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -88,7 +88,7 @@
                         :options="sales_agents.map(ag => ({label: ag.name, value: ag.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
@@ -154,12 +154,10 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <b-input-group-prepend>
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="decrement(detail ,detail.detail_id)"
                                   >-</span>
-                                </b-input-group-prepend>
                                 <input
                                   class="form-control"
                                   @keyup="Verified_Qty(detail,detail.detail_id)"
@@ -167,12 +165,10 @@
                                   :max="detail.stock"
                                   v-model.number="detail.quantity"
                                 >
-                                <b-input-group-append>
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="increment(detail ,detail.detail_id)"
                                   >+</span>
-                                </b-input-group-append>
                               </b-input-group>
                             </div>
                           </td>
@@ -208,11 +204,11 @@
                       </tr>
                       <tr>
                         <td>
-                          <span class="font-weight-bold">{{$t('Total')}}</span>
+                          <span class="fw-bold">{{$t('Total')}}</span>
                         </td>
                         <td>
                           <span
-                            class="font-weight-bold"
+                            class="fw-bold"
                           >{{currentUser.currency}} {{GrandTotal.toFixed(2)}}</span>
                         </td>
                       </tr>
@@ -296,7 +292,7 @@
                  <!-- Status  -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="Status" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Status') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Status') + ' ' + '*'">
                       <v-select
                         @input="Selected_Status"
                         :class="{'is-invalid': !!errors.length}"
@@ -312,7 +308,7 @@
                                 ]"
                       ></v-select>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
@@ -339,7 +335,7 @@
                 <!-- Payment choice -->
                <b-col md="4" v-if="payment.status != 'pending' && sale.statut == 'completed'">
                   <validation-provider name="Payment choice" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Paymentchoice') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -349,7 +345,7 @@
                         :options="payment_methods.map(payment_methods => ({label: payment_methods.name, value: payment_methods.id}))"
                       ></v-select>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
@@ -412,7 +408,7 @@
                  <!-- Account -->
                  <b-col lg="4" md="4" sm="12" v-if="payment.status != 'pending' && sale.statut == 'completed'">
                     <validation-provider name="Account">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
+                      <template #default="{ valid, errors }"><b-form-group :label="$t('Account')">
                         <v-select
                           :class="{'is-invalid': !!errors.length}"
                           :state="errors[0] ? false : (valid ? true : null)"
@@ -422,7 +418,7 @@
                           :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
                         />
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
@@ -439,7 +435,7 @@
                 </b-col>
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" @click="Submit_Sale" :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" @click="Submit_Sale" :disabled="SubmitProcessing"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                      <div v-once class="typo__p" v-if="SubmitProcessing">
                       <div class="spinner sm spinner-primary mt-3"></div>
                     </div>
@@ -479,7 +475,7 @@
             <!-- Tax Method -->
             <b-col lg="6" md="6" sm="12">
               <validation-provider name="Tax Method" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('TaxMethod') + ' ' + '*'">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('TaxMethod') + ' ' + '*'">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -493,7 +489,7 @@
                            ]"
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
+                </b-form-group></template>
               </validation-provider>
             </b-col>
 
@@ -521,7 +517,7 @@
             <!-- Discount Method -->
             <b-col lg="6" md="6" sm="12">
               <validation-provider name="Discount Method" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Discount_Method') + ' ' + '*'">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Discount_Method') + ' ' + '*'">
                   <v-select
                     v-model="detail.discount_Method"
                     :reduce="label => label.value"
@@ -535,7 +531,7 @@
                            ]"
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
+                </b-form-group></template>
               </validation-provider>
             </b-col>
 
@@ -561,7 +557,7 @@
               <!-- Unit Sale -->
             <b-col lg="6" md="6" sm="12" v-if="detail.product_type != 'is_service'">
               <validation-provider name="Unit Sale" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('UnitSale') + ' ' + '*'">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('UnitSale') + ' ' + '*'">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -571,7 +567,7 @@
                     :options="units.map(units => ({label: units.name, value: units.id}))"
                   />
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
+                </b-form-group></template>
               </validation-provider>
             </b-col>
 
@@ -588,7 +584,7 @@
 
             <b-col md="12">
               <b-form-group>
-                <b-button variant="primary" type="submit" :disabled="Submit_Processing_detail"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                <b-button variant="primary" type="submit" :disabled="Submit_Processing_detail"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                 <div v-once class="typo__p" v-if="Submit_Processing_detail">
                   <div class="spinner sm spinner-primary mt-3"></div>
                 </div>
@@ -603,10 +599,12 @@
 
 
 <script>
+import { BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BButton, BCard, BCol, BRow, BModal },
   metaInfo: {
     title: "Nueva venta"
   },
@@ -696,7 +694,7 @@ export default {
     },
 
     showModal() {
-      this.$bvModal.show('open_scan');
+      modals.show('open_scan');
       
     },
 
@@ -704,7 +702,7 @@ export default {
       const code = decodedText;
       this.search_input = code;
       this.search();
-      this.$bvModal.hide('open_scan');
+      modals.hide('open_scan');
     },
 
     
@@ -754,7 +752,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -792,7 +790,7 @@ export default {
 
       setTimeout(() => {
         NProgress.done();
-        this.$bvModal.show("form_Update_Detail");
+        modals.show("form_Update_Detail");
       }, 1000);
 
     },
@@ -903,7 +901,7 @@ export default {
       setTimeout(() => {
         NProgress.done();
         this.Submit_Processing_detail = false;
-        this.$bvModal.hide("form_Update_Detail");
+        modals.hide("form_Update_Detail");
       }, 1000);
 
     },

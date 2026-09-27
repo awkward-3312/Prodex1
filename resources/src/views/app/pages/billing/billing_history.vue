@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="billing-page">
       <div class="row mb-3">
@@ -10,7 +10,7 @@
             <p class="text-muted mb-0">{{ $t('View_payments') || 'View your subscription payments and invoices.' }}</p>
           </div>
           <router-link to="/app/billing/current-plan" class="btn btn-outline-secondary btn-sm">
-            <lucide-icon name="arrow-left" class="mr-1" /> {{ $t('Current_Plan') || 'Current Plan' }}
+            <lucide-icon name="arrow-left" class="me-1" /> {{ $t('Current_Plan') || 'Current Plan' }}
           </router-link>
         </div>
       </div>
@@ -18,7 +18,7 @@
       <!-- Payment history table -->
       <div class="billing-card">
         <div class="billing-card-header d-flex align-items-center justify-content-between">
-          <span><lucide-icon name="clock" class="mr-2" />{{ $t('Payment_History') || 'Payment History' }}</span>
+          <span><lucide-icon name="clock" class="me-2" />{{ $t('Payment_History') || 'Payment History' }}</span>
           <span class="text-muted small">{{ total }} {{ $t('transactions') || 'transaction(s)' }}</span>
         </div>
 
@@ -37,9 +37,9 @@
             </thead>
             <tbody>
               <tr v-for="p in payments" :key="p.id">
-                <td class="td-billing"><span class="fw-bold">{{ p.invoice_number || '—' }}</span></td>
+                <td class="td-billing"><span>{{ p.invoice_number || '—' }}</span></td>
                 <td class="td-billing">{{ p.plan_name }} <span class="text-muted small">({{ capitalize(p.billing_cycle) }})</span></td>
-                <td class="td-billing"><span class="fw-bold">{{ currencySymbol }}{{ p.amount.toFixed(2) }}</span> <span class="text-muted small">{{ p.currency }}</span></td>
+                <td class="td-billing"><span>{{ currencySymbol }}{{ p.amount.toFixed(2) }}</span> <span class="text-muted small">{{ p.currency }}</span></td>
                 <td class="td-billing">{{ p.gateway_label }}</td>
                 <td class="td-billing">
                   <span :class="'badge-billing badge-' + p.status">{{ capitalize(p.status) }}</span>
@@ -48,13 +48,13 @@
                 <td class="td-billing">
                   <button v-if="p.status === 'failed'" @click="retryPayment(p)" :disabled="p._retrying"
                      class="btn btn-outline-primary btn-sm action-btn">
-                    <span v-if="p._retrying" class="spinner-border spinner-border-sm mr-1"></span>
-                    <lucide-icon v-else name="rotate-cw" class="mr-1" />{{ $t('Retry') || 'Retry' }}
+                    <span v-if="p._retrying" class="spinner-border spinner-border-sm me-1"></span>
+                    <lucide-icon v-else name="rotate-cw" class="me-1" />{{ $t('Retry') || 'Retry' }}
                   </button>
                   <button v-if="p.status === 'paid'" @click="downloadInvoice(p)" :disabled="p._downloading"
                      class="btn btn-outline-secondary btn-sm action-btn">
-                    <span v-if="p._downloading" class="spinner-border spinner-border-sm mr-1"></span>
-                    <lucide-icon v-else name="download" class="mr-1" />{{ $t('PDF') || 'PDF' }}
+                    <span v-if="p._downloading" class="spinner-border spinner-border-sm me-1"></span>
+                    <lucide-icon v-else name="download" class="me-1" />{{ $t('PDF') || 'PDF' }}
                   </button>
                 </td>
               </tr>
@@ -89,6 +89,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import axios from "axios";
 
 export default {
@@ -108,7 +109,7 @@ export default {
   },
   methods: {
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
     async fetchHistory(page) {
       this.loading = true;
@@ -130,7 +131,7 @@ export default {
       if (p >= 1 && p <= this.lastPage) this.fetchHistory(p);
     },
     async downloadInvoice(payment) {
-      this.$set(payment, '_downloading', true);
+      (payment)['_downloading'] = true;
       try {
         const response = await axios.get(`/api/billing/invoices/${payment.id}/download`, {
           responseType: 'blob',
@@ -147,17 +148,17 @@ export default {
       } catch (e) {
         this.makeToast("danger", this.$t('Download_failed') || 'Failed to download invoice.', "Error");
       }
-      this.$set(payment, '_downloading', false);
+      (payment)['_downloading'] = false;
     },
     async retryPayment(payment) {
-      this.$set(payment, '_retrying', true);
+      (payment)['_retrying'] = true;
       try {
         const { data } = await axios.post(`/api/billing/retry/${payment.id}`);
         this.$router.push(`/app/billing/checkout/${data.plan_id}?cycle=${data.billing_cycle}`);
       } catch (e) {
         this.makeToast("danger", e.response?.data?.message || "Cannot retry this payment.", "Error");
       }
-      this.$set(payment, '_retrying', false);
+      (payment)['_retrying'] = false;
     },
     formatDate(d) {
       if (!d) return "—";

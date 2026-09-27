@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Serial_Number')" :folder="$t('Serial_Numbers')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-if="!isLoading">
       <b-card class="mb-3">
@@ -35,27 +35,27 @@
         <table class="table table-hover vgt-table mt-2">
           <thead>
             <tr>
-              <th class="text-left">{{ $t('date') }}</th>
-              <th class="text-left">{{ $t('Action') }}</th>
-              <th class="text-left">{{ $t('Serial_Status') }}</th>
-              <th class="text-left">{{ $t('Reference') || 'Reference' }}</th>
-              <th class="text-left">{{ $t('User') || 'User' }}</th>
+              <th class="text-start">{{ $t('date') }}</th>
+              <th class="text-start">{{ $t('Action') }}</th>
+              <th class="text-start">{{ $t('Serial_Status') }}</th>
+              <th class="text-start">{{ $t('Reference') || 'Reference' }}</th>
+              <th class="text-start">{{ $t('User') || 'User' }}</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="movements.length === 0"><td colspan="5">{{ $t('NodataAvailable') }}</td></tr>
             <tr v-for="m in movements" :key="m.id">
-              <td class="text-left">{{ m.created_at }}</td>
-              <td class="text-left">{{ actionLabel(m.action) }}</td>
-              <td class="text-left">
+              <td class="text-start">{{ m.created_at }}</td>
+              <td class="text-start">{{ actionLabel(m.action) }}</td>
+              <td class="text-start">
                 <span v-if="m.from_status" class="text-muted">{{ statusLabel(m.from_status) }} &rarr; </span>
                 <span>{{ statusLabel(m.to_status) }}</span>
               </td>
-              <td class="text-left">
+              <td class="text-start">
                 <span v-if="m.reference_type">{{ m.reference_type }}<span v-if="m.reference_ref"> · {{ m.reference_ref }}</span></span>
                 <span v-else>—</span>
               </td>
-              <td class="text-left">{{ m.user_name || '—' }}</td>
+              <td class="text-start">{{ m.user_name || '—' }}</td>
             </tr>
           </tbody>
         </table>
@@ -65,10 +65,12 @@
 </template>
 
 <script>
+import { BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 
-export default {
+export default { components: { BButton, BCard, BCol, BRow },
   metaInfo: { title: "Serial Detail" },
   data() {
     return {
@@ -91,7 +93,7 @@ export default {
         .post("serial_numbers/" + this.serial.id + "/status", { status })
         .then(() => {
           NProgress.done();
-          this.$root.$bvToast.toast(this.$t("Successfully_Updated") || "Updated", { variant: "success", solid: true });
+          notifications.notify(this.$t("Successfully_Updated") || "Updated", { variant: "success", solid: true });
           this.loadData();
         })
         .catch(error => {
@@ -99,7 +101,7 @@ export default {
           const msg = (error.response && error.response.data && error.response.data.errors && error.response.data.errors.status)
             ? error.response.data.errors.status[0]
             : (this.$t("InvalidData") || "Failed");
-          this.$root.$bvToast.toast(msg, { variant: "danger", solid: true });
+          notifications.notify(msg, { variant: "danger", solid: true });
         });
     },
     statusLabel(s) {

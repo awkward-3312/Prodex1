@@ -1,57 +1,31 @@
+import { defineAsyncComponent } from 'vue';
+import { mountWithRouter } from './platform/mount';
+import { head, installHead } from './platform/head';
 import store from "./store";
-import Vue from "vue";
 import router, { setupRouterGuards } from "./router";
-import { ValidationObserver, ValidationProvider, extend, localize } from 'vee-validate';
-import * as rules from "vee-validate/dist/rules";
-import BootstrapVue from 'bootstrap-vue/dist/bootstrap-vue.esm';
-Vue.use(BootstrapVue);
+import { installValidation } from './platform/validation';
 
-Vue.component(
+// `app` real de Vue 3, con store (Vuex 4) y router ya instalados (ver platform/mount.js).
+const app = mountWithRouter({}, { router, store });
+
+// Vue 3 real: un componente global asíncrono se declara con `defineAsyncComponent(...)` explícito (antes,
+// vue-router 4 y `@vue/compat` reconocían automáticamente cualquier función `() => import(...)`; el registro
+// GLOBAL con `app.component(...)` no tiene esa detección automática).
+app.component(
   "large-sidebar",
-  // The `import` function returns a Promise.
-  () => import(/* webpackChunkName: "largeSidebar" */ "./containers/layouts/largeSidebar")
+  defineAsyncComponent(() => import(/* webpackChunkName: "largeSidebar" */ "./containers/layouts/largeSidebar"))
 );
 
-Vue.component(
+app.component(
   "customizer",
-  // The `import` function returns a Promise.
-  () => import(/* webpackChunkName: "customizer" */ "./components/common/customizer.vue")
+  defineAsyncComponent(() => import(/* webpackChunkName: "customizer" */ "./components/common/customizer.vue"))
 );
-Vue.component("vue-perfect-scrollbar", () =>
-  import(/* webpackChunkName: "vue-perfect-scrollbar" */ "vue-perfect-scrollbar")
-);
-import Meta from "vue-meta";
+app.component("vue-perfect-scrollbar", defineAsyncComponent(() =>
+  import(/* webpackChunkName: "vue-perfect-scrollbar" */ "./components/VuePerfectScrollbar.vue")
+));
+installHead(app);
 
-Vue.use(Meta, {
-  keyName: "metaInfo",
-  attribute: "data-vue-meta",
-  ssrAttribute: "data-vue-meta-server-rendered",
-  tagIDKeyName: "vmid",
-  refreshOnceOnNavigation: true
-});
-
-localize({
-  es: {
-    messages: {
-      required: 'Este campo es obligatorio',
-      required_if: 'Este campo es obligatorio',
-      regex: 'Este campo debe tener un formato válido',
-      mimes: 'Este archivo debe tener un tipo válido',
-      size: (_, { size }) => `El tamaño del archivo debe ser menor de ${size}`,
-      min: 'Este campo debe tener al menos {length} caracteres',
-      max: (_, { length }) => `Este campo no puede tener más de ${length} caracteres`
-    }
-  },
-});
-localize('es');
-// Install VeeValidate rules and localization
-Object.keys(rules).forEach(rule => {
-  extend(rule, rules[rule]);
-});
-
-// Register it globally
-Vue.component("ValidationObserver", ValidationObserver);
-Vue.component('ValidationProvider', ValidationProvider);
+installValidation(app);
 
 window.axios = require('axios');
 window.axios.defaults.baseURL = '';
@@ -81,20 +55,18 @@ axios.interceptors.response.use((response) => {
   return Promise.reject(error.message);
 });
 
-window.Fire = new Vue();
+// Adaptador temporal: `window.Fire` ya no es una instancia de Vue sino el bus de plataforma.
+window.Fire = events;
 
-Vue.component('login-component', require('./views/app/sessions/signIn.vue').default);
-Vue.component('forgot-component', require('./views/app/sessions/forgot.vue').default);
-Vue.component('reset-component', require('./views/app/sessions/reset.vue').default);
+app.component('login-component', require('./views/app/sessions/signIn.vue').default);
+app.component('forgot-component', require('./views/app/sessions/forgot.vue').default);
+app.component('reset-component', require('./views/app/sessions/reset.vue').default);
 
-Vue.config.productionTip = true;
-Vue.config.silent = true;
-Vue.config.devtools = false;
-
-import VueI18n from 'vue-i18n';
-Vue.use(VueI18n);
+// `Vue.config.silent`/`productionTip`/`devtools` (Vue 2) no existen en Vue 3: no tienen equivalente real (ver main.js).
 
 import { loadI18n } from './plugins/i18n.loader';
+import { events, installVue2Platform } from './platform';
+import { bootstrapPlugin } from './platform/bootstrap/plugin.js';
 
 loadI18n().then(i18n => {
  store.commit('SetDefaultLanguage', { i18n, Language: i18n.locale });
@@ -102,11 +74,8 @@ loadI18n().then(i18n => {
 
   try { store.dispatch('config/initPrimaryColor'); } catch (e) {}
 
-  new Vue({
-    el: '#login',
-    store,
-    router,
-    i18n,
-  });
+  app.use(bootstrapPlugin);
+  app.use(i18n);
+  const vm = app.mount('#login');
+  installVue2Platform(vm);
 });
-

@@ -204,6 +204,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "@/utils/priceFormat";
@@ -355,7 +356,7 @@ export default {
       return Number.isInteger(n) ? n.toString() : n.toFixed(this.priceDecimals);
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
     rowActions(row) {
       const items = [];

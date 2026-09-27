@@ -8,7 +8,7 @@
 // Extraído (solo lectura) de:
 //   · resources/src/containers/layouts/largeSidebar/Sidebar.vue          (Sidebar)
 //   · resources/src/containers/layouts/largeSidebar/VerticalSidebar.vue  (VSidebar)
-//   · resources/src/main.js  router.addRoutes(...)                        (runtime-router)
+//   · resources/src/main.js  router.addRoute(...)                         (runtime-router)
 //   · resources/src/router.js                                            (router)
 //   · resources/static/prodex-navigation-v3.js  (agrupamiento previo)    (nav-v3)
 //
@@ -132,7 +132,7 @@ export const MODULES = [
   { key: "products", label: "Productos / catálogo", dest: "/app/products", routes: 12, origin: ["Sidebar", "router"], parentNow: "products", perm: "products_view (+9)", plan: null,
     domain: "inventario", place: "panel", freq: "alta", basis: "D3 (decisión B0): «Catálogo» es un grupo contextual dentro del dominio Inventario, no un módulo de riel. 12 rutas (alta/baja, import, categorías, marcas, unidades, lotes, códigos)" },
   { key: "inventory_arch", label: "Existencias y ubicaciones", dest: "/app/inventory/* · /app/operations/stock-intake", routes: 4, origin: ["runtime-router (main.js)"], parentNow: "no está en el sidebar real", perm: "(inventory location perms)", plan: null,
-    domain: "inventario", place: "panel", freq: "alta", basis: "D3/D4 (decisión B0): la operación cotidiana de stock/ubicaciones vive en Inventario. Diferenciador de PRODEX (multi-ubicación, fases 1–3); hoy semi-oculto, sólo vía router.addRoutes" },
+    domain: "inventario", place: "panel", freq: "alta", basis: "D3/D4 (decisión B0): la operación cotidiana de stock/ubicaciones vive en Inventario. Diferenciador de PRODEX (multi-ubicación, fases 1–3); hoy semi-oculto, sólo vía router.addRoute" },
   { key: "adjustments", label: "Ajustes de inventario", dest: "/app/adjustments", routes: 2, origin: ["Sidebar", "router"], parentNow: "adjustments", perm: "adjustment_view / adjustment_add", plan: null,
     domain: "inventario", place: "panel", freq: "media", basis: "operación de stock recurrente pero no diaria; 2 rutas" },
   { key: "transfers", label: "Traslados", dest: "/app/transfers", routes: 2, origin: ["Sidebar", "router"], parentNow: "transfers", perm: "transfer_view / transfer_add", plan: "transfers",

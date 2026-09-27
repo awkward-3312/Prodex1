@@ -9,23 +9,23 @@
           <p class="text-muted mb-0">Una sucursal contiene sus ubicaciones de inventario y sus cajas físicas. Las cajas operan desde una ubicación vendible, normalmente Piso de venta.</p>
         </div>
         <div class="mt-2 mt-md-0">
-          <b-button variant="outline-secondary" class="mr-2" @click="goManual">
-            <lucide-icon name="book-open" class="mr-1"/> Ver manual
+          <b-button variant="outline-secondary" class="me-2" @click="goManual">
+            <lucide-icon name="book-open" class="me-1"/> Ver manual
           </b-button>
-          <b-button variant="outline-info" class="mr-2" @click="goCashDrawers">
-            <lucide-icon name="wallet-cards" class="mr-1"/> Cajas físicas
+          <b-button variant="outline-info" class="me-2" @click="goCashDrawers">
+            <lucide-icon name="wallet-cards" class="me-1"/> Cajas físicas
           </b-button>
-          <b-button variant="outline-primary" class="mr-2" @click="goWarehouses">
-            <lucide-icon name="warehouse" class="mr-1"/> Almacenes / CD
+          <b-button variant="outline-primary" class="me-2" @click="goWarehouses">
+            <lucide-icon name="warehouse" class="me-1"/> Almacenes / CD
           </b-button>
           <b-button variant="primary" @click="openCreate">
-            <lucide-icon name="plus" class="mr-1"/> Nueva sucursal
+            <lucide-icon name="plus" class="me-1"/> Nueva sucursal
           </b-button>
         </div>
       </div>
     </b-card>
 
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else>
       <div class="d-flex flex-wrap align-items-center justify-content-between mb-3">
@@ -48,7 +48,7 @@
               <th>Ubicaciones de inventario</th>
               <th>Venta predeterminada</th>
               <th>Cajas físicas</th>
-              <th class="text-right">Acciones</th>
+              <th class="text-end">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -62,7 +62,7 @@
               <td>{{ managerName(branch.manager) }}</td>
               <td>
                 <template v-if="branch.inventory_locations && branch.inventory_locations.length">
-                  <b-badge v-for="location in branch.inventory_locations" :key="location.id" variant="light" class="mr-1 mb-1">
+                  <b-badge v-for="location in branch.inventory_locations" :key="location.id" variant="light" class="me-1 mb-1">
                     {{ location.name }}
                   </b-badge>
                 </template>
@@ -71,17 +71,17 @@
               <td>{{ branch.default_inventory_location ? branch.default_inventory_location.name : '—' }}</td>
               <td>
                 <b-button size="sm" variant="outline-info" @click="manageDrawers(branch)">
-                  <lucide-icon name="wallet-cards" class="mr-1"/> Administrar
+                  <lucide-icon name="wallet-cards" class="me-1"/> Administrar
                 </b-button>
               </td>
-              <td class="text-right text-nowrap">
-                <a class="cursor-pointer mr-2" title="Agregar ubicación de inventario" @click="openLocation(branch)">
+              <td class="text-end text-nowrap">
+                <a class="cursor-pointer me-2" title="Agregar ubicación de inventario" @click="openLocation(branch)">
                   <lucide-icon name="map-pin-plus" class="text-primary text-20"/>
                 </a>
-                <a class="cursor-pointer mr-2" title="Administrar cajas físicas" @click="manageDrawers(branch)">
+                <a class="cursor-pointer me-2" title="Administrar cajas físicas" @click="manageDrawers(branch)">
                   <lucide-icon name="wallet-cards" class="text-info text-20"/>
                 </a>
-                <a class="cursor-pointer mr-2" title="Editar" @click="openEdit(branch)">
+                <a class="cursor-pointer me-2" title="Editar" @click="openEdit(branch)">
                   <lucide-icon name="pencil" class="text-success text-20"/>
                 </a>
                 <a class="cursor-pointer" title="Desactivar" @click="removeBranch(branch)">
@@ -157,7 +157,7 @@
 
         <div v-if="error" class="alert alert-danger">{{ error }}</div>
         <div class="d-flex justify-content-end">
-          <b-button variant="outline-secondary" class="mr-2" @click="$bvModal.hide('branch-modal')">Cancelar</b-button>
+          <b-button variant="outline-secondary" class="me-2" @click="$modals.hide('branch-modal')">Cancelar</b-button>
           <b-button variant="primary" type="submit" :disabled="saving">{{ saving ? 'Guardando…' : 'Guardar sucursal' }}</b-button>
         </div>
       </b-form>
@@ -186,7 +186,7 @@
         </b-form-checkbox>
         <div v-if="locationError" class="alert alert-danger mt-3">{{ locationError }}</div>
         <div class="d-flex justify-content-end mt-3">
-          <b-button variant="outline-secondary" class="mr-2" @click="$bvModal.hide('location-modal')">Cancelar</b-button>
+          <b-button variant="outline-secondary" class="me-2" @click="$modals.hide('location-modal')">Cancelar</b-button>
           <b-button type="submit" variant="primary" :disabled="savingLocation">{{ savingLocation ? 'Guardando…' : 'Crear ubicación' }}</b-button>
         </div>
       </b-form>
@@ -195,7 +195,9 @@
 </template>
 
 <script>
-export default {
+import { BModal, BBadge, BButton, BCard, BCol, BRow, BFormInput, BForm, BFormGroup, BFormCheckbox } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
+export default { components: { BFormInput, BForm, BFormGroup, BFormCheckbox, BBadge, BButton, BCard, BCol, BRow, BModal },
   metaInfo: { title: 'Sucursales' },
   data() {
     return {
@@ -270,7 +272,7 @@ export default {
       this.form = this.emptyForm();
       this.editing = false;
       this.error = '';
-      this.$bvModal.show('branch-modal');
+      modals.show('branch-modal');
     },
     openEdit(branch) {
       this.editing = true;
@@ -290,7 +292,7 @@ export default {
         create_storage_location: false,
         is_active: !!branch.is_active,
       };
-      this.$bvModal.show('branch-modal');
+      modals.show('branch-modal');
     },
     async saveBranch() {
       if (!this.form.name) return;
@@ -299,9 +301,9 @@ export default {
       try {
         if (this.editing) await axios.put(`/organization/branches/${this.form.id}`, this.form, this.apiConfig());
         else await axios.post('/organization/branches', this.form, this.apiConfig());
-        this.$bvModal.hide('branch-modal');
+        modals.hide('branch-modal');
         await Promise.all([this.loadOptions(), this.loadBranches()]);
-        this.$root.$bvToast.toast('Sucursal guardada correctamente.', { title: 'Éxito', variant: 'success', solid: true });
+        notifications.notify('Sucursal guardada correctamente.', { title: 'Éxito', variant: 'success', solid: true });
       } catch (e) {
         const data = (e && e.response && e.response.data) || (e && typeof e === 'object' ? e : null);
         this.error = (data && (data.message || (data.errors && Object.values(data.errors)[0][0]))) || 'No se pudo guardar la sucursal.';
@@ -313,7 +315,7 @@ export default {
       this.locationBranch = branch;
       this.locationForm = this.emptyLocationForm();
       this.locationError = '';
-      this.$bvModal.show('location-modal');
+      modals.show('location-modal');
     },
     async saveLocation() {
       if (!this.locationBranch || !this.locationForm.name || !this.locationForm.code) return;
@@ -321,9 +323,9 @@ export default {
       this.locationError = '';
       try {
         await axios.post(`/organization/branches/${this.locationBranch.id}/inventory-locations`, this.locationForm, this.apiConfig());
-        this.$bvModal.hide('location-modal');
+        modals.hide('location-modal');
         await this.loadBranches();
-        this.$root.$bvToast.toast('Ubicación de inventario creada.', { title: 'Éxito', variant: 'success', solid: true });
+        notifications.notify('Ubicación de inventario creada.', { title: 'Éxito', variant: 'success', solid: true });
       } catch (e) {
         const data = (e && e.response && e.response.data) || (e && typeof e === 'object' ? e : null);
         this.locationError = (data && (data.message || (data.errors && Object.values(data.errors)[0][0]))) || 'No se pudo crear la ubicación.';

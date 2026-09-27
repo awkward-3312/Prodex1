@@ -1,9 +1,7 @@
-import Vue from "vue";
-import VueCookies from "vue-cookies";
-Vue.use(VueCookies);
+import { cookieIsKey } from "../platform/storage";
 
 export default (to, from, next) => {
-  let accessToken = VueCookies.isKey("Stocky_token");
+  let accessToken = cookieIsKey("Stocky_token");
   if (accessToken) {
      next("/app/dashboard");
   } else {

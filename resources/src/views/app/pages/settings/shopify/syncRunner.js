@@ -1,3 +1,4 @@
+import { notifications } from "@/platform";
 /**
  * Shared batch-loop for Shopify sync tabs.
  *
@@ -33,7 +34,7 @@ export default {
     accumulate(data) {
       ['processed', 'created', 'updated', 'failed', 'skipped', 'imported'].forEach(key => {
         if (typeof data[key] === 'number') {
-          this.$set(this.counters, key, (this.counters[key] || 0) + data[key]);
+          (this.counters)[key] = (this.counters[key] || 0) + data[key];
         }
       });
       if (Array.isArray(data.errors) && data.errors.length) {
@@ -82,7 +83,7 @@ export default {
       });
     },
     notify(variant, msg) {
-      this.$root.$bvToast.toast(msg, { title: 'Shopify', variant, solid: true });
+      notifications.notify(msg, { title: 'Shopify', variant, solid: true });
     },
   },
 };

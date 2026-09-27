@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('ListTransfers')" :folder="$t('StockTransfers')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <div v-else>
       <vue-good-table
         mode="remote"
@@ -31,10 +31,10 @@
         :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
 
       >
-        <div slot="selected-row-actions" v-if="currentUserPermissions && currentUserPermissions.includes('transfer_delete')">
+        <template v-if="currentUserPermissions && currentUserPermissions.includes('transfer_delete')" #selected-row-actions><div>
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
+        </div></template>
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
             <lucide-icon name="filter" />
             {{ $t("Filter") }}
@@ -60,11 +60,11 @@
             <span class="ul-btn__icon">
               <lucide-icon name="plus" />
             </span>
-            <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
+            <span class="ul-btn__text ms-1">{{$t('Add')}}</span>
           </router-link>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'date'">
             {{ formatDisplayDate(props.row.date) }}
           </span>
@@ -89,7 +89,7 @@
                   title="PDF"
                   @click="download_transfer_pdf(props.row, props.row.id)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="file-text" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="file-text" />
                   {{$t('DownloadPdf')}}
                 </b-dropdown-item>
 
@@ -97,7 +97,7 @@
                   title="View"
                   :to="{ name: 'detail_transfer', params: { id: props.row.id } }"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="eye" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="eye" />
                   {{$t('View')}}
                 </b-dropdown-item>
 
@@ -106,7 +106,7 @@
                   title="Edit"
                   :to="{ name:'edit_transfer', params: { id: props.row.id } }"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="pencil" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="pencil" />
                   {{$t('Edit')}}
                 </b-dropdown-item>
 
@@ -115,7 +115,7 @@
                   title="Approve"
                   @click="Approve_Transfer(props.row.id)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="check" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="check" />
                   {{$t('Approve')}}
                 </b-dropdown-item>
 
@@ -124,7 +124,7 @@
                   title="Delete"
                   @click="Remove_Transfer(props.row.id)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="x" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="x" />
                   {{$t('Delete')}}
                 </b-dropdown-item>
               </b-dropdown>
@@ -236,6 +236,8 @@
 </template>
 
 <script>
+import { BSidebar, vBToggle, BButton, BCol, BDropdown, BDropdownItem, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
+import { events } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 import NProgress from "nprogress";
@@ -243,7 +245,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import Util from '../../../../utils';
 
-export default {
+export default { directives: { 'b-toggle': vBToggle }, components: { BFormGroup, BFormInput, BButton, BCol, BDropdown, BDropdownItem, BRow, BSidebar },
   metaInfo: {
     title: "Transfer"
   },
@@ -276,10 +278,12 @@ export default {
   },
 
   mounted() {
-    this.$root.$on("bv::dropdown::show", bvEvent => {
+    // Antes `this.$root.$on(...)` (API de eventos de instancia de Vue 2, sin equivalente en Vue 3): ahora por el
+    // bus de plataforma (mismo nombre de evento, emitido por platform/bootstrap/nav.js).
+    events.$on("bv::dropdown::show", bvEvent => {
       this.showDropdown = true;
     });
-    this.$root.$on("bv::dropdown::hide", bvEvent => {
+    events.$on("bv::dropdown::hide", bvEvent => {
       this.showDropdown = false;
     });
   },
@@ -294,58 +298,58 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("FromWarehouse"),
           field: "from_warehouse",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("ToWarehouse"),
           field: "to_warehouse",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Items"),
           field: "items",
           type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Total"),
           field: "GrandTotal",
           type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Status"),
           field: "statut",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Approval"),
           field: "approval_status",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

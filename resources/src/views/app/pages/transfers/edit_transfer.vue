@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('EditTransfer')" :folder="$t('ListTransfers')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <validation-observer ref="Edit_transfer" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Transfer">
@@ -42,7 +42,7 @@
                 <!-- From warehouse -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="From Warehouse" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('FromWarehouse') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('FromWarehouse') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -54,14 +54,14 @@
                         :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                 <!-- To warehouse -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="To Warehouse" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('ToWarehouse') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('ToWarehouse') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -71,7 +71,7 @@
                         :options="to_warehouses.map(to_warehouses => ({label: to_warehouses.name, value: to_warehouses.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
                
@@ -120,10 +120,9 @@
                         <tr v-if="details.length <=0">
                           <td colspan="9">{{$t('NodataAvailable')}}</td>
                         </tr>
-                        <template v-for="detail in details">
+                        <template v-for="detail in details" :key="'r-' + detail.detail_id">
                         <tr
                           :class="{'row_deleted': detail.del === 1 || detail.no_unit === 0}"
-                          :key="'r-' + detail.detail_id"
                         >
                           <td>{{detail.detail_id}}</td>
                           <td>
@@ -149,24 +148,20 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <b-input-group-prepend>
                                   <span v-show="detail.no_unit !== 0"
                                     class="btn btn-primary btn-sm"
                                     @click="decrement(detail ,detail.detail_id)"
                                   >-</span>
-                                </b-input-group-prepend>
                                 <input
                                   class="form-control"
                                   @keyup="Verified_Qty(detail,detail.detail_id)"
                                   v-model.number="detail.quantity"
                                   :disabled="detail.del === 1 || detail.no_unit === 0"
                                 >
-                                <b-input-group-append>
                                   <span v-show="detail.no_unit !== 0"
                                     class="btn btn-primary btn-sm"
                                     @click="increment(detail ,detail.detail_id)"
                                   >+</span>
-                                </b-input-group-append>
                               </b-input-group>
                             </div>
                           </td>
@@ -324,11 +319,11 @@
                       </tr>
                       <tr>
                         <td>
-                          <span class="font-weight-bold">{{$t('Total')}}</span>
+                          <span class="fw-bold">{{$t('Total')}}</span>
                         </td>
                         <td>
                           <span
-                            class="font-weight-bold"
+                            class="fw-bold"
                           >{{currentUser.currency}} {{GrandTotal.toFixed(priceDecimals)}}</span>
                         </td>
                       </tr>
@@ -411,7 +406,7 @@
                  <!-- Status  -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="Status" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Status') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Status') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -425,7 +420,7 @@
                             ]"
                       ></v-select>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
@@ -449,7 +444,7 @@
 
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" @click="Submit_Transfer" :disabled="SubmitProcessing || hasBatchValidationErrors"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" @click="Submit_Transfer" :disabled="SubmitProcessing || hasBatchValidationErrors"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                     <div v-once class="typo__p" v-if="SubmitProcessing">
                       <div class="spinner sm spinner-primary mt-3"></div>
                     </div>
@@ -489,7 +484,7 @@
             <!-- Tax Method -->
             <b-col lg="12" md="12" sm="12">
               <validation-provider name="Tax Method" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('TaxMethod') + ' ' + '*'">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('TaxMethod') + ' ' + '*'">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -503,7 +498,7 @@
                            ]"
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
+                </b-form-group></template>
               </validation-provider>
             </b-col>
 
@@ -531,7 +526,7 @@
             <!-- Discount Method -->
             <b-col lg="12" md="12" sm="12">
               <validation-provider name="Discount Method" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Discount_Method') + ' ' + '*'">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Discount_Method') + ' ' + '*'">
                   <v-select
                     v-model="detail.discount_Method"
                     :reduce="label => label.value"
@@ -545,7 +540,7 @@
                            ]"
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
+                </b-form-group></template>
               </validation-provider>
             </b-col>
 
@@ -570,7 +565,7 @@
 
             <b-col md="12">
               <b-form-group>
-                <b-button variant="primary" type="submit"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                <b-button variant="primary" type="submit"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
               </b-form-group>
             </b-col>
           </b-row>
@@ -581,11 +576,13 @@
 </template>
 
 <script>
+import { BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BButton, BCard, BCol, BRow, BModal },
   metaInfo: {
     title: "Update Transfer"
   },
@@ -733,7 +730,7 @@ export default {
           const lineQty = Number(d.quantity);
           const batchQty = Number(b.qty);
           if (Number.isFinite(lineQty) && lineQty > 0 && batchQty !== lineQty) {
-            this.$set(b, "qty", lineQty);
+            (b)["qty"] = lineQty;
           }
         }
       }
@@ -751,7 +748,7 @@ export default {
     },
 
     showModal() {
-      this.$bvModal.show('open_scan');
+      modals.show('open_scan');
       
     },
 
@@ -759,7 +756,7 @@ export default {
       const code = decodedText;
       this.search_input = code;
       this.search();
-      this.$bvModal.hide('open_scan');
+      modals.hide('open_scan');
     },
 
     
@@ -805,7 +802,7 @@ export default {
       this.detail.discount = detail.discount;
       this.detail.quantity = detail.quantity;
       this.detail.tax_percent = detail.tax_percent;
-      this.$bvModal.show("form_Update_Detail");
+      modals.show("form_Update_Detail");
     },
 
     //---------- Submit Update Detail Product
@@ -857,12 +854,12 @@ export default {
         }
       }
       this.Calcul_Total();
-      this.$bvModal.hide("form_Update_Detail");
+      modals.hide("form_Update_Detail");
     },
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -1256,10 +1253,10 @@ export default {
               ? `${response.data.warehouse_location.code} - ${response.data.warehouse_location.name}`
               : response.data.warehouse_location.code)
           : null;
-        this.$set(this.product, "is_batch_tracked", !!response.data.is_batch_tracked);
-        this.$set(this.product, "batches", []);
-        this.$set(this.product, "available_batches", []);
-        this.$set(this.product, "batches_loading", false);
+        (this.product)["is_batch_tracked"] = !!response.data.is_batch_tracked;
+        (this.product)["batches"] = [];
+        (this.product)["available_batches"] = [];
+        (this.product)["batches_loading"] = false;
         this.add_product();
         this.Calcul_Total();
 
@@ -1279,7 +1276,7 @@ export default {
       if (Array.isArray(this.details)) {
         for (const d of this.details) {
           if (d && d.is_batch_tracked) {
-            this.$set(d, "batches", []);
+            (d)["batches"] = [];
             this.fetch_batches_for_detail(d);
           }
         }
@@ -1289,18 +1286,18 @@ export default {
     //----------------------------------------- Batch handling -------------------------\\
     fetch_batches_for_detail(detail) {
       if (!detail) return;
-      if (!("batches_loading" in detail)) this.$set(detail, "batches_loading", false);
-      if (!("available_batches" in detail)) this.$set(detail, "available_batches", []);
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!("batches_loading" in detail)) (detail)["batches_loading"] = false;
+      if (!("available_batches" in detail)) (detail)["available_batches"] = [];
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
 
       if (!detail.is_batch_tracked) {
-        this.$set(detail, "batches_loading", false);
+        (detail)["batches_loading"] = false;
         return;
       }
       const wid = this.transfer && this.transfer.from_warehouse;
       const productId = detail.product_id || detail.id;
       if (!wid || !productId) {
-        this.$set(detail, "batches_loading", false);
+        (detail)["batches_loading"] = false;
         return;
       }
       const variantSeg = (detail.product_variant_id != null && detail.product_variant_id !== "")
@@ -1312,7 +1309,7 @@ export default {
           existingQtyById[b.product_batch_id] = (existingQtyById[b.product_batch_id] || 0) + (Number(b.qty) || 0);
         }
       }
-      this.$set(detail, "batches_loading", true);
+      (detail)["batches_loading"] = true;
       axios
         .get(`batches_for_transfer/${productId}/${wid}/${variantSeg}`, { timeout: 15000 })
         .then(response => {
@@ -1322,26 +1319,26 @@ export default {
                 qty_available: (Number(ab.qty_available) || 0) + (existingQtyById[ab.id] || 0),
               }))
             : [];
-          this.$set(detail, "available_batches", list);
+          (detail)["available_batches"] = list;
           if (Array.isArray(detail.batches)) {
             for (const b of detail.batches) {
               if (b && b.product_batch_id != null) {
                 const ab = list.find(x => x.id === b.product_batch_id);
-                this.$set(b, "qty_available", ab ? (Number(ab.qty_available) || 0) : (existingQtyById[b.product_batch_id] || 0));
+                (b)["qty_available"] = ab ? (Number(ab.qty_available) || 0) : (existingQtyById[b.product_batch_id] || 0);
               }
             }
           }
         })
         .catch(() => {
-          this.$set(detail, "available_batches", []);
+          (detail)["available_batches"] = [];
         })
         .then(() => {
-          this.$set(detail, "batches_loading", false);
+          (detail)["batches_loading"] = false;
         });
     },
 
     add_batch_to_detail(detail) {
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
       detail.batches.push({
         product_batch_id: null,
         batch_no: "",
@@ -1361,15 +1358,15 @@ export default {
       const row = detail.batches[idx];
       if (!row) return;
       const ab = list.find(x => x.id === batchId);
-      this.$set(row, "product_batch_id", ab ? ab.id : null);
-      this.$set(row, "batch_no", ab ? ab.batch_no : "");
-      this.$set(row, "expiry_date", ab ? ab.expiry_date : null);
-      this.$set(row, "qty_available", ab ? Number(ab.qty_available) || 0 : 0);
+      (row)["product_batch_id"] = ab ? ab.id : null;
+      (row)["batch_no"] = ab ? ab.batch_no : "";
+      (row)["expiry_date"] = ab ? ab.expiry_date : null;
+      (row)["qty_available"] = ab ? Number(ab.qty_available) || 0 : 0;
     },
 
     on_batch_qty_input(b, val) {
       const num = parseFloat(String(val).replace(",", "."));
-      this.$set(b, "qty", Number.isFinite(num) ? num : 0);
+      (b)["qty"] = Number.isFinite(num) ? num : 0;
     },
 
     batch_total_qty(detail) {

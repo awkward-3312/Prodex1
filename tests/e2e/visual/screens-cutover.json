@@ -1,0 +1,544 @@
+[
+ {
+  "name": "dashboard",
+  "url": "/app/dashboard"
+ },
+ {
+  "name": "dashboard-langdd",
+  "url": "/app/dashboard",
+  "click": "css:#lang-dd__BV_toggle_, button#lang-dd",
+  "wait": 700,
+  "viewportOnly": true
+ },
+ {
+  "name": "sistema-general",
+  "url": "/app/settings/System_settings"
+ },
+ {
+  "name": "producto-nuevo",
+  "url": "/app/products/store-classic"
+ },
+ {
+  "name": "producto-editar",
+  "url": "/app/products/edit-classic/1"
+ },
+ {
+  "name": "productos-lista",
+  "url": "/app/products/list-classic"
+ },
+ {
+  "name": "empleado-detalle",
+  "url": "/app/hrm/employees/detail/1"
+ },
+ {
+  "name": "empleado-editar",
+  "url": "/app/hrm/employees/edit/1"
+ },
+ {
+  "name": "empleado-nuevo",
+  "url": "/app/hrm/employees/store"
+ },
+ {
+  "name": "clientes",
+  "url": "/app/People/Customers"
+ },
+ {
+  "name": "clientes-dropdown",
+  "url": "/app/People/Customers",
+  "click": "css:table .dropdown-toggle, .vgt-table .dropdown-toggle, .b-dropdown .btn",
+  "wait": 700,
+  "viewportOnly": true
+ },
+ {
+  "name": "cliente-detalle",
+  "url": "/app/People/customers/1/details"
+ },
+ {
+  "name": "cliente-detalle-pagos",
+  "url": "/app/People/customers/1/details",
+  "click": "css:.nav-tabs li:nth-child(2) a, .nav-tabs li:nth-child(2) button"
+ },
+ {
+  "name": "cliente-editar",
+  "url": "/app/People/Customers/edit/1"
+ },
+ {
+  "name": "cliente-nuevo",
+  "url": "/app/People/Customers/create"
+ },
+ {
+  "name": "proveedores",
+  "url": "/app/People/Suppliers"
+ },
+ {
+  "name": "traslado-nuevo",
+  "url": "/app/transfers/store-classic"
+ },
+ {
+  "name": "traslado-editar",
+  "url": "/app/transfers/edit-classic/1"
+ },
+ {
+  "name": "traslados-lista",
+  "url": "/app/transfers/list-classic"
+ },
+ {
+  "name": "ajuste-nuevo",
+  "url": "/app/adjustments/store-classic"
+ },
+ {
+  "name": "ajustes-lista",
+  "url": "/app/adjustments/list"
+ },
+ {
+  "name": "merma-nueva",
+  "url": "/app/damages/store-classic"
+ },
+ {
+  "name": "mermas-lista",
+  "url": "/app/damages/list-classic"
+ },
+ {
+  "name": "pos",
+  "url": "/app/pos"
+ },
+ {
+  "name": "pos-langdd",
+  "url": "/app/pos",
+  "click": "css:#lang-dd__BV_toggle_, button#lang-dd",
+  "wait": 700,
+  "viewportOnly": true
+ },
+ {
+  "name": "sucursales",
+  "url": "/app/organization/branches"
+ },
+ {
+  "name": "planillas",
+  "url": "/app/hrm/payrolls"
+ },
+ {
+  "name": "lotes",
+  "url": "/app/products/Batches-classic"
+ },
+ {
+  "name": "almacenes",
+  "url": "/app/settings/Warehouses-classic"
+ },
+ {
+  "name": "reunion",
+  "url": "/app/meeting/meetings"
+ },
+ {
+  "name": "tienda-invitaciones",
+  "url": "/app/Store/InviteCodes"
+ },
+ {
+  "name": "tienda-ajustes",
+  "url": "/app/Store/Settings"
+ },
+ {
+  "name": "whatsapp",
+  "url": "/app/whatsapp/settings"
+ },
+ {
+  "name": "marketing-ajustes",
+  "url": "/app/marketing/settings"
+ },
+ {
+  "name": "inmueble-nuevo",
+  "url": "/app/realestate/properties/create"
+ },
+ {
+  "name": "consultas",
+  "url": "/app/realestate/inquiries"
+ },
+ {
+  "name": "informe-traslados",
+  "url": "/app/reports/stock_transfer_report-classic"
+ },
+ {
+  "name": "servicio-nuevo",
+  "url": "/app/service/jobs/create"
+ },
+ {
+  "name": "suscripcion-nueva",
+  "url": "/app/subscription_product/store"
+ },
+ {
+  "name": "reserva-nueva",
+  "url": "/app/bookings/store"
+ },
+ {
+  "name": "acceso-empleados",
+  "url": "/app/organization/employee-access"
+ },
+ {
+  "name": "woocommerce-guia",
+  "url": "/app/woocommerce"
+ },
+ {
+  "name": "cuentas-perfil",
+  "url": "/app/profile"
+ },
+ {
+  "name": "reuniones",
+  "url": "/app/meeting/meetings"
+ },
+ {
+  "name": "reuniones-modal",
+  "url": "/app/meeting/meetings",
+  "click": "nueva|new|crear|add|programar",
+  "waitFor": ".modal.show"
+ },
+ {
+  "name": "campanas",
+  "url": "/app/marketing/campaigns"
+ },
+ {
+  "name": "campana-crear",
+  "url": "/app/marketing/campaigns/create"
+ },
+ {
+  "name": "segmentos",
+  "url": "/app/marketing/segments"
+ },
+ {
+  "name": "segmentos-modal",
+  "url": "/app/marketing/segments",
+  "click": "nuevo|nueva|new|crear|add",
+  "waitFor": ".modal.show"
+ },
+ {
+  "name": "marketing-reportes",
+  "url": "/app/marketing/reports"
+ },
+ {
+  "name": "plantillas-email",
+  "url": "/app/marketing/templates/email"
+ },
+ {
+  "name": "plantillas-modal",
+  "url": "/app/marketing/templates/email",
+  "click": "nueva plantilla",
+  "waitFor": ".modal.show"
+ },
+ {
+  "name": "ticket-crear",
+  "url": "/app/support/tickets/create"
+ },
+ {
+  "name": "proyecto-crear",
+  "url": "/app/projects/store"
+ },
+ {
+  "name": "proyectos-lista",
+  "url": "/app/projects/list"
+ },
+ {
+  "name": "tarea-crear",
+  "url": "/app/tasks/store"
+ },
+ {
+  "name": "tareas-lista",
+  "url": "/app/tasks/list"
+ },
+ {
+  "name": "contrato-crear",
+  "url": "/app/contracts/store"
+ },
+ {
+  "name": "activo-crear",
+  "url": "/app/assets/store"
+ },
+ {
+  "name": "activos-categorias",
+  "url": "/app/assets/category"
+ },
+ {
+  "name": "whatsapp-ajustes",
+  "url": "/app/whatsapp/settings"
+ },
+ {
+  "name": "whatsapp-plantilla-crear",
+  "url": "/app/whatsapp/templates/store"
+ },
+ {
+  "name": "reclutamiento-reportes",
+  "url": "/app/recruit/reports"
+ },
+ {
+  "name": "empleados-lista",
+  "url": "/app/hrm/employees/list"
+ },
+ {
+  "name": "woocommerce-ajustes",
+  "url": "/app/woocommerce"
+ },
+ {
+  "name": "shopify",
+  "url": "/app/shopify"
+ },
+ {
+  "name": "sidebar-tareas",
+  "url": "/app/tasks/list",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-proyectos",
+  "url": "/app/projects/list",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-reservas",
+  "url": "/app/bookings/list",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-empleados",
+  "url": "/app/hrm/employees/list",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-clientes",
+  "url": "/app/People/Customers",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-proveedores",
+  "url": "/app/People/Suppliers",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-ajustes-clasico",
+  "url": "/app/adjustments/list-classic",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-productos-clasico",
+  "url": "/app/products/list-classic",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-traslados-clasico",
+  "url": "/app/transfers/list-classic",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-danos-clasico",
+  "url": "/app/damages/list-classic",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-pagos-devol-ventas",
+  "url": "/app/reports/payments_sales_returns",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "name": "sidebar-pagos-devol-compras",
+  "url": "/app/reports/payments_purchases_returns",
+  "click": "css:[aria-controls='sidebar-right'], [aria-controls='booking-filter-sidebar']",
+  "wait": 1200,
+  "viewportOnly": true
+ },
+ {
+  "eval": "document.querySelector('#app').__vue_app__.config.globalProperties.$platform.notifications.notify('Mensaje de prueba PRODEX',{title:'Éxito',variant:'success',solid:true})",
+  "evalBase": "document.querySelector('.main-content, .card, #app *').__vueParentComponent.proxy.$bvToast.toast('Mensaje de prueba PRODEX',{title:'Éxito',variant:'success',solid:true})",
+  "name": "toast-success",
+  "url": "/app/meeting/calendar",
+  "wait": 500,
+  "viewportOnly": true
+ },
+ {
+  "eval": "document.querySelector('#app').__vue_app__.config.globalProperties.$platform.notifications.notify('Mensaje de prueba PRODEX',{title:'Error',variant:'danger',solid:true})",
+  "evalBase": "document.querySelector('.main-content, .card, #app *').__vueParentComponent.proxy.$bvToast.toast('Mensaje de prueba PRODEX',{title:'Error',variant:'danger',solid:true})",
+  "name": "toast-danger",
+  "url": "/app/meeting/calendar",
+  "wait": 500,
+  "viewportOnly": true
+ },
+ {
+  "eval": "document.querySelector('#app').__vue_app__.config.globalProperties.$platform.notifications.notify('Mensaje de prueba PRODEX',{title:'Aviso',variant:'warning',solid:true})",
+  "evalBase": "document.querySelector('.main-content, .card, #app *').__vueParentComponent.proxy.$bvToast.toast('Mensaje de prueba PRODEX',{title:'Aviso',variant:'warning',solid:true})",
+  "name": "toast-warning",
+  "url": "/app/meeting/calendar",
+  "wait": 500,
+  "viewportOnly": true
+ },
+ {
+  "eval": "document.querySelector('#app').__vue_app__.config.globalProperties.$platform.notifications.notify('Mensaje de prueba PRODEX',{title:'Información',variant:'info',solid:true})",
+  "evalBase": "document.querySelector('.main-content, .card, #app *').__vueParentComponent.proxy.$bvToast.toast('Mensaje de prueba PRODEX',{title:'Información',variant:'info',solid:true})",
+  "name": "toast-info",
+  "url": "/app/meeting/calendar",
+  "wait": 500,
+  "viewportOnly": true
+ },
+ {
+  "name": "confirm-modal",
+  "url": "/app/meeting/calendar",
+  "eval": "document.querySelector('#app').__vue_app__.config.globalProperties.$platform.confirm('¿Seguro que deseas continuar?',{presentation:'modal',title:'Confirmar',size:'sm'})",
+  "evalBase": "document.querySelector('.main-content, .card, #app *').__vueParentComponent.proxy.$bvModal.msgBoxConfirm('¿Seguro que deseas continuar?',{title:'Confirmar',size:'sm'})",
+  "wait": 800,
+  "viewportOnly": true
+ },
+ {
+  "name": "tooltip-productos",
+  "url": "/app/products/list-classic",
+  "hover": "tbody tr:first-child td:last-child a, tbody tr:first-child td:last-child button",
+  "wait": 600,
+  "viewportOnly": true
+ },
+ {
+  "name": "vselect-abierto",
+  "url": "/app/adjustments/store-classic",
+  "click": "css:.vs__dropdown-toggle",
+  "wait": 700,
+  "viewportOnly": true
+ },
+ {
+  "name": "daterange-abierto",
+  "url": "/app/reports/sales_report",
+  "click": "css:.reportrange-text, .daterangepicker-input, .form-control.reportrange-text",
+  "wait": 700,
+  "viewportOnly": true
+ },
+ {
+  "name": "ventas-lista",
+  "url": "/app/sales/list"
+ },
+ {
+  "name": "venta-nueva",
+  "url": "/app/sales/store"
+ },
+ {
+  "name": "compras-lista",
+  "url": "/app/purchases/list"
+ },
+ {
+  "name": "compra-nueva",
+  "url": "/app/purchases/store"
+ },
+ {
+  "name": "cotizaciones-lista",
+  "url": "/app/quotations/list"
+ },
+ {
+  "name": "cotizacion-nueva",
+  "url": "/app/quotations/store"
+ },
+ {
+  "name": "gastos-lista",
+  "url": "/app/expenses/list"
+ },
+ {
+  "name": "gasto-nuevo",
+  "url": "/app/expenses/store"
+ },
+ {
+  "name": "deposito-nuevo",
+  "url": "/app/deposits/store"
+ },
+ {
+  "name": "cajas",
+  "url": "/app/settings/Cash_Drawers"
+ },
+ {
+  "name": "metodos-pago",
+  "url": "/app/settings/payment_methods"
+ },
+ {
+  "name": "pasarela-pago",
+  "url": "/app/settings/payment_gateway"
+ },
+ {
+  "name": "informe-cajas",
+  "url": "/app/reports/cash-registers"
+ },
+ {
+  "name": "informe-ventas",
+  "url": "/app/reports/sales_report"
+ },
+ {
+  "name": "informe-stock",
+  "url": "/app/reports/stock_report-classic"
+ },
+ {
+  "name": "inventario",
+  "url": "/app/inventory"
+ },
+ {
+  "name": "inventario-ubicaciones",
+  "url": "/app/inventory/location-stock"
+ },
+ {
+  "name": "tienda-pedidos",
+  "url": "/app/Store/Orders"
+ },
+ {
+  "name": "tienda-colecciones-crear",
+  "url": "/app/Store/Collections/create"
+ },
+ {
+  "name": "tienda-mensajes",
+  "url": "/app/Store/Messages"
+ },
+ {
+  "name": "contabilidad-balanza",
+  "url": "/app/accounting-v2/reports/trial-balance"
+ },
+ {
+  "name": "devolucion-ventas",
+  "url": "/app/sale_return/list"
+ },
+ {
+  "name": "permisos",
+  "url": "/app/User_Management/permissions/store"
+ },
+ {
+  "name": "ajustes-moneda",
+  "url": "/app/settings/Currencies"
+ },
+ {
+  "name": "ajustes-pos",
+  "url": "/app/settings/pos_settings"
+ },
+ {
+  "name": "ajustes-recibo",
+  "url": "/app/settings/pos_receipt"
+ },
+ {
+  "name": "facturas-borrador",
+  "url": "/app/reports/draft_invoices_report"
+ },
+ {
+  "name": "perfil",
+  "url": "/app/profile"
+ },
+ {
+  "name": "login",
+  "url": "/login",
+  "user": "none"
+ }
+]

@@ -95,8 +95,8 @@
               </thead>
               <tbody>
                 <tr v-if="details.length <= 0"><td colspan="9" class="pxqf__empty">{{ $t('NodataAvailable') }}</td></tr>
-                <template v-for="detail in details">
-                  <tr :key="'r-' + detail.detail_id">
+                <template v-for="detail in details" :key="'r-' + detail.detail_id">
+                  <tr>
                     <td class="pxn-num">{{ detail.detail_id }}</td>
                     <td>
                       <span class="pxn-mono">{{ detail.code }}</span><br />
@@ -322,6 +322,7 @@
 
 
 <script>
+import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 import NProgress from "nprogress";
@@ -475,7 +476,7 @@ export default {
           const lineQty = Number(d.quantity);
           const batchQty = Number(b.qty);
           if (Number.isFinite(lineQty) && lineQty > 0 && batchQty !== lineQty) {
-            this.$set(b, "qty", lineQty);
+            (b)["qty"] = lineQty;
           }
         }
       }
@@ -547,7 +548,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -733,7 +734,7 @@ export default {
       if (Array.isArray(this.details)) {
         for (const d of this.details) {
           if (d && d.is_batch_tracked) {
-            this.$set(d, "batches", []);
+            (d)["batches"] = [];
             this.fetch_batches_for_detail(d);
           }
         }
@@ -780,13 +781,13 @@ export default {
     //----------------------------------------- Batch handling -------------------------\\
     fetch_batches_for_detail(detail) {
       if (!detail) return;
-      if (!("batches_loading" in detail)) this.$set(detail, "batches_loading", false);
-      if (!("available_batches" in detail)) this.$set(detail, "available_batches", []);
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
-      if (!detail.is_batch_tracked) { this.$set(detail, "batches_loading", false); return; }
+      if (!("batches_loading" in detail)) (detail)["batches_loading"] = false;
+      if (!("available_batches" in detail)) (detail)["available_batches"] = [];
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
+      if (!detail.is_batch_tracked) { (detail)["batches_loading"] = false; return; }
       const wid = this.quote && this.quote.warehouse_id;
       const productId = detail.product_id || detail.id;
-      if (!wid || !productId) { this.$set(detail, "batches_loading", false); return; }
+      if (!wid || !productId) { (detail)["batches_loading"] = false; return; }
       const variantSeg = (detail.product_variant_id != null && detail.product_variant_id !== "") ? detail.product_variant_id : 0;
       const existingQtyById = {};
       for (const b of (Array.isArray(detail.batches) ? detail.batches : [])) {
@@ -794,7 +795,7 @@ export default {
           existingQtyById[b.product_batch_id] = (existingQtyById[b.product_batch_id] || 0) + (Number(b.qty) || 0);
         }
       }
-      this.$set(detail, "batches_loading", true);
+      (detail)["batches_loading"] = true;
       axios
         .get(`batches_for_quotation/${productId}/${wid}/${variantSeg}`, { timeout: 15000 })
         .then(response => {
@@ -804,22 +805,22 @@ export default {
                 qty_available: (Number(ab.qty_available) || 0) + (existingQtyById[ab.id] || 0),
               }))
             : [];
-          this.$set(detail, "available_batches", list);
+          (detail)["available_batches"] = list;
           if (Array.isArray(detail.batches)) {
             for (const b of detail.batches) {
               if (b && b.product_batch_id != null) {
                 const ab = list.find(x => x.id === b.product_batch_id);
-                this.$set(b, "qty_available", ab ? (Number(ab.qty_available) || 0) : (existingQtyById[b.product_batch_id] || 0));
+                (b)["qty_available"] = ab ? (Number(ab.qty_available) || 0) : (existingQtyById[b.product_batch_id] || 0);
               }
             }
           }
         })
-        .catch(() => { this.$set(detail, "available_batches", []); })
-        .then(() => { this.$set(detail, "batches_loading", false); });
+        .catch(() => { (detail)["available_batches"] = []; })
+        .then(() => { (detail)["batches_loading"] = false; });
     },
 
     add_batch_to_detail(detail) {
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
       detail.batches.push({
         product_batch_id: null, batch_no: "", expiry_date: null, qty_available: 0,
         qty: detail.batches.length === 0 ? (Number(detail.quantity) || 0) : 0,
@@ -836,17 +837,17 @@ export default {
       const row = detail.batches[idx];
       if (!row) return;
       const ab = list.find(x => x.id === batchId);
-      this.$set(row, "product_batch_id", ab ? ab.id : null);
-      this.$set(row, "batch_no", ab ? ab.batch_no : "");
-      this.$set(row, "expiry_date", ab ? ab.expiry_date : null);
-      this.$set(row, "qty_available", ab ? (Number(ab.qty_available) || 0) : 0);
+      (row)["product_batch_id"] = ab ? ab.id : null;
+      (row)["batch_no"] = ab ? ab.batch_no : "";
+      (row)["expiry_date"] = ab ? ab.expiry_date : null;
+      (row)["qty_available"] = ab ? (Number(ab.qty_available) || 0) : 0;
     },
 
     on_batch_qty_input(detail, idx, raw) {
       const row = detail.batches[idx];
       if (!row) return;
       const v = Number(raw);
-      this.$set(row, "qty", Number.isFinite(v) ? v : 0);
+      (row)["qty"] = Number.isFinite(v) ? v : 0;
     },
 
     batch_total_qty(detail) {
@@ -1173,10 +1174,10 @@ export default {
         this.product.sale_unit_id = response.data.sale_unit_id;
         this.product.is_imei = response.data.is_imei;
         this.product.imei_number = '';
-        this.$set(this.product, "is_batch_tracked", !!response.data.is_batch_tracked);
-        this.$set(this.product, "batches", []);
-        this.$set(this.product, "available_batches", []);
-        this.$set(this.product, "batches_loading", false);
+        (this.product)["is_batch_tracked"] = !!response.data.is_batch_tracked;
+        (this.product)["batches"] = [];
+        (this.product)["available_batches"] = [];
+        (this.product)["batches_loading"] = false;
         this.add_product();
         this.Calcul_Total();
       });

@@ -1,6 +1,7 @@
-import Vue from 'vue';
+import { h } from 'vue';
 import App from './portal/App.vue';
 import router from './portal/router';
+import { mountWithRouter } from './platform/mount';
 import { installSpanishUiGuard } from './utils/spanishUiGuard';
 
 window.axios = require('axios');
@@ -29,10 +30,7 @@ axios.interceptors.response.use(
   }
 );
 
-Vue.config.productionTip = false;
+// `Vue.config.productionTip` (Vue 2) no existe en Vue 3: sin equivalente real (ver main.js).
 installSpanishUiGuard();
 
-new Vue({
-  router,
-  render: (h) => h(App),
-}).$mount('#portal-app');
+mountWithRouter({ render: () => h(App) }, { router }).mount('#portal-app');

@@ -86,6 +86,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -205,7 +206,7 @@ export default {
       else if (k === "csv") exportCsv({ filename: "Reporte_stock_negativo", headers, rows });
       else if (k === "print") {
         const ok = printTableDoc({ title: "Informes / Reporte de stock negativo", headers, rows, landscape: true });
-        if (!ok) this.$root.$bvToast.toast("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
+        if (!ok) notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
       }
     }
   }

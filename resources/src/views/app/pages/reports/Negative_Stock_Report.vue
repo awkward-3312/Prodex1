@@ -4,8 +4,8 @@
 
     <b-card class="toolbar-card shadow-soft mb-3 border-0">
       <div class="d-flex flex-wrap align-items-center">
-        <div class="ml-auto mb-2 actions-bar">
-          <div class="warehouse-block mr-2 mb-2 mb-sm-0">
+        <div class="ms-auto mb-2 actions-bar">
+          <div class="warehouse-block me-2 mb-2 mb-sm-0">
             <label class="mb-1 d-block text-muted">{{$t('warehouse')}}</label>
             <v-select
               class="w-280"
@@ -18,20 +18,18 @@
             />
           </div>
 
-          <div class="search-block mr-2 mb-2 mb-sm-0">
+          <div class="search-block me-2 mb-2 mb-sm-0">
             <label class="mb-1 d-block text-muted">{{$t('Search')}}</label>
             <b-input-group class="search-input">
               <b-form-input v-model="search" :placeholder="$t('Search_this_table')" @keyup.enter="fetchRows(1)" />
-              <b-input-group-append>
                 <b-button variant="primary" class="btn-pill" @click="fetchRows(1)">{{$t('Search')}}</b-button>
-              </b-input-group-append>
             </b-input-group>
           </div>
 
           <div class="export-block">
             <label class="mb-1 d-block text-muted">{{$t('Export')}}</label>
             <div class="btn-group">
-              <b-button size="sm" variant="danger" class="btn-pill" @click="exportPDF"><lucide-icon class="mr-1" name="file-text" />{{$t('Export_PDF')}}</b-button>
+              <b-button size="sm" variant="danger" class="btn-pill" @click="exportPDF"><lucide-icon class="me-1" name="file-text" />{{$t('Export_PDF')}}</b-button>
               <vue-excel-xlsx
                 class="btn btn-sm btn-outline-success btn-pill"
                 :data="rows"
@@ -39,7 +37,7 @@
                 :file-name="'negative_stock_report'"
                 :file-type="'xlsx'"
                 :sheet-name="'negative_stock_report'"
-              ><lucide-icon class="mr-1" name="file-spreadsheet" />{{$t('EXCEL')}}</vue-excel-xlsx>
+              ><lucide-icon class="me-1" name="file-spreadsheet" />{{$t('EXCEL')}}</vue-excel-xlsx>
             </div>
           </div>
         </div>
@@ -57,12 +55,12 @@
         @on-page-change="onPageChange"
         @on-per-page-change="onPerPageChange"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
-        </div>
-        <template slot="table-row" slot-scope="p">
+        </div></template>
+        <template #table-row="p">
           <span v-if="p.column.field==='quantity'" class="text-danger">{{ p.row.quantity }}</span>
           <span v-else>{{ p.formattedRow[p.column.field] }}</span>
         </template>
@@ -80,14 +78,15 @@
   </template>
 
 <script>
+import { BButton, BCard, BInputGroup, BFormInput } from "@/platform/bootstrap";
 import NProgress from 'nprogress';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import VueApexCharts from 'vue-apexcharts';
+import VueApexCharts from 'vue3-apexcharts';
 
 export default {
   metaInfo: { title: 'Negative Stock Report' },
-  components: { apexchart: VueApexCharts },
+  components: { BInputGroup, BFormInput, BButton, BCard, apexchart: VueApexCharts },
   data(){
     return {
       warehouses: [],

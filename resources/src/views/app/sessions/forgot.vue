@@ -31,7 +31,7 @@
                   <button
                     type="submit"
                     :disabled="loading"
-                    class="btn btn-primary btn-block btn-rounded mt-3"
+                    class="btn btn-primary d-block w-100 btn-rounded mt-3"
                   >{{$t('Reset_Password')}}</button>
                   <div v-once class="typo__p" v-if="loading">
                     <div class="spinner sm spinner-primary mt-3"></div>
@@ -52,9 +52,12 @@
 </template>
 
 <script>
+import { BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap/form-text";
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 
 export default {
+  components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback },
   metaInfo: {
     // if no subcomponents specify a metaInfo.title, this title will be used
     title: "Forgot Password"
@@ -100,7 +103,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

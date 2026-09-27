@@ -93,9 +93,8 @@
 import NProgress from "nprogress";
 import moment from "moment";
 import { mapGetters } from "vuex";
-import DateRangePicker from "vue2-daterange-picker";
-import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
-import VueApexCharts from "vue-apexcharts";
+import DateRangePicker from "@/components/DateRangePicker.vue";
+import VueApexCharts from "vue3-apexcharts";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -474,7 +473,7 @@ export default {
     this.handleResize();
     window.addEventListener('resize', this.handleResize);
   },
-  beforeDestroy(){
+  beforeUnmount(){
     window.removeEventListener('resize', this.handleResize);
   },
 

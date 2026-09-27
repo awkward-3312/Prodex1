@@ -67,6 +67,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
@@ -157,7 +158,7 @@ export default {
         this.error = e.response?.data?.message || this.$t('Failed_Load_Tax_Summary');
 
         // Show toast notification
-        this.$root.$bvToast.toast(this.error, {
+        notifications.notify(this.error, {
           title: this.$t('Error'),
           variant: 'danger',
           solid: true

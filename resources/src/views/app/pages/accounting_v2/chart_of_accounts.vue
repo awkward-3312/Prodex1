@@ -135,6 +135,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxToolbar from "@/components/px-next/PxToolbar.vue";
@@ -325,7 +326,7 @@ export default {
       catch (e) { this.makeToast('danger', this.$t('Delete_Failed'), this.$t('Error')); }
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     }
   }
 };

@@ -17,7 +17,9 @@
   </b-row>
 </template>
 <script>
+import { BRow, BCol } from "@/platform/bootstrap";
 export default {
+  components: { BRow, BCol },
   metaInfo: {
     // if no subcomponents specify a metaInfo.title, this title will be used
     title: "403 Not Authorized"

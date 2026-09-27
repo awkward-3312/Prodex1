@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Inventory_Valuation')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="wrapper" v-else>
      
@@ -25,7 +25,7 @@
       >
 
         <!-- Filters -->
-        <div slot="table-actions" class="mt-2 mb-3 quantity_alert_warehouse">
+        <template #table-actions><div class="mt-2 mb-3 quantity_alert_warehouse">
           <b-form-group :label="$t('warehouse')">
             <v-select
               @input="Selected_Warehouse"
@@ -40,17 +40,17 @@
           </b-form-group>
         </div>
 
-        <div slot="table-actions" class="mt-2 mb-3">
+        <div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
           <b-button @click="stock_report_PDF()" size="sm" variant="outline-success ripple m-1">
             <lucide-icon name="copy" /> PDF
           </b-button>
-        </div>
+        </div></template>
 
         <!-- Safe cell rendering (no v-html) -->
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field === 'variant_name'" class="pre">{{ props.row.variant_name }}</span>
           <span v-else-if="props.column.field === 'stock_hand'" class="pre">{{ props.row.stock_hand }}</span>
           <span v-else-if="props.column.field === 'cost'" class="pre">
@@ -69,6 +69,7 @@
 </template>
 
 <script>
+import { BButton, BCard, BFormGroup } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -79,7 +80,7 @@ import {
   getPriceDecimals
 } from "../../../../utils/priceFormat";
 
-export default {
+export default { components: { BFormGroup, BButton, BCard },
   metaInfo: { title: "Inventory Valuation Summary" },
 
   data() {
@@ -110,12 +111,12 @@ export default {
 
     columns() {
       return [
-        { label: this.$t("ITEM_NAME"), field: "name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("SKU"),       field: "code", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Variant_NAME"), field: "variant_name", tdClass: "text-left pre", thClass: "text-left", sortable: false },
-        { label: this.$t("STOCK_ON_HAND"), field: "stock_hand", headerField: this.sumStockHand, tdClass: "text-left pre", thClass: "text-left", sortable: false },
-        { label: this.$t("Cost"), field: "cost", tdClass: "text-left pre", thClass: "text-left", sortable: false },
-        { label: this.$t("ASSET_VALUE"), field: "inventory_value", headerField: this.sumInventoryValue, tdClass: "text-left pre", thClass: "text-left", sortable: false },
+        { label: this.$t("ITEM_NAME"), field: "name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("SKU"),       field: "code", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Variant_NAME"), field: "variant_name", tdClass: "text-start pre", thClass: "text-start", sortable: false },
+        { label: this.$t("STOCK_ON_HAND"), field: "stock_hand", headerField: this.sumStockHand, tdClass: "text-start pre", thClass: "text-start", sortable: false },
+        { label: this.$t("Cost"), field: "cost", tdClass: "text-start pre", thClass: "text-start", sortable: false },
+        { label: this.$t("ASSET_VALUE"), field: "inventory_value", headerField: this.sumInventoryValue, tdClass: "text-start pre", thClass: "text-start", sortable: false },
       ];
     }
   },

@@ -317,13 +317,13 @@ input.vgt-input.vgt-pull-left {
   }
 
   // Squared inner edges so radii meet cleanly when input + button join.
-  > .input-group-prepend > .btn,
-  > .input-group-prepend > .input-group-text {
+  > .btn:first-child,
+  > .input-group-text:first-child {
     border-radius: 6px 0 0 6px;
     padding: 0 0.875rem;
   }
-  > .input-group-append > .btn,
-  > .input-group-append > .input-group-text {
+  > .btn:last-child,
+  > .input-group-text:last-child {
     border-radius: 0 6px 6px 0;
     padding: 0 0.875rem;
   }

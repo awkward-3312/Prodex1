@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Error_Logs')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="print-table-only" v-if="!isLoading">
       <vue-good-table
@@ -21,13 +21,13 @@
         @on-per-page-change="onPerPageChange"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <div v-if="props.column.field === 'details'">
             <pre style="max-height: 100px; overflow-y: auto; white-space: pre-wrap;">{{ props.row.details }}</pre>
           </div>
@@ -39,7 +39,9 @@
 
 <script>
 
+import { BCard, BButton } from "@/platform/bootstrap";
 export default {
+  components: { BCard, BButton },
   data() {
     return {
       logs: [],
@@ -111,7 +113,7 @@ export default {
       // Table Header
       tableHtml += `<thead><tr>`;
       this.columns.forEach(col => {
-        tableHtml += `<th class="text-left">${col.label}</th>`;
+        tableHtml += `<th class="text-start">${col.label}</th>`;
       });
       tableHtml += `</tr></thead>`;
 
@@ -126,7 +128,7 @@ export default {
             // Escape HTML and preserve whitespace
             cellContent = String(cellContent).replace(/</g, '&lt;').replace(/>/g, '&gt;');
           }
-          tableHtml += `<td class="text-left" style="${col.field === 'details' ? 'max-width: 400px; word-wrap: break-word; white-space: pre-wrap;' : ''}">${cellContent}</td>`;
+          tableHtml += `<td class="text-start" style="${col.field === 'details' ? 'max-width: 400px; word-wrap: break-word; white-space: pre-wrap;' : ''}">${cellContent}</td>`;
         });
         tableHtml += `</tr>`;
       });

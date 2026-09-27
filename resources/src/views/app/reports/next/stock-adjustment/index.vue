@@ -118,6 +118,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -335,7 +336,7 @@ export default {
           footer: this.exportFooter(this.report),
           landscape: true
         });
-        if (!ok) this.$root.$bvToast.toast("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
+        if (!ok) notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
         return;
       }
       if (k === "pdf") {
@@ -352,7 +353,7 @@ export default {
             landscape: true
           });
         } catch (e) {
-          this.$root.$bvToast.toast("No se pudo exportar el PDF.", { title: "Error", variant: "danger", solid: true });
+          notifications.notify("No se pudo exportar el PDF.", { title: "Error", variant: "danger", solid: true });
         } finally {
           NProgress.done();
         }

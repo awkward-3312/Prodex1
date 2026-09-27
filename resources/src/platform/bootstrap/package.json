@@ -1,0 +1,6 @@
+{
+  "type": "module",
+  "private": true,
+  "sideEffects": false,
+  "description": "Wrappers de BootstrapVueNext (fase 5A: sin efectos laterales al importar, para que cada entrypoint solo arrastre lo que usa)."
+}

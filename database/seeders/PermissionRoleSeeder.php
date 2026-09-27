@@ -14,8 +14,8 @@ class PermissionRoleSeeder extends Seeder
      */
     public function run()
     {
-        // Insert some stuff
-        DB::table('permission_role')->insert(
+        // Asignaciones del rol 1 (propietario). Idempotente: no repite pares (permiso, rol) ya asignados.
+        $this->insertMissing(
             [
                 [
                     'id' => 1,
@@ -1312,5 +1312,31 @@ class PermissionRoleSeeder extends Seeder
 
             ]
         );
+    }
+
+    /**
+     * @param  array<int, array{id:int,permission_id:int,role_id:int}>  $rows
+     */
+    private function insertMissing(array $rows): void
+    {
+        $assigned = DB::table('permission_role')->get(['id', 'permission_id', 'role_id'])
+            ->map(fn ($r) => $r->role_id.':'.$r->permission_id)->flip();
+        $usedIds = DB::table('permission_role')->pluck('id')->flip();
+        $nextId = max((int) $usedIds->keys()->max(), (int) collect($rows)->max('id')) + 1;
+
+        $toInsert = [];
+        foreach ($rows as $row) {
+            if (isset($assigned[$row['role_id'].':'.$row['permission_id']])) {
+                continue;
+            }
+            if (isset($usedIds[$row['id']])) {
+                $row['id'] = $nextId++; // el id fijo ya lo usa otra fila: usar uno libre
+            }
+            $toInsert[] = $row;
+        }
+
+        foreach (array_chunk($toInsert, 100) as $chunk) {
+            DB::table('permission_role')->insert($chunk);
+        }
     }
 }

@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Service_Technicians')" :folder="$t('Service_Maintenance')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <b-row>
@@ -26,8 +26,8 @@
                   {{ form.is_active ? $t('Actif') : $t('Inactif') }}
                 </b-form-checkbox>
               </b-form-group>
-              <div class="text-right">
-                <b-button size="sm" variant="secondary" class="mr-2" @click="resetForm">
+              <div class="text-end">
+                <b-button size="sm" variant="secondary" class="me-2" @click="resetForm">
                   {{ $t('Reset') }}
                 </b-button>
                 <b-button size="sm" type="submit" variant="primary">
@@ -53,12 +53,12 @@
               :pagination-options="{ enabled: true, mode: 'records' }"
               styleClass="tableOne vgt-table"
             >
-              <template slot="table-row" slot-scope="props">
+              <template #table-row="props">
                 <span v-if="props.column.field === 'actions'">
                   <b-button
                     size="sm"
                     variant="outline-primary"
-                    class="mr-1"
+                    class="me-1"
                     @click="editTechnician(props.row)"
                   >
                     <lucide-icon name="pencil" />
@@ -95,7 +95,9 @@
 </template>
 
 <script>
-export default {
+import { BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormTextarea, BFormCheckbox } from "@/platform/bootstrap";
+import { confirmDialog } from "@/platform";
+export default { components: { BForm, BFormGroup, BFormInput, BFormTextarea, BFormCheckbox, BButton, BCard, BCol, BRow },
   name: 'ServiceTechnicians',
   data() {
     return {
@@ -196,8 +198,7 @@ export default {
       await this.fetchTechnicians();
     },
     async removeTechnician(row) {
-      const ok = await this.$bvModal.msgBoxConfirm(this.$t('AreYouSure'), {
-        size: 'sm'
+      const ok = await confirmDialog(this.$t('AreYouSure'), { presentation: 'modal', size: 'sm'
       });
       if (!ok) return;
       await axios.delete(`service_technicians/${row.id}`);

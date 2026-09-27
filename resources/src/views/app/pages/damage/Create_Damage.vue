@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Create_Damage')" :folder="$t('Damages')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <validation-observer ref="Create_damage" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Damage">
@@ -17,7 +17,7 @@
                 <!-- warehouse -->
                 <b-col md="6" class="mb-3">
                   <validation-provider name="warehouse" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('warehouse') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('warehouse') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -29,14 +29,14 @@
                         :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                 <!-- inventory location (#81 · obligatorio para el flujo location-aware) -->
                 <b-col md="6" class="mb-3">
                   <validation-provider name="inventory_location" :rules="{ required: true }">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Inventory_Location') + ' *'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -48,7 +48,7 @@
                         :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
@@ -90,8 +90,8 @@
                       </thead>
                       <tbody>
                         <tr v-if="details.length <=0"><td colspan="6">{{$t('NodataAvailable')}}</td></tr>
-                        <template v-for="detail in details">
-                        <tr :key="'r-' + detail.detail_id">
+                        <template v-for="detail in details" :key="'r-' + detail.detail_id">
+                        <tr>
                           <td>{{detail.detail_id}}</td>
                           <td>{{detail.code}}</td>
                           <td>
@@ -108,13 +108,9 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <b-input-group-prepend>
                                   <span class="btn btn-primary btn-sm" @click="decrement(detail ,detail.detail_id)">-</span>
-                                </b-input-group-prepend>
                                 <input class="form-control" @keyup="Verified_Qty(detail,detail.detail_id)" :min="0.00" :max="detail.current" v-model.number="detail.quantity">
-                                <b-input-group-append>
                                   <span class="btn btn-primary btn-sm" @click="increment(detail ,detail.detail_id)">+</span>
-                                </b-input-group-append>
                               </b-input-group>
                             </div>
                           </td>
@@ -249,7 +245,7 @@
 
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" :disabled="SubmitProcessing || hasBatchValidationErrors" @click="Submit_Damage"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" :disabled="SubmitProcessing || hasBatchValidationErrors" @click="Submit_Damage"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                     <div v-once class="typo__p" v-if="SubmitProcessing"><div class="spinner sm spinner-primary mt-3"></div></div>
                   </b-form-group>
                 </b-col>
@@ -264,9 +260,11 @@
 </template>
 
 <script>
+import { BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BInputGroup } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BInputGroup, BButton, BCard, BCol, BRow, BModal },
   metaInfo: { title: "Create Damage" },
   data() {
     return {
@@ -347,7 +345,7 @@ export default {
           const lineQty = Number(d.quantity);
           const batchQty = Number(b.qty);
           if (Number.isFinite(lineQty) && lineQty > 0 && batchQty !== lineQty) {
-            this.$set(b, "qty", lineQty);
+            (b)["qty"] = lineQty;
           }
         }
       }
@@ -356,8 +354,8 @@ export default {
   methods: {
     handleFocus() { this.focused = true },
     handleBlur() { this.focused = false },
-    showModal() { this.$bvModal.show('open_scan'); },
-    onScan(decodedText) { const code = decodedText; this.search_input = code; this.search(); this.$bvModal.hide('open_scan'); },
+    showModal() { modals.show('open_scan'); },
+    onScan(decodedText) { const code = decodedText; this.search_input = code; this.search(); modals.hide('open_scan'); },
     search(){
       if (this.timer) { clearTimeout(this.timer); this.timer = null; }
       if (this.search_input.length < 2) { return this.product_filter= []; }
@@ -398,7 +396,7 @@ export default {
     getResultValue(result) { return result.code + " " + "(" + result.name + ")"; },
     Submit_Damage() { this.$refs.Create_damage.validate().then(success => { if (!success) { this.makeToast("danger", this.$t("Please_fill_the_form_correctly"), this.$t("Failed")); } else { this.Create_Damage(); } }); },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title: title, variant: variant, solid: true }); },
     Selected_Warehouse(value) {
       this.search_input= '';
       this.product_filter = [];
@@ -457,17 +455,17 @@ export default {
     //----------------------------------------- Batch handling -------------------------\\
     fetch_batches_for_detail(detail) {
       if (!detail) return;
-      if (!("batches_loading" in detail)) this.$set(detail, "batches_loading", false);
-      if (!("available_batches" in detail)) this.$set(detail, "available_batches", []);
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!("batches_loading" in detail)) (detail)["batches_loading"] = false;
+      if (!("available_batches" in detail)) (detail)["available_batches"] = [];
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
       if (!detail.is_batch_tracked) {
-        this.$set(detail, "batches_loading", false);
+        (detail)["batches_loading"] = false;
         return;
       }
       const wid = this.damage && this.damage.warehouse_id;
       const productId = detail.product_id || detail.id;
       if (!wid || !productId) {
-        this.$set(detail, "batches_loading", false);
+        (detail)["batches_loading"] = false;
         return;
       }
       const variantSeg = (detail.product_variant_id != null && detail.product_variant_id !== "")
@@ -481,7 +479,7 @@ export default {
           existingQtyById[b.product_batch_id] = (existingQtyById[b.product_batch_id] || 0) + (Number(b.qty) || 0);
         }
       }
-      this.$set(detail, "batches_loading", true);
+      (detail)["batches_loading"] = true;
       axios
         .get(`batches_for_damage/${productId}/${wid}/${variantSeg}`, { timeout: 15000 })
         .then(response => {
@@ -491,22 +489,22 @@ export default {
                 qty_available: (Number(ab.qty_available) || 0) + (existingQtyById[ab.id] || 0),
               }))
             : [];
-          this.$set(detail, "available_batches", list);
+          (detail)["available_batches"] = list;
           if (Array.isArray(detail.batches)) {
             for (const b of detail.batches) {
               if (b && b.product_batch_id != null) {
                 const ab = list.find(x => x.id === b.product_batch_id);
-                this.$set(b, "qty_available", ab ? (Number(ab.qty_available) || 0) : (existingQtyById[b.product_batch_id] || 0));
+                (b)["qty_available"] = ab ? (Number(ab.qty_available) || 0) : (existingQtyById[b.product_batch_id] || 0);
               }
             }
           }
         })
-        .catch(() => { this.$set(detail, "available_batches", []); })
-        .then(() => { this.$set(detail, "batches_loading", false); });
+        .catch(() => { (detail)["available_batches"] = []; })
+        .then(() => { (detail)["batches_loading"] = false; });
     },
 
     add_batch_to_detail(detail) {
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
       detail.batches.push({
         product_batch_id: null,
         batch_no: "",
@@ -526,15 +524,15 @@ export default {
       const row = detail.batches[idx];
       if (!row) return;
       const ab = list.find(x => x.id === batchId);
-      this.$set(row, "product_batch_id", ab ? ab.id : null);
-      this.$set(row, "batch_no", ab ? ab.batch_no : "");
-      this.$set(row, "expiry_date", ab ? ab.expiry_date : null);
-      this.$set(row, "qty_available", ab ? Number(ab.qty_available) || 0 : 0);
+      (row)["product_batch_id"] = ab ? ab.id : null;
+      (row)["batch_no"] = ab ? ab.batch_no : "";
+      (row)["expiry_date"] = ab ? ab.expiry_date : null;
+      (row)["qty_available"] = ab ? Number(ab.qty_available) || 0 : 0;
     },
 
     on_batch_qty_input(b, val) {
       const num = parseFloat(String(val).replace(",", "."));
-      this.$set(b, "qty", Number.isFinite(num) ? num : 0);
+      (b)["qty"] = Number.isFinite(num) ? num : 0;
     },
 
     batch_total_qty(detail) {
@@ -639,10 +637,10 @@ export default {
         this.product.name = response.data.name;
         this.product.type = "sub"; // always subtract for damage
         this.product.unit = response.data.unit;
-        this.$set(this.product, "is_batch_tracked", !!response.data.is_batch_tracked);
-        this.$set(this.product, "batches", []);
-        this.$set(this.product, "available_batches", []);
-        this.$set(this.product, "batches_loading", false);
+        (this.product)["is_batch_tracked"] = !!response.data.is_batch_tracked;
+        (this.product)["batches"] = [];
+        (this.product)["available_batches"] = [];
+        (this.product)["batches_loading"] = false;
         this.add_product();
       });
     },

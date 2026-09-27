@@ -2,14 +2,14 @@
   <div class="main-content">
     <breadcumb :page="$t('Dead_Stock_Report')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="wrapper" v-else>
       <!-- Filters -->
       <div class="d-flex flex-wrap align-items-center mb-2">
         <!-- Period -->
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2">{{ $t('Period') }}:</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2">{{ $t('Period') }}:</label>
           <b-form-select
             v-model="period"
             :options="periodOptions"
@@ -21,17 +21,17 @@
 
         <!-- (Optional) extra filters kept for parity; plug your own pickers here -->
         <!--
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <b-form-select v-model="warehouse_id" :options="warehouses" size="sm" class="w-auto" @change="resetToFirstPageAndFetch" />
         </div>
         -->
 
         <!-- Export buttons -->
-        <div class="ml-auto mb-2">
+        <div class="ms-auto mb-2">
           <b-button
             size="sm"
             variant="outline-primary"
-            class="mr-2"
+            class="me-2"
             :disabled="disableExport"
             @click="exportPdf"
           >
@@ -70,12 +70,12 @@
         @on-sort-change="onSortChange"
         @on-search="onSearch"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
-        </div>
-        <template slot="table-row" slot-scope="props">
+        </div></template>
+        <template #table-row="props">
           <span v-if="props.column.field === 'last_movement_at'">
             {{ props.row.last_movement_at || '—' }}
           </span>
@@ -97,11 +97,13 @@
 </template>
 
 <script>
+import { BBadge, BButton, BCard, BFormSelect } from "@/platform/bootstrap";
 import NProgress from 'nprogress';
+import { notifications } from "@/platform";
 import { mapGetters } from 'vuex';
 // axios assumed globally available
 
-export default {
+export default { components: { BFormSelect, BBadge, BButton, BCard },
   metaInfo: { title: 'Dead Stock Report' },
 
   data() {
@@ -146,11 +148,11 @@ export default {
 
     columns() {
       return [
-        { label: this.$t('Code'), field: 'code', sortable: true, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Product'), field: 'product_name', sortable: true, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('OnHand'), field: 'on_hand', type: 'number', headerField: this.sumOnHand, sortable: true, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('LastMovement'), field: 'last_movement_at', sortable: true, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('DaysSinceLastMovement'), field: 'days_since_last_movement', type: 'number', sortable: true, tdClass: 'text-left', thClass: 'text-left' },
+        { label: this.$t('Code'), field: 'code', sortable: true, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Product'), field: 'product_name', sortable: true, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('OnHand'), field: 'on_hand', type: 'number', headerField: this.sumOnHand, sortable: true, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('LastMovement'), field: 'last_movement_at', sortable: true, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('DaysSinceLastMovement'), field: 'days_since_last_movement', type: 'number', sortable: true, tdClass: 'text-start', thClass: 'text-start' },
       ];
     },
 
@@ -365,7 +367,7 @@ export default {
       } catch (err) {
         // ignore cancellations
         if (!axios.isCancel?.(err)) {
-          this.$bvToast?.toast(this.$t('UnexpectedError') || 'Unexpected error.', { variant: 'danger', solid: true });
+          notifications.notify(this.$t('UnexpectedError') || 'Unexpected error.', { variant: 'danger', solid: true });
           // eslint-disable-next-line no-console
           console.error('Dead stock fetch error:', err);
         }
@@ -383,7 +385,7 @@ export default {
         const items = (this.rows?.[0]?.children || []);
         await this._buildAndSavePdf(items, { suffix: 'page' });
       } catch (e) {
-        this.$bvToast?.toast(this.$t ? this.$t('Export_Failed') : 'Export failed. Please try again.', { variant: 'danger', solid: true });
+        notifications.notify(this.$t ? this.$t('Export_Failed') : 'Export failed. Please try again.', { variant: 'danger', solid: true });
         // eslint-disable-next-line no-console
         console.error('PDF export error:', e);
       } finally {
@@ -412,7 +414,7 @@ export default {
         const items = Array.isArray(data?.report) ? data.report : [];
         await this._buildAndSavePdf(items, { suffix: 'all' });
       } catch (e) {
-        this.$bvToast?.toast(this.$t ? this.$t('Export_Failed') : 'Export failed. Please try again.', { variant: 'danger', solid: true });
+        notifications.notify(this.$t ? this.$t('Export_Failed') : 'Export failed. Please try again.', { variant: 'danger', solid: true });
         // eslint-disable-next-line no-console
         console.error('PDF export all error:', e);
       } finally {
@@ -548,7 +550,7 @@ export default {
     this.fetchDeadStock(1);
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     if (this._cancelSource && typeof this._cancelSource.cancel === 'function') {
       this._cancelSource.cancel('Component destroyed');
     }

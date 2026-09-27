@@ -2,17 +2,17 @@
   <div class="main-content">
     <breadcumb :page="$t('Customers_with_Login')" :folder="$t('Customers')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else>
       <div class="d-flex justify-content-end mb-3">
         <b-button
           variant="outline-primary"
-          class="mr-2"
+          class="me-2"
           href="/online_store"
           target="_blank"
         >
-          <lucide-icon class="mr-1" name="shopping-bag" />
+          <lucide-icon class="me-1" name="shopping-bag" />
           <span>Online Store</span>
         </b-button>
        
@@ -39,9 +39,9 @@
         }"
         :styleClass="showDropdown ? 'tableOne table-hover vgt-table full-height' : 'tableOne table-hover vgt-table non-height'"
       >
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field === 'actions'">
-            <b-button size="sm" variant="outline-primary" class="mr-2" @click="editAccount(props.row)">
+            <b-button size="sm" variant="outline-primary" class="me-2" @click="editAccount(props.row)">
               <lucide-icon class="me-1" name="pencil" /> {{ $t('Edit') }}
             </b-button>
             <b-button size="sm" variant="outline-danger" @click="confirmDelete(props.row)">
@@ -53,7 +53,7 @@
     </div>
 
     <!-- Edit Ecommerce Account Modal -->
-    <validation-observer ref="Edit_Account">
+    <px-validation-observer ref="Edit_Account">
       <b-modal hide-footer size="md" id="Edit_Ecommerce_Account" :title="$t('Edit') + ' - ' + (form.client_name || '')">
         <b-form @submit.prevent="submitAccount">
           <b-row>
@@ -66,7 +66,7 @@
 
             <!-- Email -->
             <b-col md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="Email"
                 rules="required|email"
                 v-slot="validationContext"
@@ -91,12 +91,12 @@
                     {{ email_exist }}
                   </b-alert>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
             <!-- Password -->
             <b-col md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="password"
                 :rules="{ min: 6, max: 32 }"
                 v-slot="validationContext"
@@ -121,7 +121,7 @@
                     {{ showPassword ? 'Hide' : 'Show' }}
                   </b-button>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
             <!-- Status -->
@@ -144,15 +144,17 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 
 <script>
+import { BModal, BAlert, BButton, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BFormCheckbox } from "@/platform/bootstrap";
+import { modals, notifications, confirmDialog, events } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BFormCheckbox, BAlert, BButton, BCol, BRow, BModal },
   metaInfo: {
     title: "Online Store Accounts",
   },
@@ -191,10 +193,12 @@ export default {
   },
 
   mounted() {
-    this.$root.$on("bv::dropdown::show", () => {
+    // Antes `this.$root.$on(...)` (API de eventos de instancia de Vue 2, sin equivalente en Vue 3): ahora por el
+    // bus de plataforma (mismo nombre de evento, emitido por platform/bootstrap/nav.js).
+    events.$on("bv::dropdown::show", () => {
       this.showDropdown = true;
     });
-    this.$root.$on("bv::dropdown::hide", () => {
+    events.$on("bv::dropdown::hide", () => {
       this.showDropdown = false;
     });
   },
@@ -207,39 +211,39 @@ export default {
         {
           label: this.$t("Code"),
           field: "client_code",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
         },
         {
           label: this.$t("Name"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
         },
         {
           label: this.$t("Phone"),
           field: "phone",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
         },
         {
           label: this.$t("Email"),
           field: "email",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
         },
         {
           label: this.$t("Status"),
           field: "status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           formatFn: (val) => (val ? this.$t("Active") : this.$t("Inactive")),
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false,
         },
       ];
@@ -253,7 +257,7 @@ export default {
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true,
@@ -335,13 +339,12 @@ export default {
       this.form.client_name = row.client_name;
       this.form.email = row.email;
       this.form.status = !!row.status;
-      this.$bvModal.show("Edit_Ecommerce_Account");
+      modals.show("Edit_Ecommerce_Account");
     },
 
     // Confirm delete
     confirmDelete(row) {
-      this.$bvModal
-        .msgBoxConfirm(this.$t("AreYouSure"), {
+      confirmDialog(this.$t("AreYouSure"), { presentation: 'modal',
           title: this.$t("Confirm"),
           size: "sm",
           okVariant: "danger",
@@ -406,7 +409,7 @@ export default {
               this.$t("Updated_in_successfully"),
               this.$t("Success")
             );
-            this.$bvModal.hide("Edit_Ecommerce_Account");
+            modals.hide("Edit_Ecommerce_Account");
             this.getAccounts(this.serverParams.page);
           })
           .catch((error) => {

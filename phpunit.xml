@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="./vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          colors="true">
     <testsuites>
         <testsuite name="Unit">
@@ -17,6 +17,10 @@
         </whitelist>
     </filter>
     <php>
+        <!-- La suite completa (Unit+Feature) ya usa ~161 MB tras el merge de origin/main (30+ archivos nuevos:
+             mobile customer management, cash register close/idempotency, ClientMaintenanceService,
+             CashDenominationReconciler…); el default de PHP CLI (128 MB) no alcanza. -->
+        <ini name="memory_limit" value="512M"/>
         <server name="APP_ENV" value="testing"/>
         <server name="BCRYPT_ROUNDS" value="4"/>
         <server name="CACHE_DRIVER" value="array"/>

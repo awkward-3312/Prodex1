@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Collections')" :folder="$t('Store')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else>
       <!-- Header actions -->
@@ -14,11 +14,9 @@
               :placeholder="$t('Search') + '…'"
               @input="onSearch"
             />
-            <b-input-group-append>
               <b-button variant="outline-secondary" @click="refresh" :disabled="busy">
                 <lucide-icon name="refresh-cw" />
               </b-button>
-            </b-input-group-append>
           </b-input-group>
         </div>
 
@@ -32,14 +30,14 @@
       <!-- Table -->
       <div class="table-responsive">
         <table class="table table-hover align-middle">
-          <thead class="thead-light">
+          <thead class="table-light">
             <tr>
               <th style="width: 70px">#</th>
               <th>{{ $t('Title') }}</th>
               <th class="d-none d-md-table-cell">{{ $t('Slug') }}</th>
               <th class="text-center d-none d-md-table-cell" style="width: 120px">{{ $t('Limit') }}</th>
               <th class="text-center d-none d-lg-table-cell" style="width: 120px">{{ $t('Products') }}</th>
-              <th class="text-right" style="width: 300px">{{ $t('Actions') }}</th>
+              <th class="text-end" style="width: 300px">{{ $t('Actions') }}</th>
             </tr>
           </thead>
 
@@ -65,12 +63,12 @@
               </td>
 
               <td class="text-center d-none d-lg-table-cell">
-                <span class="badge badge-pill badge-light">
+                <span class="badge rounded-pill badge-light">
                   {{ c.products_count != null ? c.products_count : '—' }}
                 </span>
               </td>
 
-              <td class="text-right">
+              <td class="text-end">
                 <span class="action-cell">
                   <!-- Edit -->
                   <router-link
@@ -112,8 +110,10 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
+import { vBTooltip, BButton, BCard, BInputGroup, BFormInput } from "@/platform/bootstrap";
 
-export default {
+export default { components: { BInputGroup, BFormInput, BButton, BCard }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Store Collections Index"
   },
@@ -154,8 +154,8 @@ export default {
 
   methods: {
     makeToast (variant, msg, title) {
-      if (this.$root && this.$root.$bvToast) {
-        this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true })
+      if (notifications.hasDriver()) {
+        notifications.notify(msg, { title: title, variant: variant, solid: true })
       }
     },
 

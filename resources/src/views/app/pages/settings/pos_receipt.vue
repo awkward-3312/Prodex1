@@ -726,9 +726,10 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
-import VueBarcode from "vue-barcode";
+import VueBarcode from "@/components/Barcode.vue";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxButton from "@/components/px-next/PxButton.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
@@ -747,6 +748,8 @@ export default {
   metaInfo: {
     title: "POS Receipt"
   },
+  // Marcador de comportamiento para plugins/stocky.kit.js (panel "Diseño de la factura / recibo"); independiente del <head>.
+  prodexReceiptPresentation: true,
   data() {
     return {
       isLoading: true,
@@ -869,7 +872,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -1276,13 +1279,13 @@ export default {
     width: 100%;
   }
 
-  .btn-group-toggle.btn-group {
+  .btn-group.px-bvn-group {
     display: flex;
     flex-wrap: wrap;
     width: 100%;
   }
 
-  .btn-group-toggle.btn-group .btn {
+  .btn-group.px-bvn-group .btn {
     flex: 1;
     min-width: 0;
     font-size: 0.875rem;
@@ -1364,30 +1367,30 @@ export default {
 
 @media (max-width: 480px) {
   /* Stack layout buttons vertically on small screens */
-  .btn-group-toggle.btn-group {
+  .btn-group.px-bvn-group {
     flex-direction: column;
   }
 
-  .btn-group-toggle.btn-group .btn {
+  .btn-group.px-bvn-group .btn {
     width: 100%;
     margin-bottom: 4px;
     border-radius: 0.25rem !important;
   }
 
-  .btn-group-toggle.btn-group .btn:first-child {
+  .btn-group.px-bvn-group .btn:first-child {
     border-top-left-radius: 0.25rem !important;
     border-top-right-radius: 0.25rem !important;
     border-bottom-left-radius: 0.25rem !important;
     border-bottom-right-radius: 0.25rem !important;
   }
 
-  .btn-group-toggle.btn-group .btn:last-child {
+  .btn-group.px-bvn-group .btn:last-child {
     border-bottom-left-radius: 0.25rem !important;
     border-bottom-right-radius: 0.25rem !important;
     margin-bottom: 0;
   }
 
-  .btn-group-toggle.btn-group .btn {
+  .btn-group.px-bvn-group .btn {
     font-size: 0.8rem;
     padding: 0.375rem 0.5rem;
     white-space: normal;

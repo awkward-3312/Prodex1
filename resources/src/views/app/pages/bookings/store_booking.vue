@@ -2,9 +2,9 @@
   <div class="main-content">
     <breadcumb :page="$t('Create_Booking')" :folder="$t('Bookings')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
-    <validation-observer ref="ref_create_booking" v-if="!isLoading">
+    <px-validation-observer ref="ref_create_booking" v-if="!isLoading">
       <b-form @submit.prevent="submitBooking">
         <b-row>
           <b-col lg="12" md="12" sm="12">
@@ -12,7 +12,7 @@
               <b-row>
                 <!-- Customer -->
                 <b-col lg="4" md="6" sm="12">
-                  <validation-provider
+                  <px-validation-provider
                     name="Customer"
                     :rules="{ required: true }"
                     v-slot="validationContext"
@@ -31,12 +31,12 @@
                         {{ validationContext.errors[0] }}
                       </b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <!-- Service Product (optional) -->
                 <b-col lg="4" md="6" sm="12">
-                  <validation-provider name="Product" v-slot="validationContext">
+                  <px-validation-provider name="Product" v-slot="validationContext">
                     <b-form-group :label="$t('Product')">
                       <v-select
                         :class="{ 'is-invalid': validationContext.errors.length }"
@@ -55,12 +55,12 @@
                         {{ validationContext.errors[0] }}
                       </b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <!-- Price -->
                 <b-col lg="4" md="6" sm="12">
-                  <validation-provider
+                  <px-validation-provider
                     name="Price"
                     :rules="{ numeric: true, min_value: 0 }"
                     v-slot="validationContext"
@@ -79,12 +79,12 @@
                         {{ validationContext.errors[0] }}
                       </b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <!-- Booking Date -->
                 <b-col lg="4" md="6" sm="12">
-                  <validation-provider
+                  <px-validation-provider
                     name="Booking Date"
                     :rules="{ required: true }"
                     v-slot="validationContext"
@@ -100,12 +100,12 @@
                         {{ validationContext.errors[0] }}
                       </b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <!-- Start Time -->
                 <b-col lg="4" md="6" sm="12">
-                  <validation-provider
+                  <px-validation-provider
                     name="Start Time"
                     :rules="{ required: true }"
                     v-slot="validationContext"
@@ -121,12 +121,12 @@
                         {{ validationContext.errors[0] }}
                       </b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <!-- End Time (optional) -->
                 <b-col lg="4" md="6" sm="12">
-                  <validation-provider name="End Time" v-slot="validationContext">
+                  <px-validation-provider name="End Time" v-slot="validationContext">
                     <b-form-group :label="$t('End_Time')">
                       <b-form-input
                         type="time"
@@ -138,12 +138,12 @@
                         {{ validationContext.errors[0] }}
                       </b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <!-- Status -->
                 <b-col lg="4" md="6" sm="12">
-                  <validation-provider
+                  <px-validation-provider
                     name="Status"
                     :rules="{ required: true }"
                     v-slot="validationContext"
@@ -161,12 +161,12 @@
                         {{ validationContext.errors[0] }}
                       </b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <!-- Notes -->
                 <b-col lg="8" md="8" sm="12">
-                  <validation-provider name="Notes" v-slot="validationContext">
+                  <px-validation-provider name="Notes" v-slot="validationContext">
                     <b-form-group :label="$t('Details')">
                       <textarea
                         v-model="booking.notes"
@@ -180,7 +180,7 @@
                         {{ validationContext.errors[0] }}
                       </b-form-invalid-feedback>
                     </b-form-group>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-col>
 
                 <b-col md="12">
@@ -190,7 +190,7 @@
                       type="submit"
                       :disabled="submitProcessing"
                     >
-                      <lucide-icon class="me-2 font-weight-bold" name="check" />
+                      <lucide-icon class="me-2 fw-bold" name="check" />
                       {{ $t('submit') }}
                     </b-button>
                     <div v-once class="typo__p" v-if="submitProcessing">
@@ -203,14 +203,16 @@
           </b-col>
         </b-row>
       </b-form>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 
 <script>
+import { BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInvalidFeedback, BFormInput } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BButton, BCard, BCol, BRow },
   metaInfo: {
     title: "Create Booking"
   },
@@ -253,7 +255,7 @@ export default {
       });
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

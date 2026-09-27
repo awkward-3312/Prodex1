@@ -85,6 +85,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
 import PxButton from "@/components/px-next/PxButton.vue";
@@ -129,12 +130,12 @@ export default {
         this.$nextTick(this.buildTableOfContents);
       } catch (e) {
         this.article = {};
-        if (this.$root && this.$root.$bvToast) {
+        if (notifications.hasDriver()) {
           const status = e && e.response ? e.response.status : null;
           const message = status === 404
             ? 'Este manual no está disponible.'
             : 'No se pudo cargar el Manual PRODEX.';
-          this.$root.$bvToast.toast(message, { variant: 'danger', solid: true });
+          notifications.notify(message, { variant: 'danger', solid: true });
         }
       } finally {
         this.isLoading = false;
@@ -200,8 +201,8 @@ export default {
         this.linkCopied = true;
         window.setTimeout(() => { this.linkCopied = false; }, 1600);
       } catch (e) {
-        if (this.$root && this.$root.$bvToast) {
-          this.$root.$bvToast.toast('No se pudo copiar el enlace.', { variant: 'warning', solid: true });
+        if (notifications.hasDriver()) {
+          notifications.notify('No se pudo copiar el enlace.', { variant: 'warning', solid: true });
         }
       }
     },

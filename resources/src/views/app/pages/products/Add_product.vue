@@ -1,7 +1,7 @@
 <template>
   <div class="main-content product-create-page">
     <breadcumb :page="$t('AddProduct')" :folder="$t('Products')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <validation-observer ref="Create_Product" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Product" enctype="multipart/form-data">
@@ -88,7 +88,7 @@
                     type="submit"
                     :disabled="quickCategorySubmitting"
                   >
-                    <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('submit') }}
+                    <lucide-icon class="fw-bold" name="check" /> {{ $t('submit') }}
                   </b-button>
                   <div v-if="quickCategorySubmitting" class="spinner-inline">
                     <div class="spinner sm spinner-primary mt-2"></div>
@@ -144,7 +144,7 @@
                     type="submit"
                     :disabled="quickBrandSubmitting"
                   >
-                    <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('submit') }}
+                    <lucide-icon class="fw-bold" name="check" /> {{ $t('submit') }}
                   </b-button>
                   <div v-if="quickBrandSubmitting" class="spinner-inline">
                     <div class="spinner sm spinner-primary mt-2"></div>
@@ -258,7 +258,7 @@
                     type="submit"
                     :disabled="quickUnitSubmitting"
                   >
-                    <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('submit') }}
+                    <lucide-icon class="fw-bold" name="check" /> {{ $t('submit') }}
                   </b-button>
                   <div v-if="quickUnitSubmitting" class="spinner-inline">
                     <div class="spinner sm spinner-primary mt-2"></div>
@@ -327,7 +327,7 @@
                     type="submit"
                     :disabled="quickWarehouseLocationSubmitting"
                   >
-                    <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('submit') }}
+                    <lucide-icon class="fw-bold" name="check" /> {{ $t('submit') }}
                   </b-button>
                   <div v-if="quickWarehouseLocationSubmitting" class="spinner-inline">
                     <div class="spinner sm spinner-primary mt-2"></div>
@@ -387,7 +387,7 @@
                   <!-- Barcode Symbology -->
                   <b-col md="6" class="mb-3">
                     <validation-provider name="Barcode Symbology" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }">
+                      <template #default="{ valid, errors }"><b-form-group>
                         <template #label>
                           <span class="label-with-help">
                             {{ $t('BarcodeSymbology') }} *
@@ -418,14 +418,14 @@
                           ]"
                         ></v-select>
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
                   <!-- Product Code -->
                   <b-col md="6" class="mb-3">
                     <validation-provider name="Code Product" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }">
+                      <template #default="{ valid, errors }"><b-form-group>
                         <template #label>
                           <span class="label-with-help">
                             {{ $t('CodeProduct') }} *
@@ -442,11 +442,9 @@
                           </span>
                         </template>
                         <div class="input-group modern-input-group">
-                          <div class="input-group-prepend">
                             <button type="button" class="btn-icon-scan" @click="showModal" title="Scan">
                               <img src="/assets_setup/scan.png" alt="Scan" class="scan-icon" />
                             </button>
-                          </div>
                           <b-form-input
                             :class="{'is-invalid': !!errors.length}"
                             :state="errors[0] ? false : (valid ? true : null)"
@@ -455,11 +453,9 @@
                             v-model="product.code"
                             :placeholder="$t('Enter_Product_Code')"
                           ></b-form-input>
-                          <div class="input-group-append">
                             <button type="button" class="btn-icon-gen" @click="generateNumber()" title="Generate">
                               <lucide-icon name="barcode" />
                             </button>
-                          </div>
                         </div>
                         <b-alert
                           show
@@ -468,7 +464,7 @@
                           v-if="code_exist !=''"
                         >{{ code_exist }}</b-alert>
                         <b-form-invalid-feedback id="CodeProduct-feedback" v-if="errors[0]">{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
@@ -501,7 +497,7 @@
                   <!-- Categories (multi-select; first = primary) -->
                   <b-col md="6" class="mb-3">
                     <validation-provider name="category" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }">
+                      <template #default="{ valid, errors }"><b-form-group>
                         <template #label>
                           <span class="label-with-help">
                             {{ $t('MultiCategoriesLabel') }} *
@@ -517,7 +513,7 @@
                             </span>
                           </span>
                         </template>
-                        <b-form-input v-model="product.category_id" class="sr-only" tabindex="-1" aria-hidden="true" />
+                        <b-form-input v-model="product.category_id" class="visually-hidden" tabindex="-1" aria-hidden="true" />
                         <b-input-group class="category-input-group">
                           <v-select
                             multiple
@@ -529,7 +525,7 @@
                             v-model="product.assigned_category_ids"
                             :options="categories.map(c => ({ label: c.name, value: c.id }))"
                           />
-                          <b-input-group-append v-if="currentUserPermissions && currentUserPermissions.includes('category')">
+                          <template v-if="currentUserPermissions && currentUserPermissions.includes('category')">
                             <b-button
                               variant="primary"
                               @click="openQuickCategoryModal"
@@ -538,10 +534,10 @@
                             >
                               <lucide-icon name="plus" />
                             </b-button>
-                          </b-input-group-append>
+                          </template>
                         </b-input-group>
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
@@ -600,7 +596,7 @@
                           v-model="product.brand_id"
                           :options="brands.map(brands => ({label: brands.name, value: brands.id}))"
                         />
-                        <b-input-group-append v-if="currentUserPermissions && currentUserPermissions.includes('brand')">
+                        <template v-if="currentUserPermissions && currentUserPermissions.includes('brand')">
                           <b-button
                             variant="primary"
                             @click="openQuickBrandModal"
@@ -609,7 +605,7 @@
                           >
                             <lucide-icon name="plus" />
                           </b-button>
-                        </b-input-group-append>
+                        </template>
                       </b-input-group>
                     </b-form-group>
                   </b-col>
@@ -679,49 +675,50 @@
                   <draggable
                     v-else
                     v-model="productGalleryItems"
+                    item-key="_uid"
                     handle=".gallery-drag-handle"
                     class="product-gallery-draggable"
                     @end="touchProductGalleryOrder"
                   >
-                    <div
-                      v-for="(row, idx) in productGalleryItems"
-                      :key="row._uid"
-                      class="gallery-item-card d-flex align-items-center"
-                      :class="{ 'gallery-item-card--main': row.is_main }"
-                    >
-                      <span class="gallery-drag-handle flex-shrink-0" title="Reorder">
-                        <lucide-icon name="grip-vertical" />
-                      </span>
+                    <template #item="{ element: row, index: idx }">
                       <div
-                        class="position-relative flex-shrink-0 rounded overflow-hidden gallery-thumb-select"
-                        :class="{ 'gallery-thumb-main': row.is_main }"
-                        :title="$t('ClickImageToSetMain')"
-                        role="button"
-                        tabindex="0"
-                        @click="setProductGalleryMain(row)"
-                        @keyup.enter="setProductGalleryMain(row)"
+                        class="gallery-item-card d-flex align-items-center"
+                        :class="{ 'gallery-item-card--main': row.is_main }"
                       >
-                        <img
-                          :src="row.url"
-                          class="d-block gallery-item-thumb"
-                          alt=""
+                        <span class="gallery-drag-handle flex-shrink-0" title="Reorder">
+                          <lucide-icon name="grip-vertical" />
+                        </span>
+                        <div
+                          class="position-relative flex-shrink-0 rounded overflow-hidden gallery-thumb-select"
+                          :class="{ 'gallery-thumb-main': row.is_main }"
+                          :title="$t('ClickImageToSetMain')"
+                          role="button"
+                          tabindex="0"
+                          @click="setProductGalleryMain(row)"
+                          @keyup.enter="setProductGalleryMain(row)"
                         >
-                      </div>
-                      <div class="flex-grow-1 gallery-item-meta ms-2 me-2">
-                        <div class="small text-truncate font-weight-medium text-dark">{{ row.image_path }}</div>
-                        <div v-if="row.is_main" class="mt-1">
-                          <b-badge variant="success" class="gallery-main-badge">{{ $t('MainImage') }}</b-badge>
+                          <img
+                            :src="row.url"
+                            class="d-block gallery-item-thumb"
+                            alt=""
+                          >
                         </div>
+                        <div class="flex-grow-1 gallery-item-meta">
+                          <div class="small text-truncate font-weight-medium text-dark">{{ row.image_path }}</div>
+                          <div v-if="row.is_main" class="mt-1">
+                            <b-badge variant="success" class="gallery-main-badge">{{ $t('MainImage') }}</b-badge>
+                          </div>
+                        </div>
+                        <b-button
+                          size="sm"
+                          variant="outline-danger"
+                          class="flex-shrink-0 gallery-remove-btn"
+                          @click="removeProductGalleryRow(idx)"
+                        >
+                          <lucide-icon name="x" />
+                        </b-button>
                       </div>
-                      <b-button
-                        size="sm"
-                        variant="outline-danger"
-                        class="flex-shrink-0 gallery-remove-btn"
-                        @click="removeProductGalleryRow(idx)"
-                      >
-                        <lucide-icon name="x" />
-                      </b-button>
-                    </div>
+                    </template>
                   </draggable>
                 </b-card-body>
               </b-card>
@@ -738,7 +735,7 @@
                   <!-- Product Type -->
                   <b-col md="6" class="mb-3">
                     <validation-provider name="Type" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('type') + ' *'">
+                      <template #default="{ valid, errors }"><b-form-group :label="$t('type') + ' *'">
                         <v-select
                           :class="{'is-invalid': !!errors.length}"
                           :state="errors[0] ? false : (valid ? true : null)"
@@ -754,15 +751,14 @@
                           ]"
                         ></v-select>
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
                   <!-- Unit Product -->
                   <b-col md="6" class="mb-3" v-if="product.type != 'is_service'">
                     <validation-provider name="Unit Product" :rules="{ required: true}">
-                      <b-form-group
-                        slot-scope="{ valid, errors }"
+                      <template #default="{ valid, errors }"><b-form-group
                         :label="$t('UnitProduct') + ' *'"
                       >
                         <b-input-group class="unit-input-group">
@@ -775,7 +771,7 @@
                             :reduce="label => label.value"
                             :options="units.map(units => ({label: units.name, value: units.id}))"
                           />
-                          <b-input-group-append v-if="currentUserPermissions && currentUserPermissions.includes('unit')">
+                          <template v-if="currentUserPermissions && currentUserPermissions.includes('unit')">
                             <b-button
                               variant="primary"
                               @click="openQuickUnitModal"
@@ -784,18 +780,17 @@
                             >
                               <lucide-icon name="plus" />
                             </b-button>
-                          </b-input-group-append>
+                          </template>
                         </b-input-group>
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
                   <!-- Unit Sale -->
                   <b-col md="6" class="mb-3" v-if="product.type != 'is_service'">
                     <validation-provider name="Unit Sale" :rules="{ required: true}">
-                      <b-form-group
-                        slot-scope="{ valid, errors }"
+                      <template #default="{ valid, errors }"><b-form-group
                         :label="$t('UnitSale') + ' *'"
                       >
                         <v-select
@@ -807,15 +802,14 @@
                           :options="units_sub.map(units_sub => ({label: units_sub.name, value: units_sub.id}))"
                         />
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
                   <!-- Unit Purchase -->
                   <b-col md="6" class="mb-3" v-if="product.type != 'is_service'">
                     <validation-provider name="Unit Purchase" :rules="{ required: true}">
-                      <b-form-group
-                        slot-scope="{ valid, errors }"
+                      <template #default="{ valid, errors }"><b-form-group
                         :label="$t('UnitPurchase') + ' *'"
                       >
                         <v-select
@@ -827,7 +821,7 @@
                           :options="units_sub.map(units_sub => ({label: units_sub.name, value: units_sub.id}))"
                         />
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
@@ -1068,8 +1062,7 @@
                   <!-- Tax Method -->
                   <b-col md="6" class="mb-3">
                     <validation-provider name="Tax Method" :rules="{ required: true}">
-                      <b-form-group
-                        slot-scope="{ valid, errors }"
+                      <template #default="{ valid, errors }"><b-form-group
                         :label="$t('TaxMethod') + ' *'"
                       >
                         <v-select
@@ -1084,14 +1077,14 @@
                           ]"
                         ></v-select>
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
                   <!-- Discount Method -->
                   <b-col md="6" class="mb-3">
                     <validation-provider name="Discount Method" :rules="{ required: true}">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('Discount_Method') + ' *'">
+                      <template #default="{ valid, errors }"><b-form-group :label="$t('Discount_Method') + ' *'">
                         <v-select
                           v-model="product.discount_method"
                           :reduce="label => label.value"
@@ -1104,7 +1097,7 @@
                           ]"
                         ></v-select>
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
@@ -1184,8 +1177,8 @@
                       <tr>
                         <th>{{ $t('ProductName') }}</th>
                         <th>{{ $t('Quantity') }}</th>
-                        <th class="text-right">{{ $t('Cost') }}</th>
-                        <th class="text-right">{{ $t('SubTotal') }}</th>
+                        <th class="text-end">{{ $t('Cost') }}</th>
+                        <th class="text-end">{{ $t('SubTotal') }}</th>
                         <th class="text-center" style="width: 50px;"></th>
                       </tr>
                     </thead>
@@ -1211,8 +1204,8 @@
                             ></b-form-input>
                           </b-input-group>
                         </td>
-                        <td class="text-right">{{ currentUser.currency }} {{ materiel.cost }}</td>
-                        <td class="text-right font-weight-bold">{{ currentUser.currency }} {{ formatNumber(materiel.cost * materiel.quantity, priceDecimals) }}</td>
+                        <td class="text-end">{{ currentUser.currency }} {{ materiel.cost }}</td>
+                        <td class="text-end fw-bold">{{ currentUser.currency }} {{ formatNumber(materiel.cost * materiel.quantity, priceDecimals) }}</td>
                         <td class="text-center">
                           <b-button
                             variant="danger"
@@ -1359,7 +1352,7 @@
                         </div>
                         <b-button
                           variant="outline-primary"
-                          class="ml-2"
+                          class="ms-2"
                           size="sm"
                           @click="openQuickWarehouseLocationModal(wh.id)"
                           v-b-tooltip.hover
@@ -1717,7 +1710,7 @@
                   </table>
                 </div>
                 <b-button variant="primary" size="sm" @click="add_pack()">
-                  <lucide-icon class="me-2" name="plus" />{{ $t('Add_Pack') || 'Add Pack' }}
+                  <lucide-icon name="plus" />{{ $t('Add_Pack') || 'Add Pack' }}
                 </b-button>
               </b-card>
             </div>
@@ -1741,11 +1734,9 @@
                         v-model="tag"
                         class="form-control-modern"
                       ></b-form-input>
-                      <b-input-group-append>
                         <b-button variant="primary" @click="add_variant(tag)">
-                          <lucide-icon class="me-2" name="plus" />{{ $t('Add') }}
+                          <lucide-icon name="plus" />{{ $t('Add') }}
                         </b-button>
-                      </b-input-group-append>
                     </b-input-group>
                   </b-form-group>
                 </div>
@@ -1838,13 +1829,14 @@
 
 
 <script>
-import VueTagsInput from "@johmun/vue-tags-input";
+import { modals, notifications } from "@/platform";
+import { vBTooltip, BModal, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BFormTextarea, BFormSelect, BInputGroup, BFormCheckbox } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
 import draggable from "vuedraggable";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Create Product"
   },
@@ -1965,8 +1957,7 @@ export default {
     };
   },
 
-  components: {
-    VueTagsInput,
+  components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BFormTextarea, BFormSelect, BInputGroup, BFormCheckbox, BAlert, BBadge, BButton, BCard, BCardBody, BCol, BRow, BModal,
     draggable
   },
 
@@ -2096,7 +2087,7 @@ export default {
     //-------------------------- Quick Add Category (modal) --------------------------\\
     openQuickCategoryModal() {
       this.quickCategory = { name: "", code: "" };
-      this.$bvModal.show("Quick_Add_Category");
+      modals.show("Quick_Add_Category");
     },
 
     submitQuickCategory() {
@@ -2129,7 +2120,7 @@ export default {
             if (!arr.map(String).includes(String(nid))) {
               arr.push(nid);
             }
-            this.$set(this.product, "assigned_category_ids", arr);
+            (this.product)["assigned_category_ids"] = arr;
             this.syncLegacyCategoryFields();
           } else {
             await this.refreshCategories();
@@ -2143,12 +2134,12 @@ export default {
               if (!arr.map(String).includes(String(match.id))) {
                 arr.push(match.id);
               }
-              this.$set(this.product, "assigned_category_ids", arr);
+              (this.product)["assigned_category_ids"] = arr;
               this.syncLegacyCategoryFields();
             }
           }
 
-          this.$bvModal.hide("Quick_Add_Category");
+          modals.hide("Quick_Add_Category");
           this.quickCategory = { name: "", code: "" };
           this.makeToast(
             "success",
@@ -2177,7 +2168,7 @@ export default {
     //-------------------------- Quick Add Brand (modal) --------------------------\\
     openQuickBrandModal() {
       this.quickBrand = { name: "", description: "" };
-      this.$bvModal.show("Quick_Add_Brand");
+      modals.show("Quick_Add_Brand");
     },
 
     submitQuickBrand() {
@@ -2214,7 +2205,7 @@ export default {
             }
           }
 
-          this.$bvModal.hide("Quick_Add_Brand");
+          modals.hide("Quick_Add_Brand");
           this.quickBrand = { name: "", description: "" };
           this.makeToast(
             "success",
@@ -2256,7 +2247,7 @@ export default {
         this.loadBaseUnits();
       }
       
-      this.$bvModal.show("Quick_Add_Unit");
+      modals.show("Quick_Add_Unit");
     },
 
     // Load base units
@@ -2337,7 +2328,7 @@ export default {
             console.warn("Newly created unit not found in list");
           }
 
-          this.$bvModal.hide("Quick_Add_Unit");
+          modals.hide("Quick_Add_Unit");
           this.quickUnit = {
             name: "",
             ShortName: "",
@@ -2382,7 +2373,7 @@ export default {
         is_active: true,
       };
       this.quickWarehouseLocationWarehouseLocked = true;
-      this.$bvModal.show("Quick_Add_Warehouse_Location");
+      modals.show("Quick_Add_Warehouse_Location");
     },
 
     submitQuickWarehouseLocation() {
@@ -2415,7 +2406,7 @@ export default {
             this.warehouse_locations.push(newLoc);
 
             if (!this.locationsByWarehouse[wid]) {
-              this.$set(this.locationsByWarehouse, wid, []);
+              (this.locationsByWarehouse)[wid] = [];
             }
             this.locationsByWarehouse[wid].push({ id: newLoc.id, label });
 
@@ -2425,7 +2416,7 @@ export default {
             }
           }
 
-          this.$bvModal.hide("Quick_Add_Warehouse_Location");
+          modals.hide("Quick_Add_Warehouse_Location");
           this.makeToast(
             "success",
             this.$t("Successfully_Created"),
@@ -2461,7 +2452,7 @@ export default {
       this.productGalleryItems.splice(index, 1);
       this.touchProductGalleryOrder();
       if (!this.productGalleryItems.some(r => r.is_main) && this.productGalleryItems.length) {
-        this.$set(this.productGalleryItems[0], "is_main", true);
+        (this.productGalleryItems[0])["is_main"] = true;
       }
     },
 
@@ -2480,7 +2471,7 @@ export default {
       });
       this.touchProductGalleryOrder();
       if (!this.productGalleryItems.some(r => r.is_main) && this.productGalleryItems.length) {
-        this.$set(this.productGalleryItems[0], "is_main", true);
+        (this.productGalleryItems[0])["is_main"] = true;
       }
       e.target.value = "";
     },
@@ -2526,14 +2517,14 @@ export default {
 
 
     showModal() {
-      this.$bvModal.show('open_scan');
+      modals.show('open_scan');
       
     },
 
     onScan (decodedText, decodedResult) {
       const code = decodedText;
       this.product.code = code;
-      this.$bvModal.hide('open_scan');
+      modals.hide('open_scan');
     },
 
 
@@ -2557,8 +2548,8 @@ export default {
         : [];
       const firstCat = c.length ? c[0] : "";
       const firstSub = s.length ? s[0] : "";
-      this.$set(this.product, "category_id", firstCat === "" || firstCat == null ? "" : firstCat);
-      this.$set(this.product, "sub_category_id", firstSub === "" || firstSub == null ? "" : firstSub);
+      (this.product)["category_id"] = firstCat === "" || firstCat == null ? "" : firstCat;
+      (this.product)["sub_category_id"] = firstSub === "" || firstSub == null ? "" : firstSub;
     },
 
     pruneInvalidSubcategories() {
@@ -2572,7 +2563,7 @@ export default {
         return sc && catSet.has(String(sc.category_id));
       });
       if (filtered.length !== subs.length) {
-        this.$set(this.product, "assigned_subcategory_ids", filtered);
+        (this.product)["assigned_subcategory_ids"] = filtered;
       }
     },
 
@@ -2711,13 +2702,13 @@ export default {
         event.target.value = "";
         return;
       }
-      this.$set(variant, "imageFile", file);
-      this.$set(variant, "imagePreview", URL.createObjectURL(file));
+      (variant)["imageFile"] = file;
+      (variant)["imagePreview"] = URL.createObjectURL(file);
     },
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -2762,10 +2753,10 @@ export default {
             // 2) initialize product.warehouses so each key exists reactively
             response.data.warehouses.forEach(wh => {
               // each wh has { id, name, qte, manage_stock }
-              this.$set(this.product.warehouses, wh.id, {
+              (this.product.warehouses)[wh.id] = {
                 qte:          wh.qte,
                 warehouse_location_id: null,
-              })
+              }
             })
 
           this.isLoading = false;
@@ -2972,13 +2963,13 @@ export default {
             (!this.product.assigned_category_ids || !this.product.assigned_category_ids.length) &&
             p.category_id
           ) {
-            this.$set(this.product, "assigned_category_ids", [p.category_id]);
+            (this.product)["assigned_category_ids"] = [p.category_id];
           }
           if (
             (!this.product.assigned_subcategory_ids || !this.product.assigned_subcategory_ids.length) &&
             p.sub_category_id
           ) {
-            this.$set(this.product, "assigned_subcategory_ids", [p.sub_category_id]);
+            (this.product)["assigned_subcategory_ids"] = [p.sub_category_id];
           }
           this.syncLegacyCategoryFields();
           this.product.TaxNet = p.TaxNet != null ? p.TaxNet : this.product.TaxNet;
@@ -3807,7 +3798,7 @@ export default {
 
   /* ===== Form Controls ===== */
   .product-create-page .form-control,
-  .product-create-page .custom-select,
+  .product-create-page .form-select,
   .product-create-page textarea.form-control {
     border-radius: 9px;
     border: 1.5px solid var(--pc-border);
@@ -3815,7 +3806,7 @@ export default {
   }
 
   .product-create-page .form-control:focus,
-  .product-create-page .custom-select:focus,
+  .product-create-page .form-select:focus,
   .product-create-page textarea.form-control:focus {
     border-color: var(--pc-primary);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
@@ -3927,12 +3918,6 @@ export default {
   .modern-input-group:focus-within {
     border-color: var(--pc-primary);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
-  }
-
-  .modern-input-group .input-group-prepend,
-  .modern-input-group .input-group-append {
-    display: flex;
-    align-items: stretch;
   }
 
   .modern-input-group .form-control {
@@ -4168,12 +4153,6 @@ export default {
     background: #f5f7ff;
   }
 
-  .product-create-page .options-grid .custom-control-label {
-    font-weight: 500;
-    color: var(--pc-text);
-    font-size: 0.88rem;
-  }
-
   /* ===== Form Actions ===== */
   .product-create-page .form-actions {
     display: flex;
@@ -4188,7 +4167,7 @@ export default {
   }
 
   /* ===== Generic input-group border / radius fix =====
-     The 1.5px border + 9px radius I put on .form-control/.custom-select
+     The 1.5px border + 9px radius I put on .form-control/.form-select
      above doesn't match Bootstrap's default 1px / 0.25rem on
      .input-group-text and .btn inside append/prepend, which produces a
      mismatched seam where they meet. Unify border thickness, color and
@@ -4198,11 +4177,11 @@ export default {
   }
 
   .product-create-page .input-group > .form-control,
-  .product-create-page .input-group > .custom-select,
-  .product-create-page .input-group > .input-group-prepend > .input-group-text,
-  .product-create-page .input-group > .input-group-append > .input-group-text,
-  .product-create-page .input-group > .input-group-prepend > .btn,
-  .product-create-page .input-group > .input-group-append > .btn {
+  .product-create-page .input-group > .form-select,
+  .product-create-page .input-group > .input-group-text:first-child,
+  .product-create-page .input-group > .input-group-text:last-child,
+  .product-create-page .input-group > .btn:first-child,
+  .product-create-page .input-group > .btn:last-child {
     border: 1.5px solid var(--pc-border);
   }
 
@@ -4210,19 +4189,19 @@ export default {
      :not(.modern-input-group) guard avoids fighting the prepend+append
      barcode group which has its own wrapper border. */
   .product-create-page .input-group:not(.modern-input-group) > .form-control:not(:first-child),
-  .product-create-page .input-group:not(.modern-input-group) > .custom-select:not(:first-child) {
+  .product-create-page .input-group:not(.modern-input-group) > .form-select:not(:first-child) {
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
   }
 
   .product-create-page .input-group:not(.modern-input-group) > .form-control:not(:last-child),
-  .product-create-page .input-group:not(.modern-input-group) > .custom-select:not(:last-child) {
+  .product-create-page .input-group:not(.modern-input-group) > .form-select:not(:last-child) {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
   }
 
-  .product-create-page .input-group:not(.modern-input-group) > .input-group-prepend > .input-group-text,
-  .product-create-page .input-group:not(.modern-input-group) > .input-group-prepend > .btn {
+  .product-create-page .input-group:not(.modern-input-group) > .input-group-text:first-child,
+  .product-create-page .input-group:not(.modern-input-group) > .btn:first-child {
     border-top-left-radius: 9px;
     border-bottom-left-radius: 9px;
     border-top-right-radius: 0;
@@ -4230,8 +4209,8 @@ export default {
     border-right-width: 0;
   }
 
-  .product-create-page .input-group:not(.modern-input-group) > .input-group-append > .input-group-text,
-  .product-create-page .input-group:not(.modern-input-group) > .input-group-append > .btn {
+  .product-create-page .input-group:not(.modern-input-group) > .input-group-text:last-child,
+  .product-create-page .input-group:not(.modern-input-group) > .btn:last-child {
     border-top-right-radius: 9px;
     border-bottom-right-radius: 9px;
     border-top-left-radius: 0;
@@ -4240,8 +4219,8 @@ export default {
   }
 
   /* Append/prepend appearance */
-  .product-create-page .input-group > .input-group-append > .input-group-text,
-  .product-create-page .input-group > .input-group-prepend > .input-group-text {
+  .product-create-page .input-group > .input-group-text:last-child,
+  .product-create-page .input-group > .input-group-text:first-child {
     background: #f8fafc;
     color: var(--pc-text-soft);
     font-weight: 600;
@@ -4249,11 +4228,11 @@ export default {
 
   /* Unified focus ring across the whole group */
   .product-create-page .input-group:focus-within > .form-control,
-  .product-create-page .input-group:focus-within > .custom-select,
-  .product-create-page .input-group:focus-within > .input-group-prepend > .input-group-text,
-  .product-create-page .input-group:focus-within > .input-group-append > .input-group-text,
-  .product-create-page .input-group:focus-within > .input-group-prepend > .btn,
-  .product-create-page .input-group:focus-within > .input-group-append > .btn {
+  .product-create-page .input-group:focus-within > .form-select,
+  .product-create-page .input-group:focus-within > .input-group-text:first-child,
+  .product-create-page .input-group:focus-within > .input-group-text:last-child,
+  .product-create-page .input-group:focus-within > .btn:first-child,
+  .product-create-page .input-group:focus-within > .btn:last-child {
     border-color: var(--pc-primary);
   }
 
@@ -4265,7 +4244,7 @@ export default {
      ring – kill its individual one to avoid a doubled glow on the inner
      side of the seam. */
   .product-create-page .input-group > .form-control:focus,
-  .product-create-page .input-group > .custom-select:focus {
+  .product-create-page .input-group > .form-select:focus {
     box-shadow: none;
   }
 
@@ -4297,12 +4276,6 @@ export default {
   .input-group.unit-input-group .v-select .vs__dropdown-toggle {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
-  }
-
-  .input-group.category-input-group .input-group-append,
-  .input-group.brand-input-group .input-group-append,
-  .input-group.unit-input-group .input-group-append {
-    align-items: stretch;
   }
 
   .input-group.category-input-group .category-add-btn,
@@ -4426,7 +4399,7 @@ export default {
   }
 
   body.dark-theme .product-create-page .form-control,
-  body.dark-theme .product-create-page .custom-select,
+  body.dark-theme .product-create-page .form-select,
   body.dark-theme .product-create-page textarea.form-control,
   body.dark-theme .product-create-page .form-control-modern,
   body.dark-theme .product-create-page .autocomplete-input {
@@ -4568,8 +4541,8 @@ export default {
     color: #fff;
   }
 
-  body.dark-theme .product-create-page .input-group > .input-group-append > .input-group-text,
-  body.dark-theme .product-create-page .input-group > .input-group-prepend > .input-group-text {
+  body.dark-theme .product-create-page .input-group > .input-group-text:last-child,
+  body.dark-theme .product-create-page .input-group > .input-group-text:first-child {
     background: #232323;
     color: rgba(216, 216, 216, 0.78);
     border-color: #2a2a2a;

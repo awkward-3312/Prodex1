@@ -2,7 +2,7 @@
   <div class="main-content">
 <breadcumb :page="$t('Banners')" :folder="$t('Store')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else class="wrapper">
       <vue-good-table
@@ -17,13 +17,13 @@
         @on-sort-change="onSortChange"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="$router.push({name:'StoreBannerEdit', params:{id:'new'}})" size="sm" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
             <lucide-icon name="plus" /> {{ $t('Add') }}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field==='preview'">
             <img :src="props.row.image_url" height="32">
           </span>
@@ -34,7 +34,7 @@
             <a v-b-tooltip.hover :title="$t('Edit')" @click="$router.push({name:'StoreBannerEdit', params:{id:props.row.id}})">
               <lucide-icon class="text-20 text-info" name="pencil" />
             </a>
-            <a v-b-tooltip.hover :title="$t('Delete')" class="ml-2" @click="remove(props.row.id)">
+            <a v-b-tooltip.hover :title="$t('Delete')" class="ms-2" @click="remove(props.row.id)">
               <lucide-icon class="text-20 text-danger" name="x" />
             </a>
           </span>
@@ -46,7 +46,8 @@
 </template>
 
 <script>
-export default {
+import { vBTooltip, BBadge, BButton, BCard } from "@/platform/bootstrap";
+export default { components: { BBadge, BButton, BCard }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Banners de la tienda"
   },

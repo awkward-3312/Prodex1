@@ -13,26 +13,26 @@
     <!-- Header / Client Card -->
     <b-card v-show="!pageLoading" class="mb-3 p-0 overflow-hidden soft-shadow">
       <div class="header-hero d-flex align-items-center p-3">
-        <div class="avatar-circle mr-3"><span>{{ clientInitials }}</span></div>
+        <div class="avatar-circle me-3"><span>{{ clientInitials }}</span></div>
         <div class="flex-grow-1">
           <h4 class="mb-1">{{ client.name || '-' }}</h4>
           <div class="text-light small">
-            <span class="mr-3">{{ $t('Code') }}: <b>{{ client.code || '-' }}</b></span>
-            <span class="mr-3">{{ $t('City') }}: <b>{{ client.city || '-' }}</b></span>
-            <span class="mr-3">{{ $t('Country') }}: <b>{{ client.country || '-' }}</b></span>
-            <span class="mr-3">{{ $t('Tax_Number') }}: <b>{{ client.tax_number || '-' }}</b></span>
+            <span class="me-3">{{ $t('Code') }}: <b>{{ client.code || '-' }}</b></span>
+            <span class="me-3">{{ $t('City') }}: <b>{{ client.city || '-' }}</b></span>
+            <span class="me-3">{{ $t('Country') }}: <b>{{ client.country || '-' }}</b></span>
+            <span class="me-3">{{ $t('Tax_Number') }}: <b>{{ client.tax_number || '-' }}</b></span>
           </div>
         </div>
-        <div class="text-right">
+        <div class="text-end">
           <div class="text-white small mb-1">
-            <lucide-icon class="mr-1" name="mail" />{{ client.email || '-' }} &nbsp;|&nbsp;
-            <lucide-icon class="mr-1" name="phone" />{{ client.phone || '-' }}
+            <lucide-icon class="me-1" name="mail" />{{ client.email || '-' }} &nbsp;|&nbsp;
+            <lucide-icon class="me-1" name="phone" />{{ client.phone || '-' }}
           </div>
-          <b-button size="sm" variant="light" class="mr-2" @click="$router.push({ name: 'Customers' })">
-            <lucide-icon class="mr-1" name="chevron-left" /> {{ $t('Back') }}
+          <b-button size="sm" variant="light" class="me-2" @click="$router.push({ name: 'Customers' })">
+            <lucide-icon class="me-1" name="chevron-left" /> {{ $t('Back') }}
           </b-button>
-          <b-button size="sm" variant="primary" class="mr-2" :disabled="exportingPdf" @click="exportPdf">
-            <lucide-icon class="mr-1" name="file-down" />
+          <b-button size="sm" variant="primary" class="me-2" :disabled="exportingPdf" @click="exportPdf">
+            <lucide-icon class="me-1" name="file-down" />
             <span v-if="!exportingPdf">{{ $t('Download_PDF') }}</span>
             <span v-else>{{ $t('Generating') }}</span>
           </b-button>
@@ -101,7 +101,7 @@
             <ListToolbar
               :placeholder="$t('Search_sales_ph')"
               v-model="sales.search"
-              :limit.sync="sales.limit"
+              :limit="sales.limit" @update:limit="sales.limit = $event"
               :per-page-options="perPageOptions"
               @search="fetchSales"
               @reset="resetSales"
@@ -124,7 +124,7 @@
             </b-table>
 
             <Pager
-              :page.sync="sales.page"
+              :page="sales.page" @update:page="sales.page = $event"
               :limit="sales.limit"
               :total-rows="sales.totalRows"
               @change="fetchSales"
@@ -136,7 +136,7 @@
             <ListToolbar
               :placeholder="$t('Search_payments_ph')"
               v-model="payments.search"
-              :limit.sync="payments.limit"
+              :limit="payments.limit" @update:limit="payments.limit = $event"
               :per-page-options="perPageOptions"
               @search="fetchPayments"
               @reset="resetPayments"
@@ -160,7 +160,7 @@
             </b-table>
 
             <Pager
-              :page.sync="payments.page"
+              :page="payments.page" @update:page="payments.page = $event"
               :limit="payments.limit"
               :total-rows="payments.totalRows"
               @change="fetchPayments"
@@ -172,7 +172,7 @@
             <ListToolbar
               :placeholder="$t('Search_quotations_ph')"
               v-model="quotations.search"
-              :limit.sync="quotations.limit"
+              :limit="quotations.limit" @update:limit="quotations.limit = $event"
               :per-page-options="perPageOptions"
               @search="fetchQuotations"
               @reset="resetQuotations"
@@ -189,7 +189,7 @@
             </b-table>
 
             <Pager
-              :page.sync="quotations.page"
+              :page="quotations.page" @update:page="quotations.page = $event"
               :limit="quotations.limit"
               :total-rows="quotations.totalRows"
               @change="fetchQuotations"
@@ -201,7 +201,7 @@
             <ListToolbar
               :placeholder="$t('Search_returns_ph')"
               v-model="returns.search"
-              :limit.sync="returns.limit"
+              :limit="returns.limit" @update:limit="returns.limit = $event"
               :per-page-options="perPageOptions"
               @search="fetchReturns"
               @reset="resetReturns"
@@ -224,7 +224,7 @@
             </b-table>
 
             <Pager
-              :page.sync="returns.page"
+              :page="returns.page" @update:page="returns.page = $event"
               :limit="returns.limit"
               :total-rows="returns.totalRows"
               @change="fetchReturns"
@@ -237,59 +237,58 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 
 // --- Small reusable toolbar for search + per-page ---
 const ListToolbar = {
   name: 'ListToolbar',
+  compilerOptions: { whitespace: 'condense' },
   props: {
     placeholder: String,
-    value: String, // v-model: search
+    modelValue: String, // v-model nativo: search
+    value: String, // alias de la API explícita vieja (sin v-model), por si algún consumidor la usa
     limit: Number,
     perPageOptions: { type: Array, default: () => ([10,25,50,100].map(v=>({value:v, text:String(v)}))) }
   },
-  model: { prop: 'value', event: 'input' },
-  methods: {
-    emitSearch(){ this.$emit('search') },
-    emitReset(){ this.$emit('input', ''); this.$emit('search'); this.$emit('reset') }
+  emits: ['update:modelValue', 'input', 'search', 'reset', 'update:limit'],
+  computed: {
+    internalValue() { return this.modelValue !== undefined ? this.modelValue : this.value; }
   },
-  render(h){
-    return h('div',{class:'toolbar'},[
-      h('b-form-input',{
-        class:'mr-2',
-        props:{ value:this.value, placeholder:this.placeholder },
-        on:{ input:v=>this.$emit('input', v), keyup:e=>{ if(e.key==='Enter') this.emitSearch() } }
-      }),
-      h('b-button',{class:'mr-2 mt-2',props:{size:'sm',variant:'primary'},on:{click:this.emitSearch}}, this.$parent.$t('Search')),
-      h('b-button',{class:'mr-2 mt-2',props:{size:'sm',variant:'outline-secondary'},on:{click:this.emitReset}}, this.$parent.$t('Reset')),
-      h('div',{class:'ml-auto d-flex align-items-center'},[
-        h('span',{class:'mr-2 small text-muted'}, this.$parent.$t('Per_page')),
-        h('b-form-select',{
-          class:'w-auto',
-          props:{ value:this.limit, options:this.perPageOptions, size:'sm' },
-          on:{ input:v=>this.$emit('update:limit', v) }
-        })
-      ])
-    ])
-  }
+  methods: {
+    emitValue(v) { this.$emit('update:modelValue', v); this.$emit('input', v); },
+    emitSearch(){ this.$emit('search') },
+    emitReset(){ this.emitValue(''); this.$emit('search'); this.$emit('reset') }
+  },
+  template: `<div class="toolbar">
+    <b-form-input class="me-2" :model-value="internalValue" :placeholder="placeholder" @update:model-value="emitValue" @keyup="e => { if (e.key === 'Enter') emitSearch() }" />
+    <b-button class="me-2 mt-2" size="sm" variant="primary" @click="emitSearch">{{ $t('Search') }}</b-button>
+    <b-button class="me-2 mt-2" size="sm" variant="outline-secondary" @click="emitReset">{{ $t('Reset') }}</b-button>
+    <div class="ms-auto d-flex align-items-center">
+      <span class="me-2 small text-muted">{{ $t('Per_page') }}</span>
+      <b-form-select class="w-auto" :model-value="limit" :options="perPageOptions" size="sm" @update:model-value="v => $emit('update:limit', v)" />
+    </div>
+  </div>`
 }
 
 // --- Simple pager wrapper ---
 const Pager = {
   name: 'Pager',
+  compilerOptions: { whitespace: 'condense' },
   props: { page:Number, limit:Number, totalRows:Number },
   methods:{ onInput(){ this.$emit('change') } },
-  render(h){
-    const totalPages = Math.max(1, Math.ceil((this.totalRows||0) / (this.limit||10)))
-    return h('div',{class:'pager'},[
-      h('small',{class:'text-muted'}, `${this.$parent.$t('Page')} ${this.page} ${this.$parent.$t('Of')} ${totalPages}`),
-      h('b-pagination',{
-        props:{ value:this.page, totalRows:this.totalRows, perPage:this.limit, size:'sm', align:'right' },
-        on:{ input:v=>{ this.$emit('update:page', v); this.onInput() } }
-      })
-    ])
-  }
+  computed: {
+    totalPages() { return Math.max(1, Math.ceil((this.totalRows||0) / (this.limit||10))) }
+  },
+  template: `<div class="pager">
+    <small class="text-muted">{{ $t('Page') }} {{ page }} {{ $t('Of') }} {{ totalPages }}</small>
+    <b-pagination :value="page" :total-rows="totalRows" :per-page="limit" size="sm" align="right" @input="v => { $emit('update:page', v); onInput() }" />
+  </div>`
 }
 
+import { BSpinner, BTable, BBadge, BButton, BCard, BCol, BRow, BTab, BTabs, BPagination, BFormInput, BFormSelect } from "@/platform/bootstrap";
+// Los dos componentes en línea (plantilla en cadena) usan b-button / b-form-input / b-form-select / b-pagination: se registran los wrappers de BVN (no hay registro global de BV2 para ellos).
+ListToolbar.components = { BButton, BFormInput, BFormSelect };
+Pager.components = { BPagination };
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
   getPriceFormatSetting
@@ -297,7 +296,7 @@ import {
 
 export default {
   name: 'CustomerLedgerRefactored',
-  components: { ListToolbar, Pager },
+  components: { BBadge, BButton, BCard, BCol, BRow, BTab, BTabs, BTable, BSpinner, BPagination, ListToolbar, Pager },
   props: { id: [String, Number] },
   metaInfo () { return { title: this.$t('Customer_Ledger') } },
   data(){
@@ -321,9 +320,9 @@ export default {
         { key:'Ref', label: this.$t('Sale_Ref') },
         { key:'warehouse_name', label: this.$t('Warehouse') },
         { key:'statut', label: this.$t('Status') },
-        { key:'GrandTotal', label: this.$t('Grand_Total'), class:'text-right' },
-        { key:'paid_amount', label: this.$t('Paid'), class:'text-right' },
-        { key:'due', label: this.$t('Due'), class:'text-right' },
+        { key:'GrandTotal', label: this.$t('Grand_Total'), class:'text-end' },
+        { key:'paid_amount', label: this.$t('Paid'), class:'text-end' },
+        { key:'due', label: this.$t('Due'), class:'text-end' },
         { key:'payment_status', label: this.$t('Payment_Status') },
         { key:'shipping_status', label: this.$t('Shipping_Status') },
       ],
@@ -333,14 +332,14 @@ export default {
         { key:'payment_type', label: this.$t('Type') },
         { key:'Sale_Ref', label: this.$t('Sale_Ref') },
         { key:'payment_method', label: this.$t('Method') },
-        { key:'montant', label: this.$t('Amount'), class:'text-right' },
+        { key:'montant', label: this.$t('Amount'), class:'text-end' },
       ],
       quotationsFields: [
         { key:'date', label: this.$t('Date') },
         { key:'Ref', label: this.$t('Quotation_Ref') },
         { key:'warehouse_name', label: this.$t('Warehouse') },
         { key:'statut', label: this.$t('Status') },
-        { key:'GrandTotal', label: this.$t('Grand_Total'), class:'text-right' },
+        { key:'GrandTotal', label: this.$t('Grand_Total'), class:'text-end' },
       ],
       returnsFields: [
         { key:'Ref', label: this.$t('Return_Ref') },
@@ -348,9 +347,9 @@ export default {
         { key:'client_name', label: this.$t('Customer') },
         { key:'sale_ref', label: this.$t('Sale_Ref') },
         { key:'warehouse_name', label: this.$t('Warehouse') },
-        { key:'GrandTotal', label: this.$t('Grand_Total'), class:'text-right' },
-        { key:'paid_amount', label: this.$t('Paid'), class:'text-right' },
-        { key:'due', label: this.$t('Due'), class:'text-right' },
+        { key:'GrandTotal', label: this.$t('Grand_Total'), class:'text-end' },
+        { key:'paid_amount', label: this.$t('Paid'), class:'text-end' },
+        { key:'due', label: this.$t('Due'), class:'text-end' },
         { key:'payment_status', label: this.$t('Payment_Status') },
       ],
     }
@@ -517,8 +516,8 @@ export default {
         window.URL.revokeObjectURL(url)
       } catch (err) {
         const fallbackMsg = (this.$t && this.$t('Failed_to_export') !== 'Failed_to_export') ? this.$t('Failed_to_export') : 'Failed to export PDF'
-        if (this.$bvToast) {
-          this.$bvToast.toast(fallbackMsg, { title: this.$t ? this.$t('Error') : 'Error', variant: 'danger', solid: true })
+        if (notifications.hasDriver()) {
+          notifications.notify(fallbackMsg, { title: this.$t ? this.$t('Error') : 'Error', variant: 'danger', solid: true })
         } else {
           // eslint-disable-next-line no-alert
           alert(fallbackMsg)

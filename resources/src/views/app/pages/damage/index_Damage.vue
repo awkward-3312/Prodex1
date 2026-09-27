@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Damages')" :folder="$t('Adjustment')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <div v-else>
       <vue-good-table
         mode="remote"
@@ -26,7 +26,7 @@
         styleClass="table-hover tableOne vgt-table"
       >
       
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button variant="outline-info m-1" size="sm" v-b-toggle.sidebar-right>
             <lucide-icon name="filter" />
             {{ $t("Filter") }}
@@ -52,11 +52,11 @@
             <span class="ul-btn__icon">
               <lucide-icon name="plus" />
             </span>
-            <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
+            <span class="ul-btn__text ms-1">{{$t('Add')}}</span>
           </router-link>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
             <a :title="$t('Download_PDF')" v-b-tooltip.hover @click="download_damage_pdf(props.row , props.row.id)">
               <lucide-icon class="text-25 text-primary cursor-pointer" name="file-text" />
@@ -184,12 +184,14 @@
 </template>
 
 <script>
+import { modals } from "@/platform";
+import { BSidebar, vBToggle, vBTooltip, BModal, BButton, BCol, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BFormGroup, BFormInput, BButton, BCol, BRow, BModal, BSidebar },
   metaInfo: { title: "Damage" },
   data() {
     return {
@@ -215,11 +217,11 @@ export default {
     ...mapGetters(["currentUserPermissions"]),
     columns() {
       return [
-        { label: this.$t("date"), field: "date", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Reference"), field: "Ref", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("warehouse"), field: "warehouse_name", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("TotalProducts"), field: "items", type: "decimal", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("date"), field: "date", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Reference"), field: "Ref", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("warehouse"), field: "warehouse_name", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("TotalProducts"), field: "items", type: "decimal", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     }
   },
@@ -358,7 +360,7 @@ export default {
   },
   created() {
     this.Get_Damages(1);
-    Fire.$on("Get_Details_Damage", () => { setTimeout(() => NProgress.done(), 500); this.$bvModal.show("showDetails"); });
+    Fire.$on("Get_Details_Damage", () => { setTimeout(() => NProgress.done(), 500); modals.show("showDetails"); });
     Fire.$on("Delete_Damage", () => { setTimeout(() => { NProgress.done(); this.Get_Damages(this.serverParams.page); }, 500); });
   }
 };

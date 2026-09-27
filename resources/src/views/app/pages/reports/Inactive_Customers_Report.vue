@@ -2,12 +2,12 @@
   <div class="main-content">
     <breadcumb :page="$t('Inactive_Customers_Report')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="wrapper" v-if="!isLoading">
       <!-- Period filter -->
       <div class="d-flex align-items-center mb-2">
-        <label class="mb-0 mr-2">{{$t('Period')}}:</label>
+        <label class="mb-0 me-2">{{$t('Period')}}:</label>
         <b-form-select
           v-model="period"
           :options="periodOptions"
@@ -31,12 +31,12 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="tableOne table-hover vgt-table mt-3"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
-        </div>
-        <template slot="table-row" slot-scope="props">
+        </div></template>
+        <template #table-row="props">
           <!-- Render last purchase nicely -->
           <span v-if="props.column.field === 'last_sale_at'">
             {{ props.row.last_sale_at ? props.row.last_sale_at : '—' }}
@@ -68,11 +68,12 @@
 </template>
 
 <script>
+import { BBadge, BButton, BCard, BFormSelect } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 // axios assumed globally available as in your current code
 
-export default {
+export default { components: { BFormSelect, BBadge, BButton, BCard },
   metaInfo: {
     title: "Inactive Customers Report"
   },
@@ -112,15 +113,15 @@ export default {
         {
           label: this.$t("CustomerName"),
           field: "name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: true
         },
         {
           label: this.$t("Phone"),
           field: "phone",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: true
         },
         {
@@ -128,30 +129,30 @@ export default {
           field: "total_sales",
           type: "number",
           headerField: this.sumCountSales, // sum total sales in group header
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: true
         },
         {
           label: this.$t("LastPurchase"),
           field: "last_sale_at",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: true
         },
         {
           label: this.$t("DaysInactive"),
           field: "days_inactive",
           type: "number",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: true
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

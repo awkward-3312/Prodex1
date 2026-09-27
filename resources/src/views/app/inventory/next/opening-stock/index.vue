@@ -162,6 +162,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -239,8 +240,8 @@ export default {
       return list.includes(p);
     },
     toast(msg, title, variant) {
-      if (this.$root && this.$root.$bvToast) {
-        this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      if (notifications.hasDriver()) {
+        notifications.notify(msg, { title, variant, solid: true });
       }
     },
     switchType(type) {

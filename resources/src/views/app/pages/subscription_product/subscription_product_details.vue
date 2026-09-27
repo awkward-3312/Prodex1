@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Subscription_details')" :folder="$t('Subscriptions')"/>
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <!-- Subscription Details Card -->
     <b-card class="shadow-sm border-0 p-3" v-if="!loading">
@@ -21,28 +21,28 @@
         <b-col md="8">
           <b-list-group flush>
             <b-list-group-item class="d-flex align-items-center">
-              <lucide-icon class="text-primary mr-2" name="package" />
+              <lucide-icon class="text-primary me-2" name="package" />
               <strong style=" padding-right: 10px; ">{{$t('ProductName')}}: </strong> {{ subscription.product }}
             </b-list-group-item>
 
             <b-list-group-item class="d-flex align-items-center">
-              <lucide-icon class="text-success mr-2" name="warehouse" />
+              <lucide-icon class="text-success me-2" name="warehouse" />
               <strong style=" padding-right: 10px; ">{{$t('warehouse')}}: </strong> {{ subscription.warehouse }}
             </b-list-group-item>
 
             <b-list-group-item class="d-flex align-items-center">
-              <lucide-icon class="text-warning mr-2" name="repeat" />
+              <lucide-icon class="text-warning me-2" name="repeat" />
               <strong style=" padding-right: 10px; ">{{$t('Billing_Cycle')}}: </strong> {{ subscription.billing_cycle }}
             </b-list-group-item>
 
             <b-list-group-item class="d-flex align-items-center">
-              <lucide-icon class="text-danger mr-2" name="banknote" />
+              <lucide-icon class="text-danger me-2" name="banknote" />
               <strong style=" padding-right: 10px; ">{{$t('Price_Per_Cycle')}}: </strong>
               <span class="text-success"> {{ subscription.price_per_cycle }}</span>
             </b-list-group-item>
 
             <b-list-group-item class="d-flex align-items-center">
-              <lucide-icon class="text-info mr-2" name="calendar" />
+              <lucide-icon class="text-info me-2" name="calendar" />
               <strong style=" padding-right: 10px; ">{{$t('next_billing_date')}}: </strong>
               <b-badge variant="info"> {{ subscription.next_billing_date }}</b-badge>
             </b-list-group-item>
@@ -86,7 +86,9 @@
 </template>
 
 <script>
-export default {
+import { BTable, BAvatar, BBadge, BCard, BCol, BLink, BListGroup, BListGroupItem, BRow } from "@/platform/bootstrap";
+import { confirmDialog, notifications } from "@/platform";
+export default { components: { BAvatar, BBadge, BCard, BCol, BLink, BListGroup, BListGroupItem, BRow, BTable },
   data() {
     return {
       loading: false,
@@ -111,7 +113,7 @@ export default {
       this.invoices = data.invoices;
       this.invoiceFields = data.invoiceFields;
     } catch (error) {
-      this.$bvToast.toast("Unable to load subscription details", {
+      notifications.notify("Unable to load subscription details", {
         variant: "danger",
         title: "Error",
         solid: true,
@@ -122,8 +124,7 @@ export default {
   },
 
     initiateInitialPayment(subscriptionId) {
-    this.$bvModal.msgBoxConfirm("Are you sure you want to initiate the first payment?", {
-      title: "Confirm Payment",
+    confirmDialog("Are you sure you want to initiate the first payment?", { presentation: 'modal', title: "Confirm Payment",
       okTitle: "Yes",
       cancelTitle: "Cancel",
       centered: true

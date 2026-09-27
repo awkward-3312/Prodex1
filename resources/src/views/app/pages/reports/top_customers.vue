@@ -247,7 +247,7 @@ export default {
       let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
       tableHtml += `<thead><tr>`;
       this.columns.forEach(col => {
-        tableHtml += `<th class="text-left">${col.label}</th>`;
+        tableHtml += `<th class="text-start">${col.label}</th>`;
       });
       tableHtml += `</tr></thead>`;
       tableHtml += `<tbody>`;
@@ -260,7 +260,7 @@ export default {
           } else {
             cellContent = row[col.key] || '';
           }
-          tableHtml += `<td class="text-left">${cellContent}</td>`;
+          tableHtml += `<td class="text-start">${cellContent}</td>`;
         });
         tableHtml += `</tr>`;
       });
@@ -269,9 +269,9 @@ export default {
       const totalSales = rowsData.reduce((sum, row) => sum + parseFloat(row.total_sales || 0), 0);
       const totalAmount = rowsData.reduce((sum, row) => sum + parseFloat(row.total || 0), 0);
       tableHtml += `<tfoot><tr>`;
-      tableHtml += `<td class="text-left font-weight-bold" colspan="3">${this.$t('Total')}</td>`;
-      tableHtml += `<td class="text-left font-weight-bold">${totalSales.toLocaleString()}</td>`;
-      tableHtml += `<td class="text-left font-weight-bold">${this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, totalAmount, 2)}</td>`;
+      tableHtml += `<td class="text-start fw-bold" colspan="3">${this.$t('Total')}</td>`;
+      tableHtml += `<td class="text-start fw-bold">${totalSales.toLocaleString()}</td>`;
+      tableHtml += `<td class="text-start fw-bold">${this.formatPriceWithSymbol(this.currentUser && this.currentUser.currency, totalAmount, 2)}</td>`;
       tableHtml += `</tr></tfoot>`;
       tableHtml += `</table>`;
 

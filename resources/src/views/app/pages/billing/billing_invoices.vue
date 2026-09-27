@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="billing-page">
       <div class="row mb-3">
@@ -10,7 +10,7 @@
             <p class="text-muted mb-0">{{ $t('Download_invoices') || 'Download your subscription invoices.' }}</p>
           </div>
           <router-link to="/app/billing/current-plan" class="btn btn-outline-secondary btn-sm">
-            <lucide-icon name="arrow-left" class="mr-1" /> {{ $t('Current_Plan') || 'Current Plan' }}
+            <lucide-icon name="arrow-left" class="me-1" /> {{ $t('Current_Plan') || 'Current Plan' }}
           </router-link>
         </div>
       </div>
@@ -18,7 +18,7 @@
       <!-- Invoices table -->
       <div class="billing-card">
         <div class="billing-card-header d-flex align-items-center justify-content-between">
-          <span><lucide-icon name="file" class="mr-2" />{{ $t('Invoice_List') || 'Invoice List' }}</span>
+          <span><lucide-icon name="file" class="me-2" />{{ $t('Invoice_List') || 'Invoice List' }}</span>
           <span class="text-muted small">{{ total }} {{ $t('invoices') || 'invoice(s)' }}</span>
         </div>
 
@@ -37,10 +37,10 @@
             </thead>
             <tbody>
               <tr v-for="inv in invoices" :key="inv.id">
-                <td class="td-billing"><span class="fw-bold">{{ inv.invoice_number || '—' }}</span></td>
+                <td class="td-billing"><span>{{ inv.invoice_number || '—' }}</span></td>
                 <td class="td-billing">{{ inv.plan_name }}</td>
                 <td class="td-billing">
-                  <span class="fw-bold">{{ currencySymbol }}{{ inv.total.toFixed(2) }}</span>
+                  <span>{{ currencySymbol }}{{ inv.total.toFixed(2) }}</span>
                   <span class="text-muted small">{{ inv.currency }}</span>
                 </td>
                 <td class="td-billing">{{ inv.gateway_label }}</td>
@@ -50,7 +50,7 @@
                   <button @click="downloadPdf(inv)"
                      :disabled="inv._downloading"
                      class="btn btn-outline-primary btn-sm download-btn">
-                    <lucide-icon v-if="!inv._downloading" name="download" class="mr-1" /><span v-else class="spinner-border spinner-border-sm mr-1"></span>
+                    <lucide-icon v-if="!inv._downloading" name="download" class="me-1" /><span v-else class="spinner-border spinner-border-sm me-1"></span>
                     {{ inv._downloading ? $t('Downloading') || 'Downloading…' : $t('PDF') || 'PDF' }}
                   </button>
                 </td>
@@ -86,6 +86,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import axios from "axios";
 
 export default {
@@ -105,7 +106,7 @@ export default {
   },
   methods: {
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
     async fetchInvoices(page) {
       this.loading = true;
@@ -132,7 +133,7 @@ export default {
     },
     capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; },
     async downloadPdf(inv) {
-      this.$set(inv, '_downloading', true);
+      (inv)['_downloading'] = true;
       try {
         const response = await axios.get("/api/billing/invoices/" + inv.id + "/download", {
           responseType: "blob",
@@ -157,7 +158,7 @@ export default {
         }
         this.makeToast("danger", msg, "Error");
       }
-      this.$set(inv, '_downloading', false);
+      (inv)['_downloading'] = false;
     },
   },
 };

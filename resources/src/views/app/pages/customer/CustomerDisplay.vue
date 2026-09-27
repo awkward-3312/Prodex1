@@ -208,7 +208,7 @@ export default {
       this.pollTimer = setInterval(this.poll, 2500);
     }
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this.pollTimer) clearInterval(this.pollTimer);
   }
 }

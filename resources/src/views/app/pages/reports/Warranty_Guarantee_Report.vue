@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Warranty_Guarantee_Report')" :folder="$t('Reports')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="wrapper" v-if="!isLoading">
       <div class="row align-items-end mb-3">
@@ -21,7 +21,7 @@
           >
             <template v-slot:input="picker">
               <b-button variant="light" class="btn-pill">
-                <lucide-icon class="mr-1" name="calendar-days" />
+                <lucide-icon class="me-1" name="calendar-days" />
                 {{ fmt(picker.startDate) }} - {{ fmt(picker.endDate) }}
               </b-button>
             </template>
@@ -63,9 +63,9 @@
         </div>
         <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-2">
           <b-button variant="primary" size="sm" @click="getData(1)">
-            <lucide-icon class="mr-1" name="filter" /> {{ $t('Filter') }}
+            <lucide-icon class="me-1" name="filter" /> {{ $t('Filter') }}
           </b-button>
-          <b-button variant="outline-secondary" size="sm" class="ml-1" @click="resetFilters">
+          <b-button variant="outline-secondary" size="sm" class="ms-1" @click="resetFilters">
             {{ $t('Reset') }}
           </b-button>
         </div>
@@ -85,7 +85,7 @@
         @on-sort-change="onSortChange"
         @on-search="onSearch"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t('print') }}
           </b-button>
@@ -102,8 +102,8 @@
           >
             <lucide-icon name="file-spreadsheet" /> Excel
           </vue-excel-xlsx>
-        </div>
-        <template slot="table-row" slot-scope="props">
+        </div></template>
+        <template #table-row="props">
           <span v-if="props.column.field === 'Ref'">
             <router-link v-if="props.row.sale_id" :to="{ name: 'detail_sale', params: { id: props.row.sale_id } }" class="text-primary">
               {{ props.row.Ref }}
@@ -135,17 +135,18 @@
 </template>
 
 <script>
+import { BButton, BCard, BFormSelect } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import NProgress from 'nprogress'
 import moment from 'moment'
-import DateRangePicker from 'vue2-daterange-picker'
-import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Util from '../../../../utils'
 
 export default {
   metaInfo: { title: 'Warranty / Guarantee Report' },
-  components: { 'date-range-picker': DateRangePicker },
+  components: { BFormSelect, BButton, BCard, 'date-range-picker': DateRangePicker },
   data() {
     return {
       isLoading: true,
@@ -190,16 +191,16 @@ export default {
   computed: {
     columns() {
       return [
-        { label: this.$t('Invoice') || 'Invoice', field: 'Ref', thClass: 'text-left', tdClass: 'text-left', sortable: true },
-        { label: this.$t('date') || 'Sale date', field: 'sale_date', thClass: 'text-left', tdClass: 'text-left', sortable: true },
-        { label: this.$t('Product') || 'Product', field: 'product_name', thClass: 'text-left', tdClass: 'text-left', sortable: true },
-        { label: this.$t('qty') || 'Qty', field: 'quantity', thClass: 'text-right', tdClass: 'text-right', sortable: true },
-        { label: this.$t('Customer'), field: 'client_name', thClass: 'text-left', tdClass: 'text-left', sortable: true },
-        { label: this.$t('warehouse'), field: 'warehouse_name', thClass: 'text-left', tdClass: 'text-left', sortable: true },
-        { label: this.$t('Warranty_Date') || 'Warranty date', field: 'warranty_date', thClass: 'text-left', tdClass: 'text-left', sortable: true },
-        { label: this.$t('Guarantee_Date') || 'Guarantee date', field: 'guarantee_date', thClass: 'text-left', tdClass: 'text-left', sortable: true },
+        { label: this.$t('Invoice') || 'Invoice', field: 'Ref', thClass: 'text-start', tdClass: 'text-start', sortable: true },
+        { label: this.$t('date') || 'Sale date', field: 'sale_date', thClass: 'text-start', tdClass: 'text-start', sortable: true },
+        { label: this.$t('Product') || 'Product', field: 'product_name', thClass: 'text-start', tdClass: 'text-start', sortable: true },
+        { label: this.$t('qty') || 'Qty', field: 'quantity', thClass: 'text-end', tdClass: 'text-end', sortable: true },
+        { label: this.$t('Customer'), field: 'client_name', thClass: 'text-start', tdClass: 'text-start', sortable: true },
+        { label: this.$t('warehouse'), field: 'warehouse_name', thClass: 'text-start', tdClass: 'text-start', sortable: true },
+        { label: this.$t('Warranty_Date') || 'Warranty date', field: 'warranty_date', thClass: 'text-start', tdClass: 'text-start', sortable: true },
+        { label: this.$t('Guarantee_Date') || 'Guarantee date', field: 'guarantee_date', thClass: 'text-start', tdClass: 'text-start', sortable: true },
         { label: this.$t('Days_Remaining') || 'Days remaining', field: 'days_remaining', thClass: 'text-center', tdClass: 'text-center', sortable: false },
-        { label: this.$t('Status'), field: 'status', thClass: 'text-left', tdClass: 'text-left', sortable: false }
+        { label: this.$t('Status'), field: 'status', thClass: 'text-start', tdClass: 'text-start', sortable: false }
       ]
     },
     exportRows() {
@@ -308,8 +309,8 @@ export default {
           }
         })
         .catch(() => {
-          if (this.$bvToast && this.$bvToast.toast) {
-            this.$bvToast.toast(this.$t('OperationFailed'), { title: this.$t('Failed'), variant: 'danger', solid: true })
+          if (notifications.hasDriver()) {
+            notifications.notify(this.$t('OperationFailed'), { title: this.$t('Failed'), variant: 'danger', solid: true })
           }
         })
         .finally(() => {
@@ -373,8 +374,8 @@ export default {
         styles: { fontSize: 8, cellPadding: 3 }
       })
       pdf.save('warranty_guarantee_report.pdf')
-      if (this.$bvToast && this.$bvToast.toast) {
-        this.$bvToast.toast(this.$t('Export_PDF') || 'PDF exported', { title: this.$t('Success'), variant: 'success', solid: true })
+      if (notifications.hasDriver()) {
+        notifications.notify(this.$t('Export_PDF') || 'PDF exported', { title: this.$t('Success'), variant: 'success', solid: true })
       }
     },
     printTableOnly() {

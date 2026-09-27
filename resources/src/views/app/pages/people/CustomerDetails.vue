@@ -15,33 +15,33 @@
       <b-card class="mb-4 shadow-sm">
         <b-row class="align-items-center">
           <b-col md="8">
-            <h4 class="mb-2"><lucide-icon class="mr-2 text-primary" name="user" />{{ client.name }}</h4>
+            <h4 class="mb-2"><lucide-icon class="me-2 text-primary" name="user" />{{ client.name }}</h4>
             <div class="text-muted">
-              <span class="mr-3"><strong>{{ $t('Code') }}:</strong> {{ client.code }}</span>
-              <span class="mr-3"><strong>{{ $t('Email') }}:</strong> {{ client.email || '-' }}</span>
-              <span class="mr-3"><strong>{{ $t('Phone') }}:</strong> {{ client.phone || '-' }}</span>
+              <span class="me-3"><strong>{{ $t('Code') }}:</strong> {{ client.code }}</span>
+              <span class="me-3"><strong>{{ $t('Email') }}:</strong> {{ client.email || '-' }}</span>
+              <span class="me-3"><strong>{{ $t('Phone') }}:</strong> {{ client.phone || '-' }}</span>
             </div>
             <div class="text-muted mt-2">
-              <span class="mr-3"><strong>{{ $t('City') }}:</strong> {{ client.city || '-' }}</span>
-              <span class="mr-3"><strong>{{ $t('Country') }}:</strong> {{ client.country || '-' }}</span>
-              <span class="mr-3"><strong>{{ $t('Tax_Number') }}:</strong> {{ client.tax_number || '-' }}</span>
-              <span class="mr-3"><strong>{{ $t('Credit_Limit') }}:</strong>
+              <span class="me-3"><strong>{{ $t('City') }}:</strong> {{ client.city || '-' }}</span>
+              <span class="me-3"><strong>{{ $t('Country') }}:</strong> {{ client.country || '-' }}</span>
+              <span class="me-3"><strong>{{ $t('Tax_Number') }}:</strong> {{ client.tax_number || '-' }}</span>
+              <span class="me-3"><strong>{{ $t('Credit_Limit') }}:</strong>
                 {{ (client.credit_limit && client.credit_limit > 0)
                   ? formatPriceWithSymbol(currentUser.currency, client.credit_limit, 2)
                   : $t('No_limit') }}
               </span>
             </div>
           </b-col>
-          <b-col md="4" class="text-right">
-            <b-button variant="secondary" @click="$router.push({ name: 'Customers' })" class="mr-2">
-              <lucide-icon class="mr-1" name="chevron-left" /> {{ $t('Back') }}
+          <b-col md="4" class="text-end">
+            <b-button variant="secondary" @click="$router.push({ name: 'Customers' })" class="me-2">
+              <lucide-icon class="me-1" name="chevron-left" /> {{ $t('Back') }}
             </b-button>
             <b-button 
               v-if="totalDue > 0 && currentUserPermissions && currentUserPermissions.includes('pay_due')"
               variant="primary" 
               @click="showPayDueModal"
             >
-              <lucide-icon class="mr-1" name="dollar-sign" /> {{ $t('Pay_Due') }}
+              <lucide-icon class="me-1" name="dollar-sign" /> {{ $t('Pay_Due') }}
             </b-button>
           </b-col>
         </b-row>
@@ -56,7 +56,7 @@
               <lucide-icon class="text-primary" name="calendar-days" style="font-size: 2.5rem;" />
             </div>
             <h6 class="text-muted mb-2">{{ $t('Opening_Balance') }}</h6>
-            <h3 class="mb-0" :class="client.opening_balance > 0 ? 'text-danger font-weight-bold' : 'text-success'">
+            <h3 class="mb-0" :class="client.opening_balance > 0 ? 'text-danger fw-bold' : 'text-success'">
               {{ formatPriceWithSymbol(currentUser.currency, client.opening_balance || 0, 2) }}
             </h3>
             <small class="text-muted">{{ $t('Previous_Dues') }}</small>
@@ -70,7 +70,7 @@
               <lucide-icon class="text-warning" name="shopping-cart" style="font-size: 2.5rem;" />
             </div>
             <h6 class="text-muted mb-2">{{ $t('Sales_Due') }}</h6>
-            <h3 class="mb-0" :class="salesDue > 0 ? 'text-danger font-weight-bold' : 'text-success'">
+            <h3 class="mb-0" :class="salesDue > 0 ? 'text-danger fw-bold' : 'text-success'">
               {{ formatPriceWithSymbol(currentUser.currency, salesDue, 2) }}
             </h3>
             <small class="text-muted">{{ $t('Current_Sales') }}</small>
@@ -84,7 +84,7 @@
               <lucide-icon class="text-info" name="credit-card" style="font-size: 2.5rem;" />
             </div>
             <h6 class="text-muted mb-2">{{ $t('Credit_Limit') }}</h6>
-            <h3 class="mb-0 text-info font-weight-bold">
+            <h3 class="mb-0 text-info fw-bold">
               {{ (client.credit_limit && client.credit_limit > 0)
                 ? formatPriceWithSymbol(currentUser.currency, client.credit_limit, 2)
                 : $t('No_limit') }}
@@ -102,9 +102,7 @@
             <div class="mb-3">
               <b-input-group>
                 <b-form-input v-model="salesSearch" :placeholder="$t('Search')" @input="fetchSales"></b-form-input>
-                <b-input-group-append>
                   <b-button variant="primary" @click="fetchSales">{{ $t('Search') }}</b-button>
-                </b-input-group-append>
               </b-input-group>
             </div>
             <b-table 
@@ -128,7 +126,7 @@
                 {{ formatPriceWithSymbol(currentUser.currency, item.paid_amount, 2) }}
               </template>
               <template #cell(due)="{ item }">
-                <span :class="item.due > 0 ? 'text-danger font-weight-bold' : 'text-success'">
+                <span :class="item.due > 0 ? 'text-danger fw-bold' : 'text-success'">
                   {{ formatPriceWithSymbol(currentUser.currency, item.due, 2) }}
                 </span>
               </template>
@@ -152,9 +150,7 @@
             <div class="mb-3">
               <b-input-group>
                 <b-form-input v-model="paymentsSearch" :placeholder="$t('Search')" @input="fetchPayments"></b-form-input>
-                <b-input-group-append>
                   <b-button variant="primary" @click="fetchPayments">{{ $t('Search') }}</b-button>
-                </b-input-group-append>
               </b-input-group>
             </div>
             <b-table 
@@ -180,7 +176,7 @@
                 <span v-else class="text-muted">-</span>
               </template>
               <template #cell(montant)="{ item }">
-                <span class="text-success font-weight-bold">
+                <span class="text-success fw-bold">
                   {{ formatPriceWithSymbol(currentUser.currency, item.montant, 2) }}
                 </span>
               </template>
@@ -199,9 +195,7 @@
             <div class="mb-3">
               <b-input-group>
                 <b-form-input v-model="returnsSearch" :placeholder="$t('Search')" @input="fetchReturns"></b-form-input>
-                <b-input-group-append>
                   <b-button variant="primary" @click="fetchReturns">{{ $t('Search') }}</b-button>
-                </b-input-group-append>
               </b-input-group>
             </div>
             <b-table 
@@ -225,7 +219,7 @@
                 {{ formatPriceWithSymbol(currentUser.currency, item.paid_amount, 2) }}
               </template>
               <template #cell(due)="{ item }">
-                <span :class="item.due > 0 ? 'text-warning font-weight-bold' : 'text-success'">
+                <span :class="item.due > 0 ? 'text-warning fw-bold' : 'text-success'">
                   {{ formatPriceWithSymbol(currentUser.currency, item.due, 2) }}
                 </span>
               </template>
@@ -244,9 +238,7 @@
             <div class="mb-3">
               <b-input-group>
                 <b-form-input v-model="paymentReturnsSearch" :placeholder="$t('Search')" @input="fetchPaymentReturns"></b-form-input>
-                <b-input-group-append>
                   <b-button variant="primary" @click="fetchPaymentReturns">{{ $t('Search') }}</b-button>
-                </b-input-group-append>
               </b-input-group>
             </div>
             <b-table 
@@ -264,7 +256,7 @@
                 </div>
               </template>
               <template #cell(montant)="{ item }">
-                <span class="text-warning font-weight-bold">
+                <span class="text-warning fw-bold">
                   {{ formatPriceWithSymbol(currentUser.currency, item.montant, 2) }}
                 </span>
               </template>
@@ -283,7 +275,7 @@
       <!-- Custom Fields Section -->
       <b-card v-if="clientCustomFields && clientCustomFields.length > 0" class="shadow-sm mt-4">
         <h6 class="text-primary mb-3">
-          <lucide-icon class="mr-2" name="database-zap" />
+          <lucide-icon class="me-2" name="database-zap" />
           {{ $t('CustomFields') }}
         </h6>
         <b-row>
@@ -304,7 +296,7 @@
     </div>
 
     <!-- Pay Due Modal -->
-    <validation-observer ref="ref_pay_due">
+    <px-validation-observer ref="ref_pay_due">
       <b-modal
         hide-footer
         size="lg"
@@ -315,7 +307,7 @@
           <b-row>
             <!-- Customer Name -->
             <b-col lg="12" md="12" sm="12" class="mb-3">
-              <h5 class="text-primary"><lucide-icon class="mr-2" name="user" />{{ client.name }}</h5>
+              <h5 class="text-primary"><lucide-icon class="me-2" name="user" />{{ client.name }}</h5>
             </b-col>
 
             <!-- Summary Cards -->
@@ -331,7 +323,7 @@
                       <lucide-icon class="text-primary" name="calendar-days" style="font-size: 2rem;" />
                     </div>
                     <h6 class="text-muted mb-2">{{ $t('Opening_Balance') }}</h6>
-                    <h4 class="mb-0" :class="client.opening_balance > 0 ? 'text-danger font-weight-bold' : 'text-success'">
+                    <h4 class="mb-0" :class="client.opening_balance > 0 ? 'text-danger fw-bold' : 'text-success'">
                       {{ formatPriceWithSymbol(currentUser.currency, client.opening_balance || 0, 2) }}
                     </h4>
                     <small class="text-muted">{{ $t('Previous_Dues') }}</small>
@@ -348,7 +340,7 @@
                       <lucide-icon class="text-warning" name="shopping-cart" style="font-size: 2rem;" />
                     </div>
                     <h6 class="text-muted mb-2">{{ $t('Sales_Due') }}</h6>
-                    <h4 class="mb-0" :class="salesDue > 0 ? 'text-danger font-weight-bold' : 'text-success'">
+                    <h4 class="mb-0" :class="salesDue > 0 ? 'text-danger fw-bold' : 'text-success'">
                       {{ formatPriceWithSymbol(currentUser.currency, salesDue, 2) }}
                     </h4>
                     <small class="text-muted">{{ $t('Current_Sales') }}</small>
@@ -365,7 +357,7 @@
                       <lucide-icon class="text-danger" name="wallet" style="font-size: 2rem;" />
                     </div>
                     <h6 class="text-muted mb-2">{{ $t('Total_Due') }}</h6>
-                    <h4 class="mb-0 font-weight-bold" :class="totalDue > 0 ? 'text-danger' : 'text-success'">
+                    <h4 class="mb-0 fw-bold" :class="totalDue > 0 ? 'text-danger' : 'text-success'">
                       {{ formatPriceWithSymbol(currentUser.currency, totalDue, 2) }}
                     </h4>
                     <small class="text-muted">{{ $t('Grand_Total') }}</small>
@@ -378,7 +370,7 @@
             <b-col lg="12" md="12" sm="12" class="mb-3">
               <b-alert variant="info" show class="mb-0">
                 <div class="d-flex align-items-center">
-                  <lucide-icon class="mr-2" name="info" style="font-size: 1.5rem;" />
+                  <lucide-icon class="me-2" name="info" style="font-size: 1.5rem;" />
                   <div>
                     <strong>{{ $t('Payment_Allocation') }}:</strong> {{ $t('Payment_Allocation_description') }}
                   </div>
@@ -388,7 +380,7 @@
           
             <!-- Paying Amount  -->
             <b-col lg="12" md="12" sm="12" class="mt-3">
-              <validation-provider
+              <px-validation-provider
                 name="Amount"
                 :rules="{ required: true , regex: /^\d*\.?\d*$/}"
                 v-slot="validationContext"
@@ -407,13 +399,13 @@
                     {{ $t('Maximum_payment') }}: <strong>{{ formatPriceWithSymbol(currentUser.currency, totalDue, 2) }}</strong>
                   </small>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
              <!-- Payment choice -->
              <b-col lg="12" md="12" sm="12">
-              <validation-provider name="Payment choice" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice')+ ' ' + '*'">
+              <px-validation-provider name="Payment choice" :rules="{ required: true}">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Paymentchoice')+ ' ' + '*'">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -423,14 +415,14 @@
                     :options="payment_methods.map(payment_methods => ({label: payment_methods.name, value: payment_methods.id}))"
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
+                </b-form-group></template>
+              </px-validation-provider>
             </b-col>
 
              <!-- Account -->
              <b-col lg="12" md="6" sm="12">
-              <validation-provider name="Account">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
+              <px-validation-provider name="Account">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Account')">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -440,8 +432,8 @@
                     :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
                   />
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
+                </b-form-group></template>
+              </px-validation-provider>
             </b-col>
 
             <!-- Note -->
@@ -456,7 +448,7 @@
                 variant="primary"
                 type="submit"
                 :disabled="paymentProcessing"
-              ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+              ><lucide-icon class="me-2 fw-bold" name="check" /> {{$t('submit')}}</b-button>
               <div v-once class="typo__p" v-if="paymentProcessing">
                 <div class="spinner sm spinner-primary mt-3"></div>
               </div>
@@ -465,7 +457,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
 
     <!-- Modal Show Customer Credit Note Receipt -->
     <b-modal hide-footer size="sm" scrollable id="Show_invoice" :title="$t('Customer_Credit_Note')">
@@ -516,6 +508,8 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
+import { BSpinner, BModal, BTable, BAlert, BBadge, BButton, BCard, BCol, BPagination, BRow, BTab, BTabs, BInputGroup, BFormInput, BForm, BFormGroup, BFormInvalidFeedback, BFormTextarea } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import {
@@ -524,6 +518,7 @@ import {
 } from "../../../../utils/priceFormat";
 
 export default {
+  components: { BInputGroup, BFormInput, BForm, BFormGroup, BFormInvalidFeedback, BFormTextarea, BAlert, BBadge, BButton, BCard, BCol, BPagination, BRow, BTab, BTabs, BTable, BModal, BSpinner },
   metaInfo: {
     title: "Customer Details"
   },
@@ -860,7 +855,7 @@ export default {
       this.payment.opening_balance = this.client.opening_balance || 0;
       this.payment.date = new Date().toISOString().slice(0, 10);
       setTimeout(() => {
-        this.$bvModal.show("modal_Pay_due");
+        modals.show("modal_Pay_due");
       }, 500);
     },
 
@@ -915,9 +910,9 @@ export default {
           Object.assign(this.payment, paymentDataForReceipt);
           
           // Close payment modal and show receipt
-          this.$bvModal.hide("modal_Pay_due");
+          modals.hide("modal_Pay_due");
           setTimeout(() => {
-            this.$bvModal.show("Show_invoice");
+            modals.show("Show_invoice");
           }, 300);
           
           // Refresh data without affecting receipt
@@ -1013,7 +1008,7 @@ export default {
 
     // Make Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

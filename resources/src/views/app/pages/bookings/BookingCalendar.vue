@@ -2,7 +2,7 @@
   <div class="main-content bookings-page-modern">
     <breadcumb :page="$t('Calendar_View')" :folder="$t('Bookings')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <!-- Control Bar -->
@@ -99,9 +99,11 @@
 </template>
 
 <script>
+import { BModal, BCol, BRow } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BCol, BRow, BModal },
   name: "BookingCalendar",
   metaInfo: {
     title: "Bookings Calendar"
@@ -376,7 +378,7 @@ export default {
         notes: data.notes
       };
 
-      this.$bvModal.show("booking-calendar-detail-modal");
+      modals.show("booking-calendar-detail-modal");
     },
 
     statusLabel(status) {
@@ -403,7 +405,7 @@ export default {
       return "";
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -424,7 +426,7 @@ export default {
       this.isLoading = false;
     });
   },
-  beforeDestroy() {
+  beforeUnmount() {
     // Remove resize listener
     if (this._resizeHandler) {
       window.removeEventListener('resize', this._resizeHandler);

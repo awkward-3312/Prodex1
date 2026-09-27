@@ -240,7 +240,7 @@ export default {
       this.$el.querySelectorAll(".pxn-doc__section").forEach(el => this._io.observe(el));
     });
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this._io) this._io.disconnect();
     if (this._ro) this._ro.disconnect();
     window.removeEventListener("resize", this.measureSticky);

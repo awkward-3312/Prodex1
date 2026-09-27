@@ -25,7 +25,6 @@
           :disabled="disabled"
           @keyup.enter.prevent="addFromScan"
         />
-        <div class="input-group-append">
           <button type="button" class="btn btn-primary" :disabled="disabled" @click="addFromScan">
             {{ $t('Add_Serial') }}
           </button>
@@ -35,7 +34,6 @@
           <button type="button" class="btn btn-outline-secondary" :disabled="disabled" @click="triggerFile">
             <lucide-icon name="file-up" style="width:14px;height:14px;" /> {{ $t('Import_Serials_CSV') }}
           </button>
-        </div>
       </div>
 
       <div v-if="showBulk" class="mb-2">
@@ -65,11 +63,9 @@
           :disabled="disabled"
           @keyup.enter.prevent="selectFromScan"
         />
-        <div class="input-group-append">
           <button type="button" class="btn btn-primary" :disabled="disabled" @click="selectFromScan">
             {{ $t('Add_Serial') }}
           </button>
-        </div>
       </div>
 
       <div v-if="loadingAvailable" class="text-muted" style="font-size: 12px;">…</div>
@@ -81,13 +77,13 @@
           <input
             class="form-check-input"
             type="checkbox"
-            :id="'serial-'+_uid+'-'+s.id"
+            :id="'serial-'+uidSeed+'-'+s.id"
             :value="s.serial_number"
             :checked="isSelected(s.serial_number)"
             :disabled="disabled"
             @change="toggleSelect(s.serial_number)"
           />
-          <label class="form-check-label" :for="'serial-'+_uid+'-'+s.id">{{ s.serial_number }}</label>
+          <label class="form-check-label" :for="'serial-'+uidSeed+'-'+s.id">{{ s.serial_number }}</label>
         </div>
       </div>
     </template>
@@ -97,11 +93,11 @@
       <span
         v-for="(serial, idx) in serials"
         :key="serial"
-        class="badge badge-pill badge-light"
+        class="badge rounded-pill badge-light"
         style="border:1px solid #cbd5e1; font-size: 12px; padding: 6px 10px;"
       >
         {{ serial }}
-        <a href="#" class="text-danger ml-1" @click.prevent="removeSerial(idx)" :title="$t('Remove')">&times;</a>
+        <a href="#" class="text-danger ms-1" @click.prevent="removeSerial(idx)" :title="$t('Remove')">&times;</a>
       </span>
     </div>
 
@@ -113,10 +109,13 @@
 </template>
 
 <script>
+let serialFieldSeq = 0; // identificador propio (antes `_uid`, API privada de Vue 2)
 export default {
   name: "SerialNumbersField",
+  emits: ["update:modelValue", "input"],
   props: {
-    value: { type: Array, default: () => [] },
+    modelValue: { type: Array, default: undefined },
+    value: { type: Array, default: undefined },
     mode: { type: String, default: "entry" }, // 'entry' | 'select'
     requiredCount: { type: [Number, String], default: 0 },
     productId: { type: [Number, String], default: null },
@@ -130,6 +129,7 @@ export default {
   },
   data() {
     return {
+      uidSeed: `sn${(serialFieldSeq += 1)}`,
       scanInput: "",
       bulkText: "",
       showBulk: false,
@@ -139,8 +139,13 @@ export default {
     };
   },
   computed: {
+    // Vue 3 real: `v-model` propio de un consumidor compila a `modelValue`/`update:modelValue`.
+    // `value`/`input` se conservan como API explícita para quien los use así directamente.
+    internalValue() {
+      return this.modelValue !== undefined ? this.modelValue : this.value;
+    },
     serials() {
-      return Array.isArray(this.value) ? this.value : [];
+      return Array.isArray(this.internalValue) ? this.internalValue : [];
     },
     requiredCountInt() {
       return Math.round(Number(this.requiredCount) || 0);
@@ -184,6 +189,7 @@ export default {
       return this.serials.some(s => s.toLowerCase() === key);
     },
     emit(list) {
+      this.$emit("update:modelValue", list);
       this.$emit("input", list);
     },
     // ENTRY mode add

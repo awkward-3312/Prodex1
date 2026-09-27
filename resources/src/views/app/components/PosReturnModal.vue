@@ -212,11 +212,13 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "../../../utils/priceFormat";
 
-export default {
+export default { components: { BModal },
   name: "PosReturnModal",
 
   props: {
@@ -301,7 +303,7 @@ export default {
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
 
     // ---- Step 1: search the original sale -----------------------------------

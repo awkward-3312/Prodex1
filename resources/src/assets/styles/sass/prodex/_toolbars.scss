@@ -37,10 +37,10 @@
   }
 
   .prodex-list-toolbar .form-control,
-  .prodex-list-toolbar .custom-select,
+  .prodex-list-toolbar .form-select,
   .prodex-list-toolbar .vs__dropdown-toggle,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) .form-control,
-  .card.wrapper > .card-body > .row.mb-3:has(.form-group) .custom-select,
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) .form-select,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) .vs__dropdown-toggle {
     min-height: var(--px-control-height);
     border-color: var(--px-border-strong);
@@ -49,10 +49,10 @@
   }
 
   .prodex-list-toolbar .form-control:focus,
-  .prodex-list-toolbar .custom-select:focus,
+  .prodex-list-toolbar .form-select:focus,
   .prodex-list-toolbar .vs__dropdown-toggle:focus-within,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) .form-control:focus,
-  .card.wrapper > .card-body > .row.mb-3:has(.form-group) .custom-select:focus,
+  .card.wrapper > .card-body > .row.mb-3:has(.form-group) .form-select:focus,
   .card.wrapper > .card-body > .row.mb-3:has(.form-group) .vs__dropdown-toggle:focus-within {
     border-color: var(--px-primary);
     box-shadow: 0 0 0 3px var(--px-primary-soft);

@@ -51,11 +51,11 @@ export default {
   name: "PxMenu",
   directives: {
     "click-outside": {
-      bind(el, binding) {
+      mounted(el, binding) {
         el.__pxnOutside = e => { if (!el.contains(e.target)) binding.value(e); };
         setTimeout(() => document.addEventListener("click", el.__pxnOutside), 0);
       },
-      unbind(el) { document.removeEventListener("click", el.__pxnOutside); }
+      unmounted(el) { document.removeEventListener("click", el.__pxnOutside); }
     }
   },
   props: {
@@ -63,7 +63,7 @@ export default {
     align: { type: String, default: "end" } // start | end — borde del panel que se alinea con el trigger
   },
   data() { return { isOpen: false, dropUp: false }; },
-  beforeDestroy() { this.teardownListeners(); },
+  beforeUnmount() { this.teardownListeners(); },
   methods: {
     toggle() { this.isOpen ? this.close() : this.open(); },
     open() {

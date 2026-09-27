@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Subscription_Product')" :folder="$t('Subscriptions')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
 
        <b-alert show variant="info">
@@ -42,7 +42,7 @@
         styleClass="table-hover tableOne vgt-table"
       >
        
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <router-link
             class="btn-sm btn btn-primary ripple btn-icon m-1"
             to="/app/subscription_product/store"
@@ -50,12 +50,12 @@
             <span class="ul-btn__icon">
               <lucide-icon name="plus" />
             </span>
-            <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
+            <span class="ul-btn__text ms-1">{{$t('Add')}}</span>
           </router-link>
 
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
           
             <router-link
@@ -72,7 +72,7 @@
           </span>
 
           <div v-else-if="props.column.field == 'status'">
-            <label class="switch switch-primary mr-3">
+            <label class="switch switch-primary me-3">
               <input @change="isChecked(props.row)" type="checkbox" v-model="props.row.status">
               <span class="slider"></span>
             </label>
@@ -87,9 +87,11 @@
 
 
 <script>
+import { vBTooltip, BAlert, BCard } from "@/platform/bootstrap";
+import { confirmDialog, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BAlert, BCard }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Subscriptions"
   },
@@ -119,61 +121,61 @@ export default {
         {
           label: this.$t("Customer"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
          label: this.$t("product_name"),
           field: "product_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("Billing_Cycle"),
           field: "billing_cycle",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("total_cycles"),
           field: "total_cycles",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("remaining_cycles"),
           field: "remaining_cycles",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("next_billing_date"),
           field: "next_billing_date",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Status"),
           field: "status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -257,7 +259,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -305,7 +307,7 @@ export default {
 
     //--------------------------- Remove subscription----------------\\
     Remove_subscription(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"),
         text: this.$t("Delete_Text"),
         type: "warning",
@@ -314,8 +316,8 @@ export default {
         cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"),
         confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios
             .delete("subscriptions/" + id)
             .then(() => {

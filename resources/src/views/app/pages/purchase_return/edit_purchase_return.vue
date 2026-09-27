@@ -70,8 +70,8 @@
               </thead>
               <tbody>
                 <tr v-if="details.length <= 0"><td colspan="9" class="pxpurf__empty">{{ $t('NodataAvailable') }}</td></tr>
-                <template v-for="detail in details">
-                  <tr :key="detail.detail_id" :class="{ 'pxpurf__rowdead': detail.del === 1 || detail.no_unit === 0 }">
+                <template v-for="detail in details" :key="detail.detail_id">
+                  <tr :class="{ 'pxpurf__rowdead': detail.del === 1 || detail.no_unit === 0 }">
                     <td class="pxn-num">{{ detail.detail_id }}</td>
                     <td>
                       <span class="pxn-mono">{{ detail.code }}</span><br />
@@ -177,6 +177,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
@@ -322,7 +323,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -560,7 +561,7 @@ export default {
       if (this.previousInventoryLocationId !== null && this.previousInventoryLocationId !== id) {
         this.details.forEach(d => {
           if (d && d.is_imei && Array.isArray(d.serial_numbers) && d.serial_numbers.length) {
-            this.$set(d, "serial_numbers", []);
+            (d)["serial_numbers"] = [];
           }
         });
       }
@@ -576,8 +577,8 @@ export default {
           this.details.forEach(d => {
             const key = d.product_id + ":" + (d.product_variant_id || 0);
             if (Object.prototype.hasOwnProperty.call(byKey, key)) {
-              this.$set(d, "current_stock", byKey[key]);
-              this.$set(d, "stock", byKey[key]);
+              (d)["current_stock"] = byKey[key];
+              (d)["stock"] = byKey[key];
             }
           });
         })

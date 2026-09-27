@@ -7,7 +7,7 @@
       <div class="d-flex flex-wrap align-items-center">
 
         <!-- Date range (responsive) -->
-        <div class="filter-block date-range-filter mr-3 mb-2 d-flex flex-column">
+        <div class="filter-block date-range-filter me-3 mb-2 d-flex flex-column">
           <label class="mb-1 d-block text-muted">{{ $t('DateRange') }}</label>
           <date-range-picker
             v-model="dateRange"
@@ -20,7 +20,7 @@
           >
             <template v-slot:input="picker">
               <b-button variant="light" class="btn-pill date-btn" :class="{ 'w-100': isMobile }">
-                <lucide-icon class="mr-1" name="calendar-days" />
+                <lucide-icon class="me-1" name="calendar-days" />
                 <span class="d-none d-sm-inline">
                   {{ fmt(picker.startDate) }} — {{ fmt(picker.endDate) }}
                 </span>
@@ -33,7 +33,7 @@
         </div>
 
         <!-- Quick ranges -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('QuickRanges')}}</label>
           <div class="btn-group quick-ranges">
             <b-button size="sm" variant="outline-primary" @click="quick('7d')">7D</b-button>
@@ -45,7 +45,7 @@
         </div>
 
         <!-- Warehouse -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('warehouse')}}</label>
           <b-form-select
             v-model="warehouse_id"
@@ -56,12 +56,12 @@
           />
         </div>
 
-        <div class="ml-auto mb-2 d-flex">
-          <b-button variant="success" class="btn-pill mr-2" @click="exportPDF">
-            <lucide-icon class="mr-1" name="file-text" /> {{$t('Export_PDF')}}
+        <div class="ms-auto mb-2 d-flex">
+          <b-button variant="success" class="btn-pill me-2" @click="exportPDF">
+            <lucide-icon class="me-1" name="file-text" /> {{$t('Export_PDF')}}
           </b-button>
           <b-button variant="primary" class="btn-pill" @click="fetchDrafts">
-            <lucide-icon class="mr-1" name="refresh-cw" /> {{$t('Refresh')}}
+            <lucide-icon class="me-1" name="refresh-cw" /> {{$t('Refresh')}}
           </b-button>
         </div>
       </div>
@@ -92,12 +92,12 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="tableOne table-hover vgt-table mt-3"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
-        </div>
-        <template slot="table-row" slot-scope="props">
+        </div></template>
+        <template #table-row="props">
           <span v-if="['GrandTotal','TaxNet','discount','shipping'].includes(props.column.field)">
             {{ money(props.row[props.column.field]) }}
           </span>
@@ -119,14 +119,14 @@
         </template>
 
         <!-- Footer totals -->
-        <template slot="table-actions-bottom">
+        <template #table-actions-bottom>
           <div class="d-flex justify-content-end w-100 pt-2">
-            <div class="font-weight-bold">
+            <div class="fw-bold">
               {{$t('Totals')}}:
-              <span class="ml-2">{{$t('Amount')}} = {{ money(sumField(rows[0], 'GrandTotal')) }}</span>
-              <span class="ml-3">{{$t('Tax')}} = {{ money(sumField(rows[0], 'TaxNet')) }}</span>
-              <span class="ml-3">{{$t('Discount')}} = {{ money(sumField(rows[0], 'discount')) }}</span>
-              <span class="ml-3">{{$t('Shipping')}} = {{ money(sumField(rows[0], 'shipping')) }}</span>
+              <span class="ms-2">{{$t('Amount')}} = {{ money(sumField(rows[0], 'GrandTotal')) }}</span>
+              <span class="ms-3">{{$t('Tax')}} = {{ money(sumField(rows[0], 'TaxNet')) }}</span>
+              <span class="ms-3">{{$t('Discount')}} = {{ money(sumField(rows[0], 'discount')) }}</span>
+              <span class="ms-3">{{$t('Shipping')}} = {{ money(sumField(rows[0], 'shipping')) }}</span>
             </div>
           </div>
         </template>
@@ -136,11 +136,11 @@
 </template>
 
 <script>
+import { BBadge, BButton, BCard, BCol, BRow, BFormSelect, BSkeletonImg } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import moment from "moment";
-import DateRangePicker from "vue2-daterange-picker";
-import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
+import DateRangePicker from "@/components/DateRangePicker.vue";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
@@ -151,7 +151,7 @@ import {
 
 export default {
   metaInfo: { title: "Draft Invoices Report" },
-  components: { "date-range-picker": DateRangePicker },
+  components: { BSkeletonImg, BFormSelect, BBadge, BButton, BCard, BCol, BRow, "date-range-picker": DateRangePicker },
 
   data() {
     const end = new Date(); const start = new Date(); start.setDate(end.getDate() - 29);
@@ -193,17 +193,17 @@ export default {
     currency(){ return (this.currentUser && this.currentUser.currency) || "USD"; },
     columns() {
       return [
-        { label: this.$t("date"),       field: "date",       sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Number"),     field: "Ref",        sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Customer"),   field: "client",     sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("warehouse"),  field: "warehouse",  sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("User"),       field: "user",       sortable: true, tdClass: "text-left", thClass: "text-left" },
+        { label: this.$t("date"),       field: "date",       sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Number"),     field: "Ref",        sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Customer"),   field: "client",     sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("warehouse"),  field: "warehouse",  sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("User"),       field: "user",       sortable: true, tdClass: "text-start", thClass: "text-start" },
         { label: this.$t("Amount"),     field: "GrandTotal", type: "number", headerField: this.sumAmount,   sortable: true },
         { label: this.$t("Tax"),        field: "TaxNet",     type: "number", headerField: this.sumTax,      sortable: true },
         { label: this.$t("Discount"),   field: "discount",   type: "number", headerField: this.sumDiscount, sortable: true },
         { label: this.$t("Shipping"),   field: "shipping",   type: "number", headerField: this.sumShipping, sortable: true },
         { label: this.$t("AgeDays"),    field: "age_days",   type: "number", sortable: true },
-        { label: this.$t("Action"),     field: "actions",    sortable: false, tdClass: "text-left", thClass: "text-left" },
+        { label: this.$t("Action"),     field: "actions",    sortable: false, tdClass: "text-start", thClass: "text-start" },
       ];
     },
   },
@@ -517,7 +517,7 @@ export default {
     this.handleResize();
     window.addEventListener('resize', this.handleResize);
   },
-  beforeDestroy(){
+  beforeUnmount(){
     window.removeEventListener('resize', this.handleResize);
   },
 

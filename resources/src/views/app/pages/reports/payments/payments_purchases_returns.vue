@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('payments_Purchases_Return')" :folder="$t('Reports')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
      <b-col md="12" class="text-center" v-if="!isLoading">
         <date-range-picker 
@@ -68,7 +68,7 @@
       }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field === 'Ref_return' && props.row.purchase_return_id">
             <router-link :to="{ name: 'detail_purchase_return', params: { id: props.row.purchase_return_id } }" class="text-primary">
               {{ props.formattedRow[props.column.field] }}
@@ -76,7 +76,7 @@
           </span>
           <span v-else>{{ props.formattedRow[props.column.field] }}</span>
         </template>
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
             <lucide-icon name="filter" />
             {{ $t("Filter") }}
@@ -97,7 +97,7 @@
               >
               <lucide-icon name="file-spreadsheet" /> EXCEL
           </vue-excel-xlsx>
-        </div>
+        </div></template>
       </vue-good-table>
     </b-card>
 
@@ -175,25 +175,25 @@
 
 
 <script>
+import { BSidebar, vBToggle, BButton, BCard, BCol, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import DateRangePicker from 'vue2-daterange-picker'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 //you need to import the CSS manually
-import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
 import moment from 'moment'
-import VueApexCharts from "vue-apexcharts";
+import VueApexCharts from "vue3-apexcharts";
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
   getPriceFormatSetting,
   getPriceDecimals
 } from "../../../../../utils/priceFormat";
 
-export default {
+export default { directives: { 'b-toggle': vBToggle },
   metaInfo: {
     title: "Payments Purchase returns"
   },
-  components: { DateRangePicker, apexchart: VueApexCharts },
+  components: { BFormGroup, BFormInput, BButton, BCard, BCol, BRow, BSidebar, DateRangePicker, apexchart: VueApexCharts },
   data() {
     return {
       isLoading: true,
@@ -256,38 +256,38 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Return"),
           field: "Ref_return",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Supplier"),
           field: "provider_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("ModePaiement"),
           field: "payment_method",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Account"),
           field: "account_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
@@ -295,14 +295,14 @@ export default {
           field: "montant",
           // Let headerField return a formatted string; avoid vue-good-table's decimal re-formatting.
           headerField: this.sumCount,
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("AddedBy"),
           field: "user_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

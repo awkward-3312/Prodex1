@@ -1,11 +1,11 @@
 <template>
   <div class="main-content">
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="billing-page">
       <div class="mb-3">
         <router-link to="/app/billing/change-plan" class="text-muted small text-decoration-none">
-          <lucide-icon name="arrow-left" class="mr-1" /> {{ $t('Back_to_plans') || 'Back to plans' }}
+          <lucide-icon name="arrow-left" class="me-1" /> {{ $t('Back_to_plans') || 'Back to plans' }}
         </router-link>
       </div>
 
@@ -23,7 +23,7 @@
               {{ $t('Pending_upgrade_checkout_block') || 'You cannot submit a new request until the pending one is processed or cancelled.' }}
             </p>
             <router-link to="/app/billing/current-plan" class="btn btn-outline-secondary btn-sm">
-              <lucide-icon name="arrow-left" class="mr-1" /> {{ $t('Back_to_plan') || 'Back to Current Plan' }}
+              <lucide-icon name="arrow-left" class="me-1" /> {{ $t('Back_to_plan') || 'Back to Current Plan' }}
             </router-link>
           </div>
         </div>
@@ -33,27 +33,27 @@
         <!-- Order summary (right on desktop) -->
         <div class="col-lg-5 order-lg-2 mb-4">
           <div class="billing-card sticky-card">
-            <div class="billing-card-header"><lucide-icon name="receipt" class="mr-2" />{{ $t('Order_Summary') || 'Order Summary' }}</div>
+            <div class="billing-card-header"><lucide-icon name="receipt" class="me-2" />{{ $t('Order_Summary') || 'Order Summary' }}</div>
             <div class="billing-card-body">
-              <div class="summary-row"><span class="text-muted">{{ $t('Plan') || 'Plan' }}</span><span class="fw-bold">{{ plan.name }}</span></div>
-              <div class="summary-row"><span class="text-muted">{{ $t('Billing_Cycle') || 'Billing Cycle' }}</span><span class="fw-bold">{{ selectedCycleLabel }}</span></div>
+              <div class="summary-row"><span class="text-muted">{{ $t('Plan') || 'Plan' }}</span><span>{{ plan.name }}</span></div>
+              <div class="summary-row"><span class="text-muted">{{ $t('Billing_Cycle') || 'Billing Cycle' }}</span><span>{{ selectedCycleLabel }}</span></div>
               <hr>
-              <div class="summary-row"><span class="text-muted">{{ $t('Subtotal') || 'Subtotal' }}</span><span class="fw-bold">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</span></div>
-              <div class="summary-row"><span class="text-muted">{{ $t('Tax') || 'Tax' }}</span><span class="fw-bold">{{ currencySymbol }}0.00</span></div>
+              <div class="summary-row"><span class="text-muted">{{ $t('Subtotal') || 'Subtotal' }}</span><span>{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</span></div>
+              <div class="summary-row"><span class="text-muted">{{ $t('Tax') || 'Tax' }}</span><span>{{ currencySymbol }}0.00</span></div>
               <hr>
               <div class="summary-row">
-                <span class="fw-bold summary-total-label">{{ $t('Total') || 'Total' }}</span>
-                <span class="fw-bold text-primary summary-total-amount">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</span>
+                <span class="summary-total-label">{{ $t('Total') || 'Total' }}</span>
+                <span class="text-primary summary-total-amount">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</span>
               </div>
               <div v-if="paddleReady" class="paddle-preview-box mt-3">
                 <div class="d-flex justify-content-between align-items-start">
                   <div>
-                    <div class="small fw-bold">Paddle Sandbox</div>
+                    <div class="small">Paddle Sandbox</div>
                     <div class="text-muted tiny-text">Precio internacional estimado</div>
                   </div>
-                  <div class="text-right">
+                  <div class="text-end">
                     <span v-if="paddlePreviewLoading" class="spinner-border spinner-border-sm"></span>
-                    <span v-else class="fw-bold">{{ paddlePreviewDisplay || paddleFallbackPrice }}</span>
+                    <span v-else>{{ paddlePreviewDisplay || paddleFallbackPrice }}</span>
                   </div>
                 </div>
                 <p class="mb-0 mt-2 text-muted tiny-text">
@@ -63,14 +63,14 @@
               </div>
 
               <div v-if="isUpgrade !== null" class="upgrade-note mt-3">
-                <lucide-icon name="info" class="mr-1" />
+                <lucide-icon name="info" class="me-1" />
                 <span v-if="isUpgrade">{{ $t('Upgrade_note') || 'Your current plan will be replaced immediately after payment.' }}</span>
                 <span v-else>{{ $t('Downgrade_note') || 'Your new plan will start immediately after payment.' }}</span>
               </div>
 
               <!-- Plan features summary -->
               <div class="mt-3 pt-3 summary-included">
-                <div class="small fw-bold text-muted text-uppercase mb-2">{{ $t('Included') || 'Included' }}</div>
+                <div class="small text-muted text-uppercase mb-2">{{ $t('Included') || 'Included' }}</div>
                 <div v-for="(limit, key) in plan.limits" :key="'l'+key" class="d-flex align-items-center gap-1 mb-1 small">
                   <lucide-icon name="check" class="text-success" /> {{ limit.display }} {{ limit.label }}
                 </div>
@@ -86,30 +86,30 @@
         <div class="col-lg-7 order-lg-1">
           <!-- Billing cycle -->
           <div class="billing-card mb-4">
-            <div class="billing-card-header"><lucide-icon name="calendar" class="mr-2" />{{ $t('Billing_Cycle') || 'Billing Cycle' }}</div>
+            <div class="billing-card-header"><lucide-icon name="calendar" class="me-2" />{{ $t('Billing_Cycle') || 'Billing Cycle' }}</div>
             <div class="billing-card-body">
               <div class="d-flex gap-3">
                 <label :class="['cycle-option flex-fill', { selected: selectedCycle === 'monthly' }]">
                   <input type="radio" v-model="selectedCycle" value="monthly" class="d-none">
                   <div class="cycle-card">
                     <div>
-                      <div class="fw-bold">{{ $t('Monthly') || 'Monthly' }}</div>
+                      <div>{{ $t('Monthly') || 'Monthly' }}</div>
                       <div class="text-muted small">{{ $t('Billed_monthly') || 'Billed every month' }}</div>
                     </div>
-                    <span class="fw-bold">{{ currencySymbol }}{{ plan.price.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ plan.price.toFixed(2) }}</span>
                   </div>
                 </label>
                 <label :class="['cycle-option flex-fill', { selected: selectedCycle === 'yearly' }]">
                   <input type="radio" v-model="selectedCycle" value="yearly" class="d-none">
                   <div class="cycle-card">
                     <div>
-                      <div class="fw-bold">
+                      <div>
                         {{ $t('Yearly') || 'Yearly' }}
                         <span v-if="plan.savings_percent > 0" class="save-chip">-{{ plan.savings_percent }}%</span>
                       </div>
                       <div class="text-muted small">{{ $t('Billed_annually') || 'Billed annually' }}</div>
                     </div>
-                    <span class="fw-bold">{{ currencySymbol }}{{ plan.yearly_price.toFixed(2) }}</span>
+                    <span>{{ currencySymbol }}{{ plan.yearly_price.toFixed(2) }}</span>
                   </div>
                 </label>
               </div>
@@ -118,7 +118,7 @@
 
           <!-- Payment gateway -->
           <div class="billing-card mb-4">
-            <div class="billing-card-header"><lucide-icon name="credit-card" class="mr-2" />{{ $t('Payment_Method') || 'Payment Method' }}</div>
+            <div class="billing-card-header"><lucide-icon name="credit-card" class="me-2" />{{ $t('Payment_Method') || 'Payment Method' }}</div>
             <div class="billing-card-body">
               <div v-if="gateways.length === 0" class="text-center py-4">
                 <lucide-icon name="alert-triangle" class="text-warning no-gateways-icon" />
@@ -134,7 +134,7 @@
                         <lucide-icon :name="mapGatewayIcon(gw.icon)" :style="{ color: gw.color }" />
                       </div>
                       <div>
-                        <div class="fw-bold small">{{ gw.label }}</div>
+                        <div class="small">{{ gw.label }}</div>
                         <div class="text-muted gateway-description">
                           {{ gatewayDescription(gw) }}
                         </div>
@@ -149,12 +149,12 @@
 
           <!-- Bank Transfer Details (shown only when offline is selected) -->
           <div v-if="isOfflinePayment" class="billing-card mb-4">
-            <div class="billing-card-header"><lucide-icon name="landmark" class="mr-2" />{{ $t('Bank_Transfer_Details') || 'Bank Transfer Details' }}</div>
+            <div class="billing-card-header"><lucide-icon name="landmark" class="me-2" />{{ $t('Bank_Transfer_Details') || 'Bank Transfer Details' }}</div>
             <div class="billing-card-body">
               <!-- Amount to transfer -->
               <div class="offline-amount-box mb-3">
                 <p class="mb-1 text-muted small-label">{{ $t('Amount_to_Transfer') || 'Amount to Transfer' }}</p>
-                <p class="mb-0 fw-bold amount-value">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</p>
+                <p class="mb-0 amount-value">{{ currencySymbol }}{{ displayAmount }} {{ currencyCode }}</p>
               </div>
 
               <!-- Bank details grid -->
@@ -187,7 +187,7 @@
 
               <!-- Instructions -->
               <div v-if="bankDetails.instructions" class="bank-instructions mb-3">
-                <p class="mb-1 fw-bold small-label">{{ $t('Instructions') || 'Instructions' }}</p>
+                <p class="mb-1 small-label">{{ $t('Instructions') || 'Instructions' }}</p>
                 <p class="mb-0 text-muted small-text">{{ bankDetails.instructions }}</p>
               </div>
 
@@ -201,8 +201,8 @@
 
               <!-- Proof of payment upload -->
               <div class="mb-2">
-                <label class="fw-bold small-label mb-2">
-                  <lucide-icon name="upload" class="mr-1" /> {{ $t('Upload_Proof') || 'Upload Proof of Payment' }} <span class="text-danger">*</span>
+                <label class="small-label mb-2">
+                  <lucide-icon name="upload" class="me-1" /> {{ $t('Upload_Proof') || 'Upload Proof of Payment' }} <span class="text-danger">*</span>
                 </label>
                 <div class="offline-upload-area"
                   @click="$refs.proofInput.click()"
@@ -213,12 +213,12 @@
                   <input ref="proofInput" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" class="d-none" @change="onProofSelected">
                   <div v-if="!proofFile" class="text-center">
                     <lucide-icon name="upload" class="upload-icon" />
-                    <p class="mb-1 fw-bold small-label">{{ $t('Click_or_drag') || 'Click or drag file here' }}</p>
+                    <p class="mb-1 small-label">{{ $t('Click_or_drag') || 'Click or drag file here' }}</p>
                     <p class="mb-0 text-muted tiny-text">{{ $t('File_formats') || 'JPG, PNG, WebP or PDF (max 5MB)' }}</p>
                   </div>
                   <div v-else class="text-center">
                     <lucide-icon name="file-text" class="upload-icon-success" />
-                    <p class="mb-0 fw-bold small-label">{{ proofFile.name }}</p>
+                    <p class="mb-0 small-label">{{ proofFile.name }}</p>
                     <button type="button" class="btn btn-sm btn-outline-danger mt-2" @click.stop="removeProof">
                       <lucide-icon name="x" /> {{ $t('Remove') || 'Remove' }}
                     </button>
@@ -230,12 +230,12 @@
 
           <!-- Submit -->
           <button v-if="gateways.length > 0" @click="submitPayment" :disabled="processing" class="btn btn-primary w-100 py-2">
-            <span v-if="processing" class="spinner-border spinner-border-sm mr-2"></span>
-            <lucide-icon v-else name="lock" class="mr-1" />
+            <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
+            <lucide-icon v-else name="lock" class="me-1" />
             {{ processing ? ($t('Processing') || 'Processing...') : submitButtonText }}
           </button>
           <p class="text-center text-muted small mt-3">
-            <lucide-icon name="lock" class="mr-1" />
+            <lucide-icon name="lock" class="me-1" />
             {{ paymentSecurityText }}
           </p>
         </div>
@@ -245,6 +245,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import axios from "axios";
 
 export default {
@@ -368,7 +369,7 @@ export default {
       this.loading = false;
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true,

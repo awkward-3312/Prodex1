@@ -19,21 +19,15 @@
     }
   ];
 
-  function nearestVueVm(el) {
-    var node = el;
-    while (node) {
-      if (node.__vue__ && Array.isArray(node.__vue__.permissions)) return node.__vue__;
-      node = node.parentElement;
-    }
-
-    var all = document.querySelectorAll('*');
-    for (var i = 0; i < all.length; i++) {
-      if (all[i].__vue__ && Array.isArray(all[i].__vue__.permissions)) return all[i].__vue__;
-    }
-    return null;
+  // Editor de permisos explícito: quien renderiza el formulario de roles lo registra con
+  // window.__prodexBridge.registerPermissionEditor({ get(): string[], set(next: string[]) }).
+  // Antes se buscaba en el DOM la instancia interna de Vue que tuviera un array `permissions`.
+  function permissionEditor() {
+    var bridge = window.__prodexBridge;
+    return bridge && typeof bridge.permissionEditor === 'function' ? bridge.permissionEditor() : null;
   }
 
-  function installDefinition(definition, row, vm) {
+  function installDefinition(definition, row, editor) {
     if (document.getElementById(definition.id)) return;
 
     var col = document.createElement('div');
@@ -48,13 +42,13 @@
     ].join('');
 
     var input = col.querySelector('input');
-    input.checked = vm.permissions.indexOf(definition.permission) !== -1;
+    input.checked = editor.get().indexOf(definition.permission) !== -1;
     input.addEventListener('change', function () {
-      var next = vm.permissions.slice();
+      var next = editor.get().slice();
       var index = next.indexOf(definition.permission);
       if (input.checked && index === -1) next.push(definition.permission);
       if (!input.checked && index !== -1) next.splice(index, 1);
-      vm.permissions = next;
+      editor.set(next);
     });
 
     row.appendChild(col);
@@ -66,7 +60,7 @@
         window.clearInterval(timer);
         return;
       }
-      input.checked = vm.permissions.indexOf(definition.permission) !== -1;
+      input.checked = editor.get().indexOf(definition.permission) !== -1;
     }, 250);
   }
 
@@ -77,11 +71,11 @@
     var row = anchor.closest('.row');
     if (!row) return;
 
-    var vm = nearestVueVm(anchor);
-    if (!vm) return;
+    var editor = permissionEditor();
+    if (!editor) return;
 
     DEFINITIONS.forEach(function (definition) {
-      installDefinition(definition, row, vm);
+      installDefinition(definition, row, editor);
     });
   }
 

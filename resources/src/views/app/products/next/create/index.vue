@@ -168,32 +168,33 @@
                 <draggable
                   v-else
                   v-model="productGalleryItems"
+                  item-key="_uid"
                   handle=".pxc-gal__handle"
                   class="pxc-gal"
                   @end="touchProductGalleryOrder"
                 >
-                  <div
-                    v-for="(row, idx) in productGalleryItems"
-                    :key="row._uid"
-                    class="pxc-gal__item"
-                    :class="{ 'is-main': row.is_main }"
-                  >
-                    <span class="pxc-gal__handle" title="Reordenar"><lucide-icon name="grip-vertical" :size="16" /></span>
-                    <button
-                      type="button"
-                      class="pxc-gal__thumb pxn-ring"
+                  <template #item="{ element: row, index: idx }">
+                    <div
+                      class="pxc-gal__item"
                       :class="{ 'is-main': row.is_main }"
-                      title="Marcar como principal"
-                      @click="setProductGalleryMain(row)"
                     >
-                      <img :src="row.url" alt="" />
-                    </button>
-                    <div class="pxc-gal__meta">
-                      <div class="pxc-gal__name">{{ row.image_path }}</div>
-                      <px-badge v-if="row.is_main" tone="success" icon="check">Imagen principal</px-badge>
+                      <span class="pxc-gal__handle" title="Reordenar"><lucide-icon name="grip-vertical" :size="16" /></span>
+                      <button
+                        type="button"
+                        class="pxc-gal__thumb pxn-ring"
+                        :class="{ 'is-main': row.is_main }"
+                        title="Marcar como principal"
+                        @click="setProductGalleryMain(row)"
+                      >
+                        <img :src="row.url" alt="" />
+                      </button>
+                      <div class="pxc-gal__meta">
+                        <div class="pxc-gal__name">{{ row.image_path }}</div>
+                        <px-badge v-if="row.is_main" tone="success" icon="check">Imagen principal</px-badge>
+                      </div>
+                      <px-button type="button" variant="danger" size="sm" icon-only icon="x" aria-label="Quitar" @click="removeProductGalleryRow(idx)" />
                     </div>
-                    <px-button type="button" variant="danger" size="sm" icon-only icon="x" aria-label="Quitar" @click="removeProductGalleryRow(idx)" />
-                  </div>
+                  </template>
                 </draggable>
               </px-card>
 
@@ -798,6 +799,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import draggable from "vuedraggable";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
@@ -1053,10 +1055,10 @@ export default {
           this.product.assigned_category_ids = Array.isArray(p.assigned_category_ids) ? p.assigned_category_ids.slice() : [];
           this.product.assigned_subcategory_ids = Array.isArray(p.assigned_subcategory_ids) ? p.assigned_subcategory_ids.slice() : [];
           if ((!this.product.assigned_category_ids || !this.product.assigned_category_ids.length) && p.category_id) {
-            this.$set(this.product, "assigned_category_ids", [p.category_id]);
+            (this.product)["assigned_category_ids"] = [p.category_id];
           }
           if ((!this.product.assigned_subcategory_ids || !this.product.assigned_subcategory_ids.length) && p.sub_category_id) {
-            this.$set(this.product, "assigned_subcategory_ids", [p.sub_category_id]);
+            (this.product)["assigned_subcategory_ids"] = [p.sub_category_id];
           }
           this.syncLegacyCategoryFields();
           this.product.TaxNet = p.TaxNet != null ? p.TaxNet : this.product.TaxNet;
@@ -1136,7 +1138,7 @@ export default {
     this._onScrollSpy = () => this.updateActiveSection();
     window.addEventListener("scroll", this._onScrollSpy, true);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     if (this._onScrollSpy) window.removeEventListener("scroll", this._onScrollSpy, true);
     (this.productGalleryItems || []).forEach(r => {
       if (r && r.url && r.url.indexOf("blob:") === 0) {
@@ -1192,7 +1194,7 @@ export default {
       this.productGalleryItems.splice(index, 1);
       this.touchProductGalleryOrder();
       if (!this.productGalleryItems.some(r => r.is_main) && this.productGalleryItems.length) {
-        this.$set(this.productGalleryItems[0], "is_main", true);
+        (this.productGalleryItems[0])["is_main"] = true;
       }
     },
     onProductGalleryFilesSelected(e) {
@@ -1210,7 +1212,7 @@ export default {
       });
       this.touchProductGalleryOrder();
       if (!this.productGalleryItems.some(r => r.is_main) && this.productGalleryItems.length) {
-        this.$set(this.productGalleryItems[0], "is_main", true);
+        (this.productGalleryItems[0])["is_main"] = true;
       }
       e.target.value = "";
     },
@@ -1284,8 +1286,8 @@ export default {
       const s = Array.isArray(this.product.assigned_subcategory_ids) ? this.product.assigned_subcategory_ids : [];
       const firstCat = c.length ? c[0] : "";
       const firstSub = s.length ? s[0] : "";
-      this.$set(this.product, "category_id", firstCat === "" || firstCat == null ? "" : firstCat);
-      this.$set(this.product, "sub_category_id", firstSub === "" || firstSub == null ? "" : firstSub);
+      (this.product)["category_id"] = firstCat === "" || firstCat == null ? "" : firstCat;
+      (this.product)["sub_category_id"] = firstSub === "" || firstSub == null ? "" : firstSub;
     },
     pruneInvalidSubcategories() {
       const catSet = new Set((this.product.assigned_category_ids || []).map(id => String(id)));
@@ -1296,7 +1298,7 @@ export default {
         return sc && catSet.has(String(sc.category_id));
       });
       if (filtered.length !== subs.length) {
-        this.$set(this.product, "assigned_subcategory_ids", filtered);
+        (this.product)["assigned_subcategory_ids"] = filtered;
       }
     },
 
@@ -1385,12 +1387,12 @@ export default {
         event.target.value = "";
         return;
       }
-      this.$set(variant, "imageFile", file);
-      this.$set(variant, "imagePreview", URL.createObjectURL(file));
+      (variant)["imageFile"] = file;
+      (variant)["imagePreview"] = URL.createObjectURL(file);
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
 
     GetElements() {
@@ -1421,10 +1423,10 @@ export default {
           this.locationsByWarehouse = byWh;
 
           (response.data.warehouses || []).forEach(wh => {
-            this.$set(this.product.warehouses, wh.id, {
+            (this.product.warehouses)[wh.id] = {
               qte: wh.qte,
               warehouse_location_id: null
-            });
+            };
           });
 
           this.isLoading = false;
@@ -1568,7 +1570,7 @@ export default {
             this.categories.push(newCategory);
             const arr = Array.isArray(this.product.assigned_category_ids) ? [...this.product.assigned_category_ids] : [];
             if (!arr.map(String).includes(String(newCategory.id))) arr.push(newCategory.id);
-            this.$set(this.product, "assigned_category_ids", arr);
+            (this.product)["assigned_category_ids"] = arr;
             this.syncLegacyCategoryFields();
           } else {
             await this.refreshCategories();
@@ -1576,7 +1578,7 @@ export default {
             if (match) {
               const arr = Array.isArray(this.product.assigned_category_ids) ? [...this.product.assigned_category_ids] : [];
               if (!arr.map(String).includes(String(match.id))) arr.push(match.id);
-              this.$set(this.product, "assigned_category_ids", arr);
+              (this.product)["assigned_category_ids"] = arr;
               this.syncLegacyCategoryFields();
             }
           }
@@ -1734,7 +1736,7 @@ export default {
             const wid = newLoc.warehouse_id;
             const label = newLoc.name ? `${newLoc.code} - ${newLoc.name}` : newLoc.code;
             this.warehouse_locations.push(newLoc);
-            if (!this.locationsByWarehouse[wid]) this.$set(this.locationsByWarehouse, wid, []);
+            if (!this.locationsByWarehouse[wid]) (this.locationsByWarehouse)[wid] = [];
             this.locationsByWarehouse[wid].push({ id: newLoc.id, label });
             if (this.product && this.product.warehouses && this.product.warehouses[wid]) {
               this.product.warehouses[wid].warehouse_location_id = newLoc.id;

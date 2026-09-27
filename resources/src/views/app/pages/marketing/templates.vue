@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="pageTitle" :folder="$t('Marketing_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -17,13 +17,13 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="New_Template()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
             <lucide-icon name="plus" /> {{ $t('New_Template') }}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
             <a @click="Duplicate_Template(props.row.id)" class="cursor-pointer" :title="$t('Duplicate')" v-b-tooltip.hover>
               <lucide-icon class="text-25 text-info" name="copy" />
@@ -39,17 +39,17 @@
       </vue-good-table>
     </b-card>
 
-    <validation-observer ref="Template_Form">
+    <px-validation-observer ref="Template_Form">
       <b-modal hide-footer size="lg" id="New_Template" :title="editmode ? $t('Edit_Template') : $t('New_Template')">
         <b-form @submit.prevent="Submit_Template">
           <b-row>
             <b-col md="8">
-              <validation-provider name="name" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="name" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Template_Name') + ' *'">
                   <b-form-input :state="getValidationState(validationContext)" v-model="template.name"></b-form-input>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <b-col md="4">
               <b-form-group :label="$t('Category')">
@@ -62,31 +62,33 @@
               </b-form-group>
             </b-col>
             <b-col md="12">
-              <validation-provider name="content" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="content" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Message_Content') + ' *'">
                   <b-form-textarea :rows="templateType === 'email' ? 8 : 4" :state="getValidationState(validationContext)" v-model="template.content"></b-form-textarea>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
               <small class="text-muted">{{ $t('Available_Variables') }}: {customer_name} {phone} {email} {last_purchase} {total_spent}</small>
             </b-col>
             <b-col md="12" class="mt-3">
               <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-                <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('submit') }}
+                <lucide-icon class="me-2 fw-bold" name="check" /> {{ $t('submit') }}
               </b-button>
               <div v-if="SubmitProcessing" class="spinner sm spinner-primary mt-3"></div>
             </b-col>
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 
 <script>
+import { BFormGroup, BFormInput, BFormTextarea, BFormInvalidFeedback, vBTooltip, BModal, BButton, BCard, BCol, BRow, BForm } from "@/platform/bootstrap";
+import { confirmDialog, modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip }, components: { BForm, BButton, BCard, BCol, BRow, BModal, BFormGroup, BFormInput, BFormTextarea, BFormInvalidFeedback },
   metaInfo: { title: "Templates" },
   data() {
     return {
@@ -109,9 +111,9 @@ export default {
     },
     columns() {
       return [
-        { label: this.$t("Template_Name"), field: "name", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Category"), field: "category", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("Template_Name"), field: "name", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Category"), field: "category", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     }
   },
@@ -124,7 +126,7 @@ export default {
   methods: {
     empty_template() { return { id: "", name: "", category: "", subject: "", content: "" }; },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title: title, variant: variant, solid: true }); },
     updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
     onPageChange({ currentPage }) {
       if (this.serverParams.page !== currentPage) { this.updateParams({ page: currentPage }); this.Get_Templates(currentPage); }
@@ -138,8 +140,8 @@ export default {
     },
     onSearch(value) { this.search = value.searchTerm; this.Get_Templates(this.serverParams.page); },
 
-    New_Template() { this.template = this.empty_template(); this.editmode = false; this.$bvModal.show("New_Template"); },
-    Edit_Template(row) { this.template = { ...this.empty_template(), ...row }; this.editmode = true; this.$bvModal.show("New_Template"); },
+    New_Template() { this.template = this.empty_template(); this.editmode = false; modals.show("New_Template"); },
+    Edit_Template(row) { this.template = { ...this.empty_template(), ...row }; this.editmode = true; modals.show("New_Template"); },
 
     Duplicate_Template(id) {
       axios.post("marketing/templates/" + id + "/duplicate").then(() => {
@@ -182,7 +184,7 @@ export default {
           : axios.post("marketing/templates", payload);
         req.then(() => {
           this.SubmitProcessing = false;
-          this.$bvModal.hide("New_Template");
+          modals.hide("New_Template");
           this.makeToast("success", this.$t(this.editmode ? "Updated_in_successfully" : "Created_in_successfully"), this.$t("Success"));
           this.Get_Templates(this.serverParams.page);
         }).catch(() => {
@@ -193,12 +195,12 @@ export default {
     },
 
     Remove_Template(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete("marketing/templates/" + id).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             this.Get_Templates(this.serverParams.page);

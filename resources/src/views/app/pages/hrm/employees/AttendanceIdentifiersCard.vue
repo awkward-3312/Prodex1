@@ -44,7 +44,7 @@
           <b-form-input v-model.trim="form.external_user_id" placeholder="Ej. 0042" />
         </b-form-group>
         <b-button block variant="outline-primary" :disabled="saving || !form.external_user_id" @click="saveIdentifier">
-          <lucide-icon name="link" class="mr-1" /> {{ saving ? 'Vinculando...' : 'Vincular código' }}
+          <lucide-icon name="link" class="me-1" /> {{ saving ? 'Vinculando...' : 'Vincular código' }}
         </b-button>
       </div>
 
@@ -56,7 +56,9 @@
 </template>
 
 <script>
-export default {
+import { BFormGroup, BButton, BCard, BFormInput } from "@/platform/bootstrap";
+import { confirmDialog, notifications } from "@/platform";
+export default { components: { BFormInput, BButton, BCard, BFormGroup },
   props: {
     employeeId: { type: [Number, String], required: true }
   },
@@ -114,15 +116,15 @@ export default {
         .finally(() => { this.saving = false; });
     },
     removeIdentifier(identifier) {
-      this.$swal({
+      confirmDialog({
         title: 'Eliminar vínculo',
         text: 'Los marcajes ya almacenados se conservarán, pero este código dejará de identificar automáticamente al empleado.',
         type: 'warning',
         showCancelButton: true,
         confirmButtonText: 'Eliminar',
         cancelButtonText: 'Cancelar'
-      }).then(result => {
-        if (!result.value) return;
+      }).then((confirmed) => {
+        if (!confirmed) return;
         axios.delete(`/employees/${this.employeeId}/attendance-identifiers/${identifier.id}`)
           .then(() => this.load())
           .catch(() => this.toast('danger', 'No se pudo eliminar el vínculo.', 'Error'));
@@ -133,7 +135,7 @@ export default {
       return option ? option.label : provider;
     },
     toast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     }
   }
 };

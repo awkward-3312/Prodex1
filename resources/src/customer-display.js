@@ -1,4 +1,5 @@
-import Vue from 'vue';
+import { h } from 'vue';
+import { mountWithRouter } from './platform/mount';
 import CustomerDisplay from './views/app/pages/customer/CustomerDisplay.vue';
 
 // Lightweight boot: avoid pulling the entire app store/router
@@ -10,18 +11,15 @@ window.axios.defaults.withCredentials = true;
 window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 // i18n setup (reuse shared loader)
-import VueI18n from 'vue-i18n';
-Vue.use(VueI18n);
 import { loadI18n } from './plugins/i18n.loader';
+import { createEventBus } from './platform/events.js';
 
 // Optional: global event bus if needed later
-window.CD = new Vue();
+window.CD = createEventBus();
 
 loadI18n().then((i18n) => {
-  new Vue({
-    i18n,
-    render: h => h(CustomerDisplay),
-  }).$mount('#customer-display');
+  // Sin router: `mountWithRouter` crea la `app` real de Vue 3 igual (createApp), solo se instala i18n sobre ella.
+  const app = mountWithRouter({ render: () => h(CustomerDisplay) });
+  app.use(i18n);
+  app.mount('#customer-display');
 });
-
-

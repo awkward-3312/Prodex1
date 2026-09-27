@@ -157,8 +157,8 @@
                     </tr>
                   </thead>
                   <tbody>
-                    <template v-for="(row, idx) in previewRows">
-                      <tr :key="'prv-' + idx">
+                    <template v-for="(row, idx) in previewRows" :key="'prv-' + idx">
+                      <tr>
                         <td class="pxn-num">{{ idx + 1 }}</td>
                         <td>
                           <span class="pxn-mono">{{ row.code }}</span>
@@ -282,6 +282,7 @@
 
 
 <script>
+import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
@@ -986,7 +987,7 @@ export default {
     //------------------------------ Batch handling -------------------------\\
     add_batch(row) {
       if (!Array.isArray(row.batches)) {
-        this.$set(row, "batches", []);
+        (row)["batches"] = [];
       }
       row.batches.push({
         batch_no: "",
@@ -1025,7 +1026,7 @@ export default {
       if (firstDot !== -1) {
         s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
       }
-      this.$set(batchRow, field, s);
+      (batchRow)[field] = s;
     },
 
     //------------------------------ Serial handling -------------------------\\
@@ -1166,7 +1167,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

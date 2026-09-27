@@ -99,6 +99,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -276,7 +277,7 @@ export default {
         title: "Informes / Detalle de existencias — " + (this.product.name || "") + " · " + t.label,
         headers, rows, landscape: true
       });
-      if (!ok) this.$root.$bvToast.toast("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
+      if (!ok) notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
     }
   }
 };

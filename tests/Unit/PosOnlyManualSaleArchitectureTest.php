@@ -186,8 +186,9 @@ class PosOnlyManualSaleArchitectureTest extends TestCase
 
         $this->assertStringContainsString('beforeEnter: redirectManualSaleToPos', $router);
         $this->assertStringContainsString('function redirectManualSaleToPos', $router);
-        $this->assertStringContainsString('next({ path: "/app/pos" })', $router);
-        $this->assertStringContainsString('next({ name: "index_sales" })', $router);
+        // Vue Router 4: el guard devuelve la ubicación de redirección (antes `next(location)`).
+        $this->assertStringContainsString('return { path: "/app/pos" }', $router);
+        $this->assertStringContainsString('return { name: "index_sales" }', $router);
     }
 
     // ------------------------------------------------------------------

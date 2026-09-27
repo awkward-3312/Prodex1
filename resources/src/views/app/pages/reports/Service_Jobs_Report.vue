@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Service_Jobs_Report')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else class="print-table-only">
       <b-row class="mb-3">
@@ -52,18 +52,19 @@
         :pagination-options="{ enabled: true, mode: 'records' }"
         styleClass="tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
-        </div>
+        </div></template>
       </vue-good-table>
     </b-card>
   </div>
 </template>
 
 <script>
-export default {
+import { BButton, BCard, BCol, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
+export default { components: { BFormGroup, BFormInput, BButton, BCard, BCol, BRow },
   name: 'ServiceJobsReport',
   data() {
     return {
@@ -148,7 +149,7 @@ export default {
       // Table Header
       tableHtml += `<thead><tr>`;
       this.columns.forEach(col => {
-        tableHtml += `<th class="text-left">${col.label}</th>`;
+        tableHtml += `<th class="text-start">${col.label}</th>`;
       });
       tableHtml += `</tr></thead>`;
 
@@ -158,7 +159,7 @@ export default {
         tableHtml += `<tr>`;
         this.columns.forEach(col => {
           let cellContent = row[col.field] || '';
-          tableHtml += `<td class="text-left">${cellContent}</td>`;
+          tableHtml += `<td class="text-start">${cellContent}</td>`;
         });
         tableHtml += `</tr>`;
       });

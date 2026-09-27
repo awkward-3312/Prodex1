@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Marketing_Settings')" :folder="$t('Marketing_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-form @submit.prevent="Save_Settings" v-if="!isLoading">
       <b-row>
         <!-- SMS Provider -->
@@ -66,7 +66,7 @@
 
         <b-col md="12">
           <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-            <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('Save_Settings') }}
+            <lucide-icon class="me-2 fw-bold" name="check" /> {{ $t('Save_Settings') }}
           </b-button>
           <div v-if="SubmitProcessing" class="spinner sm spinner-primary mt-3"></div>
         </b-col>
@@ -76,7 +76,9 @@
 </template>
 
 <script>
-export default {
+import { BFormGroup, BFormInput, BFormCheckbox, BFormSelect, BFormSelectOption, BButton, BCard, BCol, BRow, BForm } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
+export default { components: { BForm, BButton, BCard, BCol, BRow, BFormGroup, BFormInput, BFormCheckbox, BFormSelect, BFormSelectOption },
   metaInfo: { title: "Marketing Settings" },
   data() {
     return {
@@ -86,7 +88,7 @@ export default {
     };
   },
   methods: {
-    makeToast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true }); },
+    makeToast(variant, msg, title) { notifications.notify(msg, { title: title, variant: variant, solid: true }); },
     Get_Settings() {
       axios.get("marketing/settings").then(({ data }) => {
         this.settings = data.settings || {};

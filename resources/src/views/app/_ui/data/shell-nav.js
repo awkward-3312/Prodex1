@@ -456,6 +456,8 @@ export const SHELL_ROUTE_DOMAINS = [
   { prefix: "/app/sale_return", domain: "ventas" },
   { prefix: "/app/quotations", domain: "ventas" },
   { prefix: "/app/promotions", domain: "ventas" },
+  // Pantalla de consulta que vive dentro del shell (ya no es fullscreen): pertenece al dominio Ventas.
+  { prefix: "/app/real-time-sales-counter", domain: "ventas" },
 
   // --- Compras (proveedores viven en Compras) ---
   { prefix: "/app/purchases", domain: "compras" },

@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('stock_report')" :folder="$t('Reports')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper print-table-only" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -26,7 +26,7 @@
         styleClass="tableOne table-hover vgt-table mt-3"
       >
 
-       <div slot="table-actions" class="mt-2 mb-3 quantity_alert_warehouse">
+       <template #table-actions><div class="mt-2 mb-3 quantity_alert_warehouse">
         <!-- warehouse -->
         <b-form-group :label="$t('warehouse')">
           <v-select
@@ -39,7 +39,7 @@
         </b-form-group>
       </div>
 
-       <div slot="table-actions" class="mt-2 mb-3">
+       <div class="mt-2 mb-3">
         <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
           <lucide-icon name="printer" /> {{ $t("print") }}
         </b-button>
@@ -56,9 +56,9 @@
               >
               <lucide-icon name="file-spreadsheet" /> EXCEL
           </vue-excel-xlsx>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
             <router-link title="Report" :to="'/app/reports/detail_stock/'+props.row.id">
               <b-button variant="primary">{{$t('Reports')}}</b-button>
@@ -72,12 +72,13 @@
 
 
 <script>
+import { BButton, BCard, BFormGroup } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 
-export default {
+export default { components: { BFormGroup, BButton, BCard },
   metaInfo: {
     title: "Stock Report"
   },
@@ -112,35 +113,35 @@ export default {
         {
           label: this.$t("ProductCode"),
           field: "code",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Name_product"),
           field: "name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Categorie"),
           field: "category",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
       
         {
           label: this.$t("Current_stock"),
           field: "quantity",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

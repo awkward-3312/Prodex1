@@ -1,0 +1,5 @@
+{
+  "type": "module",
+  "private": true,
+  "description": "Servicios de plataforma de PRODEX sin dependencia de Vue. Módulos ESM puros: se pueden probar con `node --test` sin compilar la app."
+}

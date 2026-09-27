@@ -51,7 +51,7 @@
                   <b-button
                     type="submit"
                     tag="button"
-                    class="btn-rounded btn-block mt-2"
+                    class="btn-rounded d-block w-100 mt-2"
                     variant="primary mt-2"
                     :disabled="loading"
                   >{{$t('SignIn')}}</b-button>
@@ -74,10 +74,13 @@
   </div>
 </template>
 <script>
+import { BButton } from "@/platform/bootstrap/buttons";
+import { BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap/form-text";
+import { notifications } from "@/platform";
 import { mapGetters, mapActions } from "vuex";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BButton },
   metaInfo: {
     title: "SignIn"
   },
@@ -171,7 +174,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

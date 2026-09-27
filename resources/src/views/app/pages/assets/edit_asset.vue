@@ -2,30 +2,30 @@
   <div class="main-content">
     <breadcumb :page="$t('Edit_Asset')" :folder="$t('Assets')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <div v-else>
       <div class="form-container">
-        <validation-observer ref="edit_asset">
+        <px-validation-observer ref="edit_asset">
           <b-form @submit.prevent="updateAsset">
             <b-row>
               <b-col md="6">
                 <b-form-group :label="$t('Tag')">
-                  <validation-provider name="tag" rules="required" v-slot="{ errors }">
+                  <px-validation-provider name="tag" rules="required" v-slot="{ errors }">
                     <b-form-input v-model="form.tag" :state="!errors.length"></b-form-input>
                     <small class="text-danger">{{ errors[0] }}</small>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-form-group>
               </b-col>
               <b-col md="6">
                 <b-form-group :label="$t('Name')">
-                  <validation-provider name="name" rules="required" v-slot="{ errors }">
+                  <px-validation-provider name="name" rules="required" v-slot="{ errors }">
                     <b-form-input v-model="form.name" :state="!errors.length"></b-form-input>
                     <small class="text-danger">{{ errors[0] }}</small>
-                  </validation-provider>
+                  </px-validation-provider>
                 </b-form-group>
               </b-col>
               <b-col md="6">
-                <validation-provider name="asset_category_id" :rules="{ required: true }" v-slot="{ valid, errors }">
+                <px-validation-provider name="asset_category_id" :rules="{ required: true }" v-slot="{ valid, errors }">
                   <b-form-group :label="$t('Category') + ' *'">
                     <v-select
                       :class="{'is-invalid': !!errors.length}"
@@ -37,7 +37,7 @@
                     />
                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
               <b-col md="6">
                 <b-form-group :label="$t('Serial')">
@@ -60,7 +60,7 @@
                 </b-form-group>
               </b-col>
               <b-col md="6">
-                <validation-provider name="warehouse_id" :rules="{ required: true }" v-slot="{ valid, errors }">
+                <px-validation-provider name="warehouse_id" :rules="{ required: true }" v-slot="{ valid, errors }">
                   <b-form-group :label="$t('Warehouse') + ' *'">
                     <v-select
                       :class="{'is-invalid': !!errors.length}"
@@ -72,7 +72,7 @@
                     />
                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
               <b-col md="6">
                 <b-form-group :label="$t('Last_Verification')">
@@ -94,21 +94,22 @@
               <b-button type="submit" variant="primary" :disabled="SubmitProcessing">
                 <span v-if="!SubmitProcessing">{{ $t('Update') }}</span>
                 <span v-else>
-                  <span class="spinner sm spinner-primary align-middle mr-2"></span>
+                  <span class="spinner sm spinner-primary align-middle me-2"></span>
                   {{ $t('Processing') }}
                 </span>
               </b-button>
-              <router-link class="btn btn-outline-secondary ml-2" to="/app/assets/list">{{ $t('Cancel') }}</router-link>
+              <router-link class="btn btn-outline-secondary ms-2" to="/app/assets/list">{{ $t('Cancel') }}</router-link>
             </div>
           </b-form>
-        </validation-observer>
+        </px-validation-observer>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-export default {
+import { BFormGroup, BFormInput, BFormTextarea, BFormSelect, BFormInvalidFeedback, BButton, BCol, BRow, BForm } from "@/platform/bootstrap";
+export default { components: { BForm, BButton, BCol, BRow, BFormGroup, BFormInput, BFormTextarea, BFormSelect, BFormInvalidFeedback },
   name: 'AssetEdit',
   data() {
     return {

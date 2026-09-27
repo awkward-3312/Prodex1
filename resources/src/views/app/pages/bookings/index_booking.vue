@@ -2,7 +2,7 @@
   <div class="main-content bookings-page-modern">
     <breadcumb :page="$t('Booking_List')" :folder="$t('Bookings')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <!-- Full Page Loading Overlay for PDF Download -->
     <div v-if="isPdfLoading" class="pdf-loading-overlay">
@@ -67,7 +67,7 @@
           }"
           styleClass="modern-table table-hover vgt-table"
         >
-          <template slot="table-row" slot-scope="props">
+          <template #table-row="props">
             <!-- Actions -->
             <span v-if="props.column.field === 'actions'">
               <div class="action-buttons-cell">
@@ -225,7 +225,7 @@
             <button @click="printBooking()" class="action-btn print-btn" title="Print">
               <lucide-icon name="receipt" />
             </button>
-            <button @click="$bvModal.hide('booking-detail-modal')" class="action-btn close-btn" title="Close">
+            <button @click="$modals.hide('booking-detail-modal')" class="action-btn close-btn" title="Close">
               <lucide-icon name="x" />
             </button>
           </div>
@@ -421,9 +421,11 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
+import { vBTooltip, BSidebar, vBToggle, BModal, BButton, BCol, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BFormGroup, BFormInput, BButton, BCol, BRow, BModal, BSidebar }, directives: { 'b-toggle': vBToggle, 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Bookings"
   },
@@ -460,56 +462,56 @@ export default {
         {
           label: this.$t("Reference") || "Reference",
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Customer"),
           field: "customer_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Product"),
           field: "product_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Price"),
           field: "price",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Date"),
           field: "booking_date",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Start_Time") || "Start Time",
           field: "booking_time",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("End_Time") || "End Time",
           field: "booking_end_time",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Status"),
           field: "status",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -647,7 +649,7 @@ export default {
     },
     showBookingDetails(row) {
       this.selectedBooking = Object.assign({}, row);
-      this.$bvModal.show("booking-detail-modal");
+      modals.show("booking-detail-modal");
     },
     formatPrice(price) {
       if (price === null || price === undefined || price === '') {
@@ -701,7 +703,7 @@ export default {
       this.$htmlToPaper('print_Booking');
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

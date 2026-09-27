@@ -9,12 +9,12 @@
           <p class="text-muted mb-0">Las plantillas ahora se aplican directamente desde el editor de roles. Son puntos de partida: el rol define qué puede hacer y el usuario define dónde puede hacerlo.</p>
         </div>
         <b-button variant="primary" class="mt-2 mt-md-0" @click="$router.push('/app/User_Management/permissions/store')">
-          <lucide-icon name="shield-plus" class="mr-1"/> Crear rol
+          <lucide-icon name="shield-plus" class="me-1"/> Crear rol
         </b-button>
       </div>
     </b-card>
 
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
     <div v-else-if="error" class="alert alert-danger">{{ error }}</div>
     <b-row v-else>
       <b-col v-for="template in templates" :key="template.key" lg="4" md="6" sm="12" class="mb-3">
@@ -33,7 +33,9 @@
 </template>
 
 <script>
+import { BCard, BButton, BRow, BCol } from "@/platform/bootstrap";
 export default {
+  components: { BCard, BButton, BRow, BCol },
   metaInfo: { title: 'Plantillas de roles' },
   data() { return { loading: true, error: '', templates: [] }; },
   created() { this.load(); },

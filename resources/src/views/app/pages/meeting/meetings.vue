@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Meetings')" :folder="$t('Meeting_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <b-row class="mb-3">
         <b-col md="3">
@@ -48,18 +48,18 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="selected-row-actions">
+        <template #selected-row-actions><div>
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{ $t('Del') }}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
+        </div></template>
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="New_Meeting()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
             <lucide-icon name="plus" /> {{ $t('New_Meeting') }}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'title'">
-            <a class="cursor-pointer text-primary font-weight-bold" @click="View_Details(props.row.id)">{{ props.row.title }}</a>
+            <a class="cursor-pointer text-primary fw-bold" @click="View_Details(props.row.id)">{{ props.row.title }}</a>
           </span>
           <span v-else-if="props.column.field == 'datetime'">
             {{ props.row.meeting_date }} {{ short_time(props.row.start_time) }}
@@ -94,34 +94,34 @@
       </vue-good-table>
     </b-card>
 
-    <validation-observer ref="Create_Meeting">
+    <px-validation-observer ref="Create_Meeting">
       <b-modal hide-footer size="lg" id="New_Meeting" :title="editmode ? $t('Edit') : $t('New_Meeting')">
         <b-form @submit.prevent="Submit_Meeting">
           <b-row>
             <b-col md="12">
-              <validation-provider name="title" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="title" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Meeting_Title') + ' *'">
                   <b-form-input :state="getValidationState(validationContext)" v-model="meeting.title"></b-form-input>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
             <b-col md="4">
-              <validation-provider name="meeting_date" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="meeting_date" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Meeting_Date') + ' *'">
                   <b-form-input type="date" :state="getValidationState(validationContext)" v-model="meeting.meeting_date"></b-form-input>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <b-col md="4">
-              <validation-provider name="start_time" :rules="{ required: true }" v-slot="validationContext">
+              <px-validation-provider name="start_time" :rules="{ required: true }" v-slot="validationContext">
                 <b-form-group :label="$t('Start_Time') + ' *'">
                   <b-form-input type="time" :state="getValidationState(validationContext)" v-model="meeting.start_time"></b-form-input>
                   <b-form-invalid-feedback>{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <b-col md="4">
               <b-form-group :label="$t('End_Time')">
@@ -207,7 +207,7 @@
 
             <b-col md="12" class="mt-3">
               <b-button variant="primary" type="submit" :disabled="SubmitProcessing">
-                <lucide-icon class="me-2 font-weight-bold" name="check" /> {{ $t('submit') }}
+                <lucide-icon class="me-2 fw-bold" name="check" /> {{ $t('submit') }}
               </b-button>
               <div v-once class="typo__p" v-if="SubmitProcessing">
                 <div class="spinner sm spinner-primary mt-3"></div>
@@ -216,14 +216,16 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 
 <script>
+import { BFormGroup, BFormInput, BFormTextarea, BFormSelect, BFormSelectOption, BFormInvalidFeedback, vBTooltip, BModal, BButton, BCard, BCol, BRow, BForm } from "@/platform/bootstrap";
+import { confirmDialog, modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip }, components: { BForm, BButton, BCard, BCol, BRow, BModal, BFormGroup, BFormInput, BFormTextarea, BFormSelect, BFormSelectOption, BFormInvalidFeedback },
   metaInfo: { title: "Meetings" },
   data() {
     return {
@@ -251,13 +253,13 @@ export default {
   computed: {
     columns() {
       return [
-        { label: this.$t("Meeting_Title"), field: "title", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Meeting_Date"), field: "datetime", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Meeting_Type"), field: "type", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Organizer"), field: "organizer", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Participants"), field: "participants_count", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Status"), field: "status", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("Meeting_Title"), field: "title", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Meeting_Date"), field: "datetime", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Meeting_Type"), field: "type", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Organizer"), field: "organizer", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Participants"), field: "participants_count", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Status"), field: "status", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     }
   },
@@ -325,7 +327,7 @@ export default {
       return dirty || validated ? valid : null;
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+      notifications.notify(msg, { title: title, variant: variant, solid: true });
     },
 
     View_Details(id) {
@@ -347,7 +349,7 @@ export default {
       this.reset_Form();
       this.editmode = false;
       this.Get_FormData();
-      this.$bvModal.show("New_Meeting");
+      modals.show("New_Meeting");
     },
 
     Edit_Meeting(meeting) {
@@ -366,7 +368,7 @@ export default {
           participants: (m.participants || []).map(p => p.user_id)
         };
         this.editmode = true;
-        this.$bvModal.show("New_Meeting");
+        modals.show("New_Meeting");
       }).catch(() => {
         this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
       });
@@ -439,12 +441,12 @@ export default {
     },
 
     Remove_Meeting(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete("meeting/meetings/" + id).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             Fire.$emit("Event_Meeting");
@@ -456,12 +458,12 @@ export default {
     },
 
     delete_by_selected() {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.post("meeting/meetings/delete/by_selection", { selectedIds: this.selectedIds }).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             Fire.$emit("Event_Meeting");
@@ -478,7 +480,7 @@ export default {
     Fire.$on("Event_Meeting", () => {
       setTimeout(() => {
         this.Get_Meetings(this.serverParams.page);
-        this.$bvModal.hide("New_Meeting");
+        modals.hide("New_Meeting");
       }, 500);
     });
   }

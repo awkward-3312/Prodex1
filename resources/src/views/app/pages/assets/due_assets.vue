@@ -2,7 +2,7 @@
   <div class="main-content due-assets-page">
     <breadcumb :page="$t('Due_Assets')" :folder="$t('Assets')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <!-- Header & quick actions -->
@@ -14,9 +14,9 @@
               {{ $t('Due_assets_subtitle') || 'Assets due for validation within the next 5 working days or overdue' }}
             </p>
           </div>
-          <div class="col-md-6 text-md-right mt-3 mt-md-0">
+          <div class="col-md-6 text-md-end mt-3 mt-md-0">
             <router-link to="/app/assets/list" class="btn btn-outline-primary btn-sm">
-              <lucide-icon class="mr-1" name="files" />{{ $t('Assets_List') }}
+              <lucide-icon class="me-1" name="files" />{{ $t('Assets_List') }}
             </router-link>
           </div>
         </div>
@@ -75,11 +75,9 @@
                 class="form-control due-cron-input font-monospace"
                 :value="scheduleInfo.cron_line"
               >
-              <div class="input-group-append">
                 <b-button variant="primary" size="sm" @click="copyCronLine" class="due-cron-copy-btn">
-                  <lucide-icon class="mr-1" name="files" />{{ $t('Copy') || 'Copy' }}
-                </b-button>
-              </div>
+                  <lucide-icon class="me-1" name="files" />{{ $t('Copy') || 'Copy' }}
+                </b-button>
             </div>
           </div>
           <p class="small text-muted mb-3">
@@ -92,8 +90,8 @@
             @click="runValidationDueNow"
             class="due-run-btn"
           >
-            <span v-if="runCheckLoading" class="spinner-border spinner-border-sm mr-1" role="status"></span>
-            <lucide-icon class="mr-1" name="music" v-else />
+            <span v-if="runCheckLoading" class="spinner-border spinner-border-sm me-1" role="status"></span>
+            <lucide-icon class="me-1" name="music" v-else />
             {{ $t('Run_check_now') || 'Run check now' }}
           </b-button>
         </div>
@@ -103,7 +101,7 @@
       <div class="card due-table-card shadow-sm">
         <div class="card-header due-table-header">
           <h5 class="mb-0">
-            <lucide-icon class="mr-2" name="files" />{{ $t('Due_Assets') }} ({{ assets.length }})
+            <lucide-icon class="me-2" name="files" />{{ $t('Due_Assets') }} ({{ assets.length }})
           </h5>
         </div>
         <div class="card-body p-0">
@@ -126,7 +124,7 @@
             :pagination-options="{ enabled: true, perPage: 10, perPageDropdown: [10, 20, 50] }"
             styleClass="tableOne vgt-table due-assets-table">
 
-            <template slot="table-row" slot-scope="props">
+            <template #table-row="props">
               <span v-if="props.column.field == 'next_validation'">
                 <span :class="getValidationBadgeClass(props)">
                   {{ getValidationBadgeLabel(props) }}
@@ -149,7 +147,9 @@
 </template>
 
 <script>
-export default {
+import { BButton, BCol, BRow } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
+export default { components: { BButton, BCol, BRow },
   name: 'DueAssets',
   data() {
     return {
@@ -225,7 +225,7 @@ export default {
       this.makeToast('success', this.$t('Copied') || 'Copied to clipboard', this.$t('Success') || 'Success');
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast && this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
     async runValidationDueNow() {
       this.runCheckLoading = true;

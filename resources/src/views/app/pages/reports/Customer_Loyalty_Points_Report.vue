@@ -5,7 +5,7 @@
     <!-- Toolbar -->
     <b-card class="shadow-soft border-0 mb-3">
       <div class="d-flex flex-wrap align-items-end">
-        <div class="mr-3 mb-2 d-flex flex-column" :class="{ 'w-100': isMobile }">
+        <div class="me-3 mb-2 d-flex flex-column" :class="{ 'w-100': isMobile }">
           <label class="mb-1 d-block text-muted">{{$t('DateRange')}}</label>
           <date-range-picker
             v-model="dateRange"
@@ -17,7 +17,7 @@
           >
             <template v-slot:input="picker">
               <b-button variant="light" class="btn-pill date-btn" :class="{ 'w-100': isMobile }">
-                <lucide-icon class="mr-1" name="calendar-days" />
+                <lucide-icon class="me-1" name="calendar-days" />
                 <span class="d-none d-sm-inline">{{ fmt(picker.startDate) }} — {{ fmt(picker.endDate) }}</span>
                 <span class="d-inline d-sm-none">{{ fmtShort(picker.startDate) }}–{{ fmtShort(picker.endDate) }}</span>
               </b-button>
@@ -25,7 +25,7 @@
           </date-range-picker>
         </div>
 
-        <div class="mr-3 mb-2" :class="{ 'w-100': isMobile }">
+        <div class="me-3 mb-2" :class="{ 'w-100': isMobile }">
           <label class="mb-1 d-block text-muted">{{$t('QuickRanges')}}</label>
           <div class="quick-ranges" :class="{ 'w-100': isMobile }">
             <b-button size="sm" variant="outline-primary" @click="quick('7d')">7D</b-button>
@@ -36,9 +36,9 @@
           </div>
         </div>
 
-        <div class="ml-auto mb-2 d-flex">
+        <div class="ms-auto mb-2 d-flex">
           <b-button variant="primary" class="btn-pill" @click="fetchReport">
-            <lucide-icon class="mr-1" name="refresh-cw" /> {{$t('Refresh')}}
+            <lucide-icon class="me-1" name="refresh-cw" /> {{$t('Refresh')}}
           </b-button>
         </div>
       </div>
@@ -69,18 +69,18 @@
           @on-sort-change="onSortChange"
           @on-search="onSearch"
         >
-          <div slot="table-actions" class="mt-2 mb-3">
+          <template #table-actions><div class="mt-2 mb-3">
             <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
               <lucide-icon name="printer" /> {{ $t("print") }}
             </b-button>
-          </div>
-          <template slot="table-actions-bottom">
+          </div></template>
+          <template #table-actions-bottom>
             <div class="d-flex justify-content-end w-100 pt-2">
-              <div class="font-weight-bold">
+              <div class="fw-bold">
                 {{$t('Totals')}}:
-                <span class="ml-3">{{$t('Points_Earned')}} = {{ num(totals.earned_total) }}</span>
-                <span class="ml-3">{{$t('Points_Redeemed')}} = {{ num(totals.redeemed_total) }}</span>
-                <span class="ml-3">{{$t('Points_Balance')}} = {{ num(totals.balance_total) }}</span>
+                <span class="ms-3">{{$t('Points_Earned')}} = {{ num(totals.earned_total) }}</span>
+                <span class="ms-3">{{$t('Points_Redeemed')}} = {{ num(totals.redeemed_total) }}</span>
+                <span class="ms-3">{{$t('Points_Balance')}} = {{ num(totals.balance_total) }}</span>
               </div>
             </div>
           </template>
@@ -91,15 +91,15 @@
   </template>
 
 <script>
+import { BButton, BCard, BCol, BRow, BSkeletonImg } from "@/platform/bootstrap";
 import NProgress from 'nprogress';
 import { mapGetters } from 'vuex';
-import DateRangePicker from 'vue2-daterange-picker';
-import 'vue2-daterange-picker/dist/vue2-daterange-picker.css';
+import DateRangePicker from '@/components/DateRangePicker.vue';
 import moment from 'moment';
 
 export default {
   metaInfo: { title: 'Customer Loyalty Points Report' },
-  components: { 'date-range-picker': DateRangePicker },
+  components: { BSkeletonImg, BButton, BCard, BCol, BRow, 'date-range-picker': DateRangePicker },
   data(){
     const end = new Date(), start = new Date(); start.setDate(end.getDate()-29);
     return {
@@ -122,7 +122,7 @@ export default {
     ...mapGetters(['currentUser']),
     columns(){
       return [
-        {label:this.$t('Customer'),        field:'client_name',     sortable:true, tdClass:'text-left', thClass:'text-left'},
+        {label:this.$t('Customer'),        field:'client_name',     sortable:true, tdClass:'text-start', thClass:'text-start'},
         {label:this.$t('Points_Earned'),   field:'earned_points',   type:'number', sortable:true},
         {label:this.$t('Points_Redeemed'), field:'redeemed_points', type:'number', sortable:true},
         {label:this.$t('Points_Balance'),  field:'current_points',  type:'number', sortable:true}
@@ -252,7 +252,7 @@ export default {
     }
   },
   created(){ this.handleResize(); if (typeof window !== 'undefined') window.addEventListener('resize', this.handleResize); this.fetchReport(); },
-  destroyed(){ if (typeof window !== 'undefined') window.removeEventListener('resize', this.handleResize); }
+  unmounted(){ if (typeof window !== 'undefined') window.removeEventListener('resize', this.handleResize); }
 };
 </script>
 
@@ -265,7 +265,7 @@ export default {
   .date-btn{ width: 100%; min-width: 0; }
   .quick-ranges{ width: 100%; }
   .quick-ranges .btn{ flex: 1 1 calc(33.33% - 6px); min-width: 0; }
-  .d-flex.flex-wrap.align-items-end > .mr-3{ margin-right: 0 !important; }
+  .d-flex.flex-wrap.align-items-end > .me-3{ margin-right: 0 !important; }
 }
 </style>
 

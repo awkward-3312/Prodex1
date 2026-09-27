@@ -15,7 +15,10 @@ export default {
     ...mapGetters("config", ["getThemeMode", "getCustomizeButtonVisible", "getPxShellLayout"]),
     ...mapGetters(["isAuthenticated","show_language","currentUser"]),
     themeName() { return this.getThemeMode.dark ? "dark-theme" : " "; },
-    rtl() { return this.getThemeMode.rtl ? "rtl" : " "; },
+    // El layout ya se refleja bien con dir="rtl" (px-next y legacy), pero solo se activaba con el interruptor RTL del
+    // customizer, que el shell px-next no muestra: un tenant en árabe/urdu se veía en LTR. Ahora el idioma activo
+    // también decide la dirección; el interruptor sigue funcionando igual.
+    rtl() { const l = String((this.$i18n && this.$i18n.locale) || '').toLowerCase().split(/[-_]/)[0]; return (this.getThemeMode.rtl || ['ar','ur','he','fa'].includes(l)) ? "rtl" : " "; },
     isPosPage() { const p=String(this.$route.path||''); return p==='/app/pos'||p.startsWith('/app/pos_')||p.startsWith('/app/pos/'); },
     designSystemRouteClass() {
       if (this.isPosPage) return [];
@@ -27,8 +30,8 @@ export default {
     },
     titleTemplate() { return `%s | ${this.currentUser?.page_title_suffix || window.__pageTitleSuffix || "Gestión empresarial"}`; }
   },
-  metaInfo() { return { title:window.__appName||"PRODEX", titleTemplate:this.titleTemplate, bodyAttrs:{class:[this.themeName,"text-left"]}, htmlAttrs:{dir:this.rtl,lang:'es'} }; },
-  beforeDestroy() { try { if(typeof window!=='undefined'&&window.Fire&&window.Fire.$off){ window.Fire.$off('offline-sync:start',this.onGlobalSyncStart); window.Fire.$off('offline-sync:end',this.onGlobalSyncEnd); window.Fire.$off('offline-sync:auto-result',this.onGlobalSyncResult); window.Fire.$off('show-limit-reached',this.showLimitReached); } } catch(e){} },
+  metaInfo() { return { title:window.__appName||"PRODEX", titleTemplate:this.titleTemplate, bodyAttrs:{class:[this.themeName,"text-start"]}, htmlAttrs:{dir:this.rtl,lang:'es'} }; },
+  beforeUnmount() { try { if(typeof window!=='undefined'&&window.Fire&&window.Fire.$off){ window.Fire.$off('offline-sync:start',this.onGlobalSyncStart); window.Fire.$off('offline-sync:end',this.onGlobalSyncEnd); window.Fire.$off('offline-sync:auto-result',this.onGlobalSyncResult); window.Fire.$off('show-limit-reached',this.showLimitReached); } } catch(e){} },
   methods: {
     ...mapActions(["refreshUserPermissions"]), ...mapActions("config",["initPrimaryColor"]),
     translatedOrFallback(key,fallback){ try{ if(!this.$t)return fallback; const translated=this.$t(key); return translated&&translated!==key?translated:fallback; }catch(e){return fallback;} },

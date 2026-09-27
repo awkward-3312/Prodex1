@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Customers_without_Login')" :folder="$t('Customers')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <div v-else>
       <div class="mb-5">
         <div class="alert alert-danger" v-show="clients_without_ecommerce > 0">
@@ -34,10 +34,10 @@
        :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
       >
 
-      <template slot="table-row" slot-scope="props">
+      <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
             <a class="btn btn-primary"  @click="Edit_Client(props.row)">
-              <span class="text-white"><lucide-icon class="me-2 font-weight-bold" name="check" /> Register Account</span>
+              <span class="text-white"><lucide-icon class="me-2 fw-bold" name="check" /> Register Account</span>
             </a>
            
           </span>
@@ -48,14 +48,14 @@
 
 
     <!-- Modal Create store account for Customer -->
-    <validation-observer ref="Create_Customer">
+    <px-validation-observer ref="Create_Customer">
       <b-modal hide-footer size="md" id="New_Customer" title="Register Account">
         <b-form @submit.prevent="Submit_Customer">
           <b-row>
 
             <!-- Customer email -->
             <b-col md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="email Customer"
                 :rules="{ required: true}"
                 v-slot="validationContext"
@@ -76,12 +76,12 @@
                     v-if="email_exist !=''"
                   >{{email_exist}}</b-alert>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
              <!-- password -->
              <b-col md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="password"
                 :rules="{ required: true , min:6 , max:14}"
                 v-slot="validationContext"
@@ -110,7 +110,7 @@
                   </div>
                   <b-form-invalid-feedback id="password-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
           
 
@@ -124,16 +124,18 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
 
   </div>
 </template>
 
 <script>
+import { BModal, BAlert, BButton, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
+import { modals, notifications, events } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BAlert, BButton, BCol, BRow, BModal },
   metaInfo: {
     title: "Customer Without Ecommerce"
   },
@@ -169,10 +171,12 @@ export default {
   },
 
    mounted() {
-    this.$root.$on("bv::dropdown::show", bvEvent => {
+    // Antes `this.$root.$on(...)` (API de eventos de instancia de Vue 2, sin equivalente en Vue 3): ahora por el
+    // bus de plataforma (mismo nombre de evento, emitido por platform/bootstrap/nav.js).
+    events.$on("bv::dropdown::show", bvEvent => {
       this.showDropdown = true;
     });
-    this.$root.$on("bv::dropdown::hide", bvEvent => {
+    events.$on("bv::dropdown::hide", bvEvent => {
       this.showDropdown = false;
     });
   },
@@ -186,33 +190,33 @@ export default {
         {
           label: this.$t("Code"),
           field: "code",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Name"),
           field: "name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("Phone"),
           field: "phone",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Email"),
           field: "email",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -283,7 +287,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -332,7 +336,7 @@ export default {
       this.Get_Clients(this.serverParams.page);
       this.reset_Form();
       this.client = client;
-      this.$bvModal.show("New_Customer");
+      modals.show("New_Customer");
     },
 
     //---------------------------------------- Create new Client -------------------------------\\
@@ -387,7 +391,7 @@ export default {
     Fire.$on("Event_Customer", () => {
       setTimeout(() => {
         this.Get_Clients(this.serverParams.page);
-        this.$bvModal.hide("New_Customer");
+        modals.hide("New_Customer");
       }, 500);
     });
 

@@ -2,7 +2,7 @@
   <div>
     <b-alert variant="info" show class="info-alert-modern mb-4">
       <div class="d-flex align-items-start">
-        <lucide-icon class="mr-3 mt-1" name="info" />
+        <lucide-icon class="me-3 mt-1" name="info" />
         <div>
           Los pedidos se sincronizan desde WooCommerce hacia PRODEX (WooCommerce → PRODEX).
         </div>
@@ -13,16 +13,16 @@
       <div class="d-flex flex-wrap align-items-center">
         <b-button
           variant="success"
-          class="btn-action-secondary mr-3 mb-2 d-inline-flex align-items-center"
+          class="btn-action-secondary me-3 mb-2 d-inline-flex align-items-center"
           :disabled="syncing || tabRefreshing"
           @click="syncOrders"
         >
           <template v-if="!syncing">
-            <lucide-icon class="mr-2" name="chevron-down" />
+            <lucide-icon class="me-2" name="chevron-down" />
             Sincronizar pedidos de WooCommerce con PRODEX
           </template>
           <template v-else>
-            <span class="mini-spinner mr-2"></span>
+            <span class="mini-spinner me-2"></span>
             Sincronizando...
           </template>
         </b-button>
@@ -41,12 +41,12 @@
     </b-alert>
 
     <div class="d-flex align-items-center mb-3">
-      <lucide-icon class="mr-2" name="shopping-bag" />
+      <lucide-icon class="me-2" name="shopping-bag" />
       <strong>Pedidos de WooCommerce</strong>
-      <span v-if="loadingWooTab" class="mini-spinner ml-2"></span>
+      <span v-if="loadingWooTab" class="mini-spinner ms-2"></span>
     </div>
 
-    <div v-if="loadingWooTab" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loadingWooTab" class="loading_page spinner spinner-primary me-3"></div>
     <div v-show="!loadingWooTab">
       <div class="stats-dashboard mb-4">
         <div class="stat-card total-customers">
@@ -105,13 +105,13 @@
           }"
           styleClass="tableOne table-hover vgt-table"
         >
-          <template slot="table-row" slot-scope="props">
+          <template #table-row="props">
             <span v-if="props.column.field === 'sync_status'">
               <b-badge v-if="props.row.sync_status === 'synced'" variant="success">
-                <lucide-icon class="mr-1" name="check-check" /> Sincronizado
+                <lucide-icon class="me-1" name="check-check" /> Sincronizado
               </b-badge>
               <b-badge v-else variant="warning">
-                <lucide-icon class="mr-1" name="pause" /> No sincronizado
+                <lucide-icon class="me-1" name="pause" /> No sincronizado
               </b-badge>
             </span>
             <span v-else-if="props.column.field === 'actions'">
@@ -122,10 +122,10 @@
                 :disabled="syncingOrderId === props.row.id || props.row.sync_status === 'synced'"
               >
                 <template v-if="syncingOrderId !== props.row.id">
-                  <lucide-icon class="mr-1" name="chevron-down" /> Sincronizar
+                  <lucide-icon class="me-1" name="chevron-down" /> Sincronizar
                 </template>
                 <template v-else>
-                  <span class="mini-spinner mr-2"></span> Sincronizando...
+                  <span class="mini-spinner me-2"></span> Sincronizando...
                 </template>
               </b-button>
             </span>
@@ -137,7 +137,9 @@
 </template>
 
 <script>
-export default {
+import { BAlert, BBadge, BButton, BCard } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
+export default { components: { BAlert, BBadge, BButton, BCard },
   data() {
     return {
       syncing: false,
@@ -154,14 +156,14 @@ export default {
   computed: {
     wooColumns() {
       return [
-        { label: 'ID', field: 'id', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Número', field: 'number', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Estado', field: 'status', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Fecha', field: 'date_created', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Total', field: 'total', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Cliente', field: 'customer_display', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Correo', field: 'billing_email', tdClass: 'text-left', thClass: 'text-left' },
-        { label: 'Artículos', field: 'items_count', tdClass: 'text-left', thClass: 'text-left' },
+        { label: 'ID', field: 'id', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Número', field: 'number', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Estado', field: 'status', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Fecha', field: 'date_created', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Total', field: 'total', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Cliente', field: 'customer_display', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Correo', field: 'billing_email', tdClass: 'text-start', thClass: 'text-start' },
+        { label: 'Artículos', field: 'items_count', tdClass: 'text-start', thClass: 'text-start' },
         { label: 'Estado de sincronización', field: 'sync_status', tdClass: 'text-center', thClass: 'text-center', sortable: false },
         { label: 'Acciones', field: 'actions', tdClass: 'text-center', thClass: 'text-center', sortable: false },
       ];
@@ -174,7 +176,7 @@ export default {
   },
   methods: {
     toast(variant, msg) {
-      this.$root.$bvToast.toast(msg, { title: this.$t('WooCommerce'), variant, solid: true });
+      notifications.notify(msg, { title: this.$t('WooCommerce'), variant, solid: true });
     },
     load() {
       this.loadingWooTab = true;

@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('CountStock')" :folder="$t('Products')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -26,7 +26,7 @@
       }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button
             @click="New_count()"
             class="btn-rounded"
@@ -35,12 +35,12 @@
             <lucide-icon name="plus" />
             {{$t('Count')}}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'file_stock'">
             <a :href="$imgUrl('count_stock', props.row.file_stock)" >
-                <span class="ul-btn__text ml-1"> {{$t('Download')}}</span>
+                <span class="ul-btn__text ms-1"> {{$t('Download')}}</span>
             </a>
           </span>
         </template>
@@ -76,7 +76,7 @@
                 <!-- warehouse -->
                 <b-col lg="12" md="12" sm="12" class="mb-3">
                   <validation-provider name="warehouse" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('warehouse') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('warehouse') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -87,7 +87,7 @@
                         :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
@@ -104,7 +104,7 @@
                 </b-col>
 
              <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                   <div v-once class="typo__p" v-if="SubmitProcessing">
                     <div class="spinner sm spinner-primary mt-3"></div>
                   </div>
@@ -119,9 +119,11 @@
 
 
 <script>
+import { BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BButton, BCard, BCol, BRow, BModal },
   metaInfo: {
     title: "Count Stock"
   },
@@ -160,28 +162,28 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
          {
           label: this.$t("Categorie"),
           field: "category_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("file"),
           field: "file_stock",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -268,7 +270,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -278,7 +280,7 @@ export default {
     //------------------------------ Modal  (create Count stock) -------------------------------\\
     New_count() {
       this.reset_Form();
-      this.$bvModal.show("New_count");
+      modals.show("New_count");
     },
 
   
@@ -367,7 +369,7 @@ export default {
     Fire.$on("Event_Count", () => {
       setTimeout(() => {
         this.Get_Stocks(this.serverParams.page);
-        this.$bvModal.hide("New_count");
+        modals.hide("New_count");
       }, 500);
     });
 

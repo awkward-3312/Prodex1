@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('ListAdjustments')" :folder="$t('Adjustment')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <div v-else>
       <vue-good-table
         mode="remote"
@@ -26,7 +26,7 @@
         styleClass="table-hover tableOne vgt-table"
       >
       
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button variant="outline-info m-1" size="sm" v-b-toggle.sidebar-right>
             <lucide-icon name="filter" />
             {{ $t("Filter") }}
@@ -52,11 +52,11 @@
             <span class="ul-btn__icon">
               <lucide-icon name="plus" />
             </span>
-            <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
+            <span class="ul-btn__text ms-1">{{$t('Add')}}</span>
           </router-link>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
 
 
@@ -148,12 +148,13 @@
 </template>
 
 <script>
+import { BSidebar, vBToggle, vBTooltip, BButton, BCol, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BFormGroup, BFormInput, BButton, BCol, BRow, BSidebar },
   metaInfo: {
     title: "Adjustment"
   },
@@ -186,33 +187,33 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("TotalProducts"),
           field: "items",
           type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];

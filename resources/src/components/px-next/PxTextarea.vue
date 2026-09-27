@@ -2,22 +2,25 @@
   <textarea
     :id="id"
     class="pxn-textarea pxn-ring"
-    :value="value"
+    :value="internalValue"
     :rows="rows"
     :placeholder="placeholder"
     :disabled="disabled"
     :readonly="readonly"
     :aria-invalid="invalid ? 'true' : null"
     :aria-describedby="describedby"
-    v-on="listeners"
+    @input="onInput"
   ></textarea>
 </template>
 
 <script>
 export default {
   name: "PxTextarea",
+  // Vue 3: los listeners del padre llegan en $attrs y caen solos en el <textarea> raíz.
+  emits: ["update:modelValue", "input"],
   props: {
-    value: { type: String, default: "" },
+    modelValue: { type: String, default: undefined },
+    value: { type: String, default: undefined },
     id: { type: String, default: null },
     rows: { type: [Number, String], default: 3 },
     placeholder: { type: String, default: null },
@@ -27,7 +30,13 @@ export default {
     describedby: { type: String, default: null }
   },
   computed: {
-    listeners() { return { ...this.$listeners, input: e => this.$emit("input", e.target.value) }; }
+    internalValue() {
+      const v = this.modelValue !== undefined ? this.modelValue : this.value;
+      return v === undefined ? "" : v;
+    }
+  },
+  methods: {
+    onInput(e) { this.$emit("update:modelValue", e.target.value); this.$emit("input", e.target.value); }
   }
 };
 </script>

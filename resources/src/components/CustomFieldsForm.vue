@@ -7,7 +7,7 @@
       <b-row>
         <b-col md="12" class="mb-3">
           <h6 class="text-primary">
-            <lucide-icon class="mr-2" name="database-zap" />
+            <lucide-icon class="me-2" name="database-zap" />
             {{ $t('CustomFields') }}
           </h6>
           <hr />
@@ -93,8 +93,12 @@
 </template>
 
 <script>
-export default {
+import { BCol, BRow, BFormGroup, BFormInput, BFormTextarea, BFormCheckbox, BFormInvalidFeedback, BFormDatepicker } from "@/platform/bootstrap";
+export default { components: { BFormDatepicker, BFormGroup, BFormInput, BFormTextarea, BFormCheckbox, BFormInvalidFeedback, BCol, BRow },
   name: "CustomFieldsForm",
+  // Vue 3 real: los consumidores usan `v-model` propio, que compila a
+  // `update:modelValue` (no `input`). Se emiten ambos: el segundo es la API explícita.
+  emits: ["update:modelValue", "input"],
   props: {
     entityType: {
       type: String,
@@ -152,6 +156,7 @@ export default {
     fieldValues: {
       handler(newValues) {
         // Emit changes to parent
+        this.$emit('update:modelValue', newValues);
         this.$emit('input', newValues);
       },
       deep: true

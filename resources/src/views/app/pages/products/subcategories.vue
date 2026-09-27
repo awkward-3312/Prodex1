@@ -33,7 +33,7 @@
           :rows="rows"
           row-key="id"
           selectable
-          :selected.sync="selectedIds"
+          :selected="selectedIds" @update:selected="selectedIds = $event"
           :sort-key="serverParams.sort.field"
           :sort-dir="serverParams.sort.type"
           has-row-actions
@@ -111,6 +111,8 @@
 </template>
 
 <script>
+import { BForm, BFormTextarea } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import NProgress from 'nprogress'
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -129,7 +131,7 @@ import PxModal from "@/components/px-next/PxModal.vue";
 const API = 'subcategories'
 
 export default {
-  components: {
+  components: { BForm, BFormTextarea,
     PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton,
     PxKebab, PxBadge, PxField, PxInput, PxSelect, PxCheck, PxModal
   },
@@ -179,7 +181,7 @@ export default {
 
   methods: {
     getState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null },
-    toast(variant, msg, title) { this.$root.$bvToast.toast(msg, { title, variant, solid: true }) },
+    toast(variant, msg, title) { notifications.notify(msg, { title, variant, solid: true }) },
     updateParams(patch) { this.serverParams = { ...this.serverParams, ...patch } },
 
     onSearchInput(v) {

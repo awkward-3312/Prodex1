@@ -126,8 +126,8 @@
               </tr>
             </thead>
             <tbody>
-              <template v-for="(detail, index) in details">
-                <tr :key="'d-' + index" :class="{'invoice-products-row-even': index % 2 === 1}">
+              <template v-for="(detail, index) in details" :key="'d-' + index">
+                <tr :class="{'invoice-products-row-even': index % 2 === 1}">
                   <td class="invoice-product-name-cell">
                     <div class="invoice-product-name">{{detail.name}}</div>
                     <div class="invoice-product-code">Code: {{detail.code}}</div>
@@ -439,7 +439,7 @@
 
           <!-- Additional Information (custom fields) -->
           <div v-if="purchase.custom_fields && purchase.custom_fields.length" class="mt-3">
-            <h6 class="font-weight-bold">Additional Information</h6>
+            <h6 class="fw-bold">Additional Information</h6>
             <table class="table table-sm table-borderless mb-0">
               <tbody>
                 <tr v-for="(field, index) in purchase.custom_fields" :key="'custom_field_' + index">
@@ -467,6 +467,7 @@
 
 
 <script>
+import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -843,7 +844,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

@@ -93,6 +93,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "@/utils/priceFormat";
@@ -232,7 +233,7 @@ export default {
       else if (k === "csv") exportCsv({ filename: "Reporte_existencias", headers, rows: rows.concat([footer]) });
       else if (k === "print") {
         const ok = printTableDoc({ title: "Informes / Reporte de existencias", headers, rows, footer });
-        if (!ok) this.$root.$bvToast.toast("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
+        if (!ok) notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
       }
     }
   }

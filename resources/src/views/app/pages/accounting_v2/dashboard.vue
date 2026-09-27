@@ -41,7 +41,7 @@
 
 <script>
 
-import VueApexCharts from 'vue-apexcharts';
+import VueApexCharts from 'vue3-apexcharts';
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
   getPriceFormatSetting,

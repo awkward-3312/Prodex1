@@ -26,14 +26,14 @@
         styleClass="tableOne vgt-table"
       >
         <!-- selected actions -->
-        <div slot="selected-row-actions" v-if="can('products_delete')">
+        <template v-if="can('products_delete')" #selected-row-actions><div>
           <button class="btn btn-sm btn-outline-danger" @click="delete_by_selected()">
             <lucide-icon name="trash-2" /> {{$t('Del')}}
           </button>
-        </div>
+        </div></template>
 
         <!-- table actions -->
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button variant="outline-info m-1" size="sm" v-b-toggle.sidebar-right>
             <lucide-icon name="filter" />
             {{ $t("Filter") }}
@@ -71,10 +71,10 @@
             <lucide-icon name="plus" />
             {{$t('Add')}}
           </router-link>
-        </div>
+        </div></template>
 
         <!-- SAFE rendering: never v-html for user text -->
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <!-- actions -->
           <span v-if="props.column.field === 'actions'" class="action-cell">
             <router-link
@@ -244,7 +244,7 @@
             </b-col>
 
             <b-col md="6" sm="12">
-              <a :href="'/import/exemples/import_products.xlsx'" class="btn btn-info btn-sm btn-block">
+              <a :href="'/import/exemples/import_products.xlsx'" class="btn btn-info btn-sm d-block w-100">
                 {{ $t("Download_exemple") }}
               </a>
             </b-col>
@@ -259,6 +259,8 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
+import { BSidebar, vBToggle, vBTooltip, BModal, BButton, BCol, BImg, BRow, BFormGroup, BFormInput, BForm, BFormInvalidFeedback } from "@/platform/bootstrap";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
@@ -269,7 +271,7 @@ import {
   getPriceDecimals
 } from "../../../../utils/priceFormat";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip, 'b-toggle': vBToggle }, components: { BFormGroup, BFormInput, BForm, BFormInvalidFeedback, BButton, BCol, BImg, BRow, BModal, BSidebar },
   metaInfo: { title: "Products" },
   data() {
     return {
@@ -304,17 +306,17 @@ export default {
     },
     columns() {
       return [
-        { label: this.$t("image"), field: "image", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("type"), field: "type", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Name_product"), field: "name", tdClass: "text-left pre", thClass: "text-left" },
-        { label: this.$t("Code"), field: "code", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Brand"), field: "brand", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Categorie"), field: "category", tdClass: "text-left pre", thClass: "text-left" },
-        { label: this.$t("Cost"), field: "cost", tdClass: "text-left pre", thClass: "text-left" },
-        { label: this.$t("Price"), field: "price", tdClass: "text-left pre", thClass: "text-left" },
-        { label: this.$t("Unit"), field: "unit", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Quantity"), field: "quantity", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("image"), field: "image", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("type"), field: "type", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Name_product"), field: "name", tdClass: "text-start pre", thClass: "text-start" },
+        { label: this.$t("Code"), field: "code", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Brand"), field: "brand", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Categorie"), field: "category", tdClass: "text-start pre", thClass: "text-start" },
+        { label: this.$t("Cost"), field: "cost", tdClass: "text-start pre", thClass: "text-start" },
+        { label: this.$t("Price"), field: "price", tdClass: "text-start pre", thClass: "text-start" },
+        { label: this.$t("Unit"), field: "unit", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Quantity"), field: "quantity", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     },
     excelColumns() {
@@ -463,7 +465,7 @@ export default {
       pdf.save("Product_List.pdf");
     },
 
-    Show_import_products() { this.$bvModal.show("importProducts"); },
+    Show_import_products() { modals.show("importProducts"); },
 
     onFileSelected(e) {
       this.import_products = "";
@@ -507,7 +509,7 @@ export default {
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
 
     updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
@@ -672,7 +674,7 @@ export default {
     Fire.$on("Event_import", () => {
       setTimeout(() => {
         this.Get_Products(this.serverParams.page);
-        this.$bvModal.hide("importProducts");
+        modals.hide("importProducts");
       }, 500);
     });
   }

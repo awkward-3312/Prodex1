@@ -33,7 +33,7 @@
           :rows="brands"
           row-key="id"
           selectable
-          :selected.sync="selectedIds"
+          :selected="selectedIds" @update:selected="selectedIds = $event"
           :sort-key="serverParams.sort.field"
           :sort-dir="serverParams.sort.type"
           has-row-actions
@@ -102,6 +102,8 @@
 </template>
 
 <script>
+import { BForm, BFormTextarea } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -115,7 +117,7 @@ import PxInput from "@/components/px-next/PxInput.vue";
 import PxModal from "@/components/px-next/PxModal.vue";
 
 export default {
-  components: { PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxField, PxInput, PxModal },
+  components: { BForm, BFormTextarea, PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxField, PxInput, PxModal },
   metaInfo: {
     title: "Marcas"
   },
@@ -219,7 +221,7 @@ export default {
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+      notifications.notify(msg, { title: title, variant: variant, solid: true });
     },
 
     async onFileSelected(e) {

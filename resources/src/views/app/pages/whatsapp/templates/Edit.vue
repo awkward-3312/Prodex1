@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb page="Editar plantilla" folder="WhatsApp" />
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-row v-if="!isLoading">
       <b-col md="7">
@@ -37,7 +37,7 @@
             <b-button variant="primary" @click="save" :disabled="saving">
               <lucide-icon name="check" /> Actualizar
             </b-button>
-            <router-link to="/app/whatsapp/templates" class="btn btn-outline-secondary ml-2">Cancelar</router-link>
+            <router-link to="/app/whatsapp/templates" class="btn btn-outline-secondary ms-2">Cancelar</router-link>
           </div>
         </b-card>
       </b-col>
@@ -67,7 +67,9 @@
 </template>
 
 <script>
-export default {
+import { BFormGroup, BFormInput, BFormTextarea, BButton, BCard, BCol, BRow, BFormCheckbox } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
+export default { components: { BFormCheckbox, BButton, BCard, BCol, BRow, BFormGroup, BFormInput, BFormTextarea },
   data() {
     return {
       isLoading: true,
@@ -107,7 +109,7 @@ export default {
   },
   methods: {
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
     load() {
       const id = this.$route.params.id;

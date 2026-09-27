@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Employees')" :folder="$t('hrm')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <div v-else>
       <vue-good-table
         mode="remote"
@@ -30,14 +30,14 @@
       }"
         styleClass="tableOne table-hover vgt-table"
       >
-        <div slot="selected-row-actions">
+        <template #selected-row-actions><div>
           <button 
             v-if="currentUserPermissions && currentUserPermissions.includes('delete_employee')"
             class="btn btn-danger btn-sm" 
             @click="delete_by_selected()">{{$t('Del')}}
           </button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
+        </div></template>
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button variant="outline-info ripple m-1" size="sm" v-b-toggle.sidebar-right>
             <lucide-icon name="filter" />
             {{ $t("Filter") }}
@@ -63,11 +63,11 @@
             <span class="ul-btn__icon">
               <lucide-icon name="plus" />
             </span>
-            <span class="ul-btn__text ml-1">{{$t('Add')}}</span>
+            <span class="ul-btn__text ms-1">{{$t('Add')}}</span>
           </router-link>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
          
           <span v-if="props.column.field == 'actions'">
 
@@ -169,12 +169,14 @@
 </template>
 
 <script>
+import { BFormGroup, BFormInput, vBTooltip, BSidebar, vBToggle, BButton, BCol, BRow } from "@/platform/bootstrap";
+import { confirmDialog } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default {
+export default { components: { BButton, BCol, BRow, BSidebar, BFormGroup, BFormInput }, directives: { 'b-toggle': vBToggle, 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Employee"
   },
@@ -209,50 +211,50 @@ export default {
         {
           label: this.$t("FirstName"),
           field: "firstname",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("LastName"),
           field: "lastname",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Phone"),
           field: "phone",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Company"),
           field: "company_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Department"),
           field: "department_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Designation"),
           field: "designation_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Office_Shift"),
           field: "office_shift_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -458,7 +460,7 @@ export default {
     //------------------------------- Remove Employee -------------------------\\
 
     Remove_Employee(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"),
         text: this.$t("Delete_Text"),
         type: "warning",
@@ -467,8 +469,8 @@ export default {
         cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"),
         confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           // Start the progress bar.
           NProgress.start();
           NProgress.set(0.1);
@@ -498,7 +500,7 @@ export default {
     //---- Delete Expense by selection
 
     delete_by_selected() {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"),
         text: this.$t("Delete_Text"),
         type: "warning",
@@ -507,8 +509,8 @@ export default {
         cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"),
         confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           // Start the progress bar.
           NProgress.start();
           NProgress.set(0.1);

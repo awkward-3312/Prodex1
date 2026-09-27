@@ -145,7 +145,7 @@ export default {
       let tableHtml = `<table class="vgt-table table table-hover tableOne">`;
       tableHtml += `<thead><tr>`;
       this.columns.forEach(col => {
-        tableHtml += `<th class="text-left">${col.label}</th>`;
+        tableHtml += `<th class="text-start">${col.label}</th>`;
       });
       tableHtml += `</tr></thead>`;
       tableHtml += `<tbody>`;
@@ -153,7 +153,7 @@ export default {
         tableHtml += `<tr>`;
         this.columns.forEach(col => {
           let cellContent = row[col.key] || '';
-          tableHtml += `<td class="text-left">${cellContent}</td>`;
+          tableHtml += `<td class="text-start">${cellContent}</td>`;
         });
         tableHtml += `</tr>`;
       });
@@ -162,10 +162,10 @@ export default {
       const totalQuantity = productsData.reduce((sum, product) => sum + parseFloat(product.quantity || 0), 0);
       const totalStockAlert = productsData.reduce((sum, product) => sum + parseFloat(product.stock_alert || 0), 0);
       tableHtml += `<tfoot><tr>`;
-      tableHtml += `<td class="text-left font-weight-bold">${this.$t('Total')}</td>`;
+      tableHtml += `<td class="text-start fw-bold">${this.$t('Total')}</td>`;
       tableHtml += `<td colspan="2"></td>`;
-      tableHtml += `<td class="text-left font-weight-bold">${totalQuantity.toFixed(2)}</td>`;
-      tableHtml += `<td class="text-left font-weight-bold">${totalStockAlert.toFixed(2)}</td>`;
+      tableHtml += `<td class="text-start fw-bold">${totalQuantity.toFixed(2)}</td>`;
+      tableHtml += `<td class="text-start fw-bold">${totalStockAlert.toFixed(2)}</td>`;
       tableHtml += `</tr></tfoot>`;
       tableHtml += `</table>`;
 

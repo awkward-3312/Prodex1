@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Orders')" :folder="$t('Store')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else class="wrapper">
       <!-- Errors -->
@@ -14,12 +14,12 @@
         class="mb-3"
       >
         <!-- Only show a heading when the backend gave us one -->
-        <div v-if="errorTitle" class="font-weight-bold mb-2">
+        <div v-if="errorTitle" class="fw-bold mb-2">
           {{ errorTitle }}
         </div>
 
         <!-- Item/field errors list -->
-        <ul v-if="errors.length" class="mb-0 pl-3">
+        <ul v-if="errors.length" class="mb-0 ps-3">
           <li v-for="(e, i) in errors" :key="i">{{ e }}</li>
         </ul>
       </b-alert>
@@ -57,17 +57,17 @@
         @on-sort-change="onSortChange"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button size="sm" class="btn-rounded" variant="btn btn-outline-secondary" @click="clearFilters">
             <lucide-icon name="refresh-cw" /> {{ $t('Clear') }}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <!-- Status -->
           <span v-if="props.column.field === 'status'">
             <b-badge :variant="badgeVariant(props.row.status)">{{ props.row.status }}</b-badge>
-            <b-badge v-if="props.row.has_preorder_items" variant="warning" class="ml-1">
+            <b-badge v-if="props.row.has_preorder_items" variant="warning" class="ms-1">
               {{ $t('PreOrder') }}
             </b-badge>
           </span>
@@ -136,9 +136,11 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
+import { vBTooltip, BAlert, BBadge, BButton, BCard, BFormInput, BFormSelect, BFormDatepicker } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 
-export default {  
+export default { components: { BFormDatepicker, BFormInput, BFormSelect, BAlert, BBadge, BButton, BCard }, directives: { 'b-tooltip': vBTooltip },  
   metaInfo: { title: 'Store Orders' },
   data () {
     return {
@@ -420,8 +422,8 @@ export default {
         row.status = 'confirmed'
         this.clearErrors()
         // success: toast
-        if (this.$bvToast) {
-          this.$bvToast.toast(this.$t('Order_confirmed') || 'Order confirmed.', { title: this.$t('Success') || 'Success', variant: 'success', solid: true })
+        if (notifications.hasDriver()) {
+          notifications.notify(this.$t('Order_confirmed') || 'Order confirmed.', { title: this.$t('Success') || 'Success', variant: 'success', solid: true })
         } else if (this.$swal) {
           this.$swal({ icon: 'success', title: this.$t('Success') || 'Success', text: this.$t('Order_confirmed') || 'Order confirmed.' })
         }
@@ -459,8 +461,8 @@ export default {
         }
         row.status = 'cancelled'
         this.clearErrors()
-        if (this.$bvToast) {
-          this.$bvToast.toast(this.$t('Order_cancelled') || 'Order cancelled.', { title: this.$t('Success') || 'Success', variant: 'success', solid: true })
+        if (notifications.hasDriver()) {
+          notifications.notify(this.$t('Order_cancelled') || 'Order cancelled.', { title: this.$t('Success') || 'Success', variant: 'success', solid: true })
         } else if (this.$swal) {
           this.$swal({ icon: 'success', title: this.$t('Success') || 'Success', text: this.$t('Order_cancelled') || 'Order cancelled.' })
         }

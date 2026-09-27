@@ -3,24 +3,6 @@
   if(window.__prodexInventoryNativeMenuInstalled)return;
   window.__prodexInventoryNativeMenuInstalled=true;
 
-  function routerFor(link){
-    var candidates=[
-      link&&link.closest?link.closest('.vertical-sidebar-wrapper'):null,
-      document.querySelector('.vertical-sidebar'),
-      document.querySelector('.vertical-sidebar-wrapper'),
-      document.getElementById('app')
-    ];
-
-    for(var i=0;i<candidates.length;i++){
-      var el=candidates[i];
-      var vm=el&&el.__vue__;
-      if(vm&&vm.$router)return vm.$router;
-      if(vm&&vm.$root&&vm.$root.$router)return vm.$root.$router;
-    }
-
-    return null;
-  }
-
   function apply(){
     var mappings=[
       ['.px-iv-menu-missing a','/app/inventory/missing'],
@@ -36,12 +18,14 @@
         link.addEventListener('click',function(event){
           if(event.button!==0||event.metaKey||event.ctrlKey||event.shiftKey||event.altKey)return;
 
-          var router=routerFor(link);
-          if(!router)return;
+          // Navegación por el puente explícito de la app (window.__prodexBridge, ver platform/legacy-bridge.js);
+          // sin puente se deja el href normal.
+          var bridge=window.__prodexBridge;
+          if(!bridge||typeof bridge.navigate!=='function')return;
 
           event.preventDefault();
           event.stopPropagation();
-          router.push(entry[1]).catch(function(){});
+          bridge.navigate(entry[1]);
         });
       });
     });

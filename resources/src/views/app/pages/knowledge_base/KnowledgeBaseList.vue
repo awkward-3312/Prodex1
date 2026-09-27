@@ -17,7 +17,7 @@
             icon-lead="search"
             placeholder="Ej.: crear producto, cerrar caja, CAI..."
             @input="v => searchQ = tv(v)"
-            @keyup.native.enter="search"
+            @keyup.enter="search"
           />
           <px-button variant="primary" :loading="loading" :disabled="loading" @click="search">Buscar</px-button>
         </div>
@@ -124,6 +124,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
 import PxButton from "@/components/px-next/PxButton.vue";
@@ -206,8 +207,8 @@ export default {
       } catch (e) {
         this.articles = [];
         this.total = 0;
-        if (this.$root && this.$root.$bvToast) {
-          this.$root.$bvToast.toast('No se pudo cargar el Manual PRODEX.', { variant: 'danger', solid: true });
+        if (notifications.hasDriver()) {
+          notifications.notify('No se pudo cargar el Manual PRODEX.', { variant: 'danger', solid: true });
         }
       } finally {
         this.loading = false;

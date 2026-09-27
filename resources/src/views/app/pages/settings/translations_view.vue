@@ -82,6 +82,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxToolbar from "@/components/px-next/PxToolbar.vue";
 import PxTable from "@/components/px-next/PxTable.vue";
@@ -136,13 +137,13 @@ export default {
           key: this.newTranslation.key,
           value: this.newTranslation.value,
         });
-        this.$bvToast.toast(this.$t("Translation added"), { title: this.$t("Success"), variant: 'success', solid: true });
+        notifications.notify(this.$t("Translation added"), { title: this.$t("Success"), variant: 'success', solid: true });
         this.showAddModal = false;
         this.newTranslation.key = '';
         this.newTranslation.value = '';
         this.fetchTranslations(this.currentPage);
       } catch (err) {
-        this.$bvToast.toast(this.$t("Failed to add translation"), { title: this.$t("Failed"), variant: 'danger', solid: true });
+        notifications.notify(this.$t("Failed to add translation"), { title: this.$t("Failed"), variant: 'danger', solid: true });
       }
     },
 
@@ -186,9 +187,9 @@ export default {
           key: entry.key,
           value: entry.value,
         });
-        this.$bvToast.toast(this.$t("Translation updated"), { title: 'Success', variant: 'success', solid: true });
+        notifications.notify(this.$t("Translation updated"), { title: 'Success', variant: 'success', solid: true });
       } catch (err) {
-        this.$bvToast.toast(this.$t("Failed to update"), { title: this.$t("Failed"), variant: 'danger', solid: true });
+        notifications.notify(this.$t("Failed to update"), { title: this.$t("Failed"), variant: 'danger', solid: true });
       }
     },
 
@@ -198,7 +199,7 @@ export default {
       );
 
       if (!changed.length) {
-        this.$bvToast.toast(this.$t("No changes to save"), { title: this.$t("Notice"), variant: 'info', solid: true });
+        notifications.notify(this.$t("No changes to save"), { title: this.$t("Notice"), variant: 'info', solid: true });
         return;
       }
 
@@ -210,10 +211,10 @@ export default {
             value: entry.value,
           })
         ));
-        this.$bvToast.toast(this.$t("All changes saved successfully"), { title: this.$t("Success"), variant: 'success', solid: true });
+        notifications.notify(this.$t("All changes saved successfully"), { title: this.$t("Success"), variant: 'success', solid: true });
         this.fetchTranslations(this.currentPage);
       } catch (err) {
-        this.$bvToast.toast(this.$t("Bulk save failed"), { title: this.$t("Failed"), variant: 'danger', solid: true });
+        notifications.notify(this.$t("Bulk save failed"), { title: this.$t("Failed"), variant: 'danger', solid: true });
       } finally {
         this.isLoading = false;
       }

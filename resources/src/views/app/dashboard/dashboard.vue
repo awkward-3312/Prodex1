@@ -1,6 +1,6 @@
 <template>
   <div class="main-content">
-    <div v-if="loading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="loading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div
       v-else-if="!loading && currentUserPermissions && currentUserPermissions.includes('dashboard')"
@@ -8,7 +8,7 @@
       :class="{ 'dashboard-static--mobile-app': isMobileViewport }"
       :style="dashboardFontStyle"
     >
-      <template v-for="sectionId in orderedDashboardSections">
+      <template v-for="sectionId in orderedDashboardSections" :key="sectionId">
         <!-- Header + mobile quick modules (modules directly under header) -->
         <template v-if="sectionId === 'header'">
           <div :key="'hdr-' + sectionId" class="dashboard-header mb-3">
@@ -17,7 +17,7 @@
                 <h2 class="mb-1 text-dark">{{ $t('dashboard') }}</h2>
                 <p class="welcome-text mb-0">{{ $t('Welcome_back_message', { username: currentUser.username }) }}</p>
               </div>
-              <div class="col-md-6 text-right dashboard-header-filters-col">
+              <div class="col-md-6 text-end dashboard-header-filters-col">
                 <div class="dashboard-header-filters d-flex align-items-center justify-content-end gap-2 flex-wrap">
                   <div class="warehouse-filter">
                     <v-select
@@ -29,11 +29,11 @@
                       :clearable="true"
                     >
                       <template v-slot:option="option">
-                        <lucide-icon class="mr-2" name="home" />
+                        <lucide-icon class="me-2" name="home" />
                         {{ option.label }}
                       </template>
                       <template v-slot:selected-option="option">
-                        <lucide-icon class="mr-2" name="home" />
+                        <lucide-icon class="me-2" name="home" />
                         {{ option ? option.label : $t('Filter_by_warehouse') }}
                       </template>
                     </v-select>
@@ -50,7 +50,7 @@
                     >
                       <template v-slot:input="picker">
                         <button type="button" class="date-picker-header-btn">
-                          <lucide-icon class="mr-2" name="calendar-days" />
+                          <lucide-icon class="me-2" name="calendar-days" />
                           <span>{{ fmt(picker.startDate) }} - {{ fmt(picker.endDate) }}</span>
                         </button>
                       </template>
@@ -122,7 +122,7 @@
         </b-row>
 
         <!-- Stat cards row 2 -->
-        <b-row v-else-if="sectionId === 'stat_cards_2'" :key="sectionId" class="mb-3 align-items-stretch dashboard-mobile-stat-grid">
+        <b-row v-else-if="sectionId === 'stat_cards_2'" class="mb-3 align-items-stretch dashboard-mobile-stat-grid">
           <b-col md="3" sm="6" class="mb-3 mb-md-0">
             <router-link to="/app/sales/list" class="stat-card sales-due-card h-100">
               <div class="stat-card-icon"><lucide-icon name="banknote" /></div>
@@ -162,7 +162,7 @@
         </b-row>
 
           <!-- Chart: Sales & Purchases -->
-        <b-row v-else-if="sectionId === 'chart_sales_purchases'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'chart_sales_purchases'" class="mb-3 align-items-stretch">
           <b-col cols="12">
             <div class="chart-card h-100">
               <div class="chart-card-header">
@@ -177,7 +177,7 @@
         </b-row>
 
         <!-- Chart: Top Selling -->
-        <b-row v-else-if="sectionId === 'chart_top_selling'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'chart_top_selling'" class="mb-3 align-items-stretch">
           <b-col cols="12">
             <div class="chart-card h-100">
               <div class="chart-card-header">
@@ -192,7 +192,7 @@
         </b-row>
 
         <!-- Sales by Payment + Stock Value -->
-        <b-row v-else-if="sectionId === 'sales_by_payment_stock_value'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'sales_by_payment_stock_value'" class="mb-3 align-items-stretch">
           <b-col md="6" class="mb-3 mb-md-0">
             <div class="info-card h-100">
               <div class="info-card-header">
@@ -258,7 +258,7 @@
         </b-row>
 
         <!-- Chart: Payment Sent/Received -->
-        <b-row v-else-if="sectionId === 'chart_payment_sent_received'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'chart_payment_sent_received'" class="mb-3 align-items-stretch">
           <b-col cols="12">
             <div class="chart-card h-100">
               <div class="chart-card-header">
@@ -273,7 +273,7 @@
         </b-row>
 
         <!-- Chart: Top Customers -->
-        <b-row v-else-if="sectionId === 'chart_top_customers'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'chart_top_customers'" class="mb-3 align-items-stretch">
           <b-col cols="12">
             <div class="chart-card h-100">
               <div class="chart-card-header">
@@ -288,7 +288,7 @@
         </b-row>
 
         <!-- Table: Stock Alert -->
-        <b-row v-else-if="sectionId === 'table_stock_alert'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'table_stock_alert'" class="mb-3 align-items-stretch">
           <b-col cols="12">
             <div class="table-card h-100">
               <div class="table-card-header">
@@ -298,11 +298,11 @@
               <div class="table-card-body">
                 <vue-good-table
                   :columns="columns_stock"
-                  row-style-class="text-left"
+                  row-style-class="text-start"
                   :rows="stock_alerts"
                   :pagination-options="{ enabled: false }"
                 >
-                  <template slot="table-row" slot-scope="props">
+                  <template #table-row="props">
                     <div v-if="props.column.field == 'stock_alert'">
                       <span class="stock-alert-badge">{{ props.row.stock_alert }}</span>
                     </div>
@@ -314,7 +314,7 @@
         </b-row>
 
         <!-- Table: Top Selling Products -->
-        <b-row v-else-if="sectionId === 'table_top_selling_products'" :key="sectionId" class="mb-3 align-items-stretch">
+        <b-row v-else-if="sectionId === 'table_top_selling_products'" class="mb-3 align-items-stretch">
           <b-col cols="12">
             <div class="table-card h-100">
               <div class="table-card-header">
@@ -323,13 +323,13 @@
               <div class="table-card-body">
                 <vue-good-table
                   :columns="columns_products"
-                  row-style-class="text-left"
+                  row-style-class="text-start"
                   :rows="products"
                   :pagination-options="{ enabled: false }"
                 >
-                  <template slot="table-row" slot-scope="props">
+                  <template #table-row="props">
                     <div v-if="props.column.field == 'total'">
-                      <span class="font-weight-bold text-success">{{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}</span>
+                      <span class="fw-bold text-success">{{ formatPriceWithSymbol(currentUser && currentUser.currency, props.row.total, 2) }}</span>
                     </div>
                   </template>
                 </vue-good-table>
@@ -339,7 +339,7 @@
         </b-row>
 
         <!-- Table: Recent Sales -->
-        <b-row v-else-if="sectionId === 'table_recent_sales'" :key="sectionId" class="mb-3">
+        <b-row v-else-if="sectionId === 'table_recent_sales'" class="mb-3">
           <b-col cols="12">
             <div class="table-card">
               <div class="table-card-header">
@@ -350,11 +350,11 @@
                 <vue-good-table
                   v-if="!loading"
                   :columns="columns_sales"
-                  row-style-class="text-left"
+                  row-style-class="text-start"
                   :rows="sales"
                   :pagination-options="{ enabled: false }"
                 >
-                  <template slot="table-row" slot-scope="props">
+                  <template #table-row="props">
                     <div v-if="props.column.field == 'statut'">
                       <span v-if="props.row.statut == 'completed'" class="badge badge-success">{{ $t('complete') }}</span>
                       <span v-else-if="props.row.statut == 'pending'" class="badge badge-info">{{ $t('Pending') }}</span>
@@ -382,9 +382,9 @@
           v-for="tab in mobileTabBarItemsFiltered"
           :key="tab.key"
           :to="tab.to"
-          :exact="tab.exact"
           class="mobile-tabbar__item ripple-touch"
-          active-class="mobile-tabbar__item--active"
+          :active-class="tab.exact ? '' : 'mobile-tabbar__item--active'"
+          exact-active-class="mobile-tabbar__item--active"
         >
           <lucide-icon :name="tab.iconName" />
           <span class="mobile-tabbar__label">{{ tab.label }}</span>
@@ -405,10 +405,10 @@
 </template>
 
 <script>
+import { BRow, BCol } from "@/platform/bootstrap";
 import { mapGetters } from "vuex";
-import VueApexCharts from "vue-apexcharts";
-import DateRangePicker from "vue2-daterange-picker";
-import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
+import VueApexCharts from "vue3-apexcharts";
+import DateRangePicker from "@/components/DateRangePicker.vue";
 import moment from "moment";
 
 const MOBILE_MQ = "(max-width: 767px)";
@@ -474,7 +474,7 @@ import {
 } from "../../../utils/priceFormat";
 
 export default {
-  components: {
+  components: { BRow, BCol,
     apexchart: VueApexCharts,
     "date-range-picker": DateRangePicker,
   },
@@ -671,30 +671,30 @@ export default {
 
     columns_sales() {
       return [
-        { label: this.$t("Reference"), field: "Ref", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Customer"), field: "client_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("warehouse"), field: "warehouse_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Status"), field: "statut", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Total"), field: "GrandTotal", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Paid"), field: "paid_amount", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Due"), field: "due", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("PaymentStatus"), field: "payment_status", sortable: false, tdClass: "text-left", thClass: "text-left" }
+        { label: this.$t("Reference"), field: "Ref", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Customer"), field: "client_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("warehouse"), field: "warehouse_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Status"), field: "statut", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Total"), field: "GrandTotal", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Paid"), field: "paid_amount", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Due"), field: "due", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("PaymentStatus"), field: "payment_status", sortable: false, tdClass: "text-start", thClass: "text-start" }
       ];
     },
     columns_stock() {
       return [
-        { label: this.$t("ProductCode"), field: "code", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("ProductName"), field: "name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("warehouse"), field: "warehouse", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Quantity"), field: "quantity", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("AlertQuantity"), field: "stock_alert", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("ProductCode"), field: "code", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("ProductName"), field: "name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("warehouse"), field: "warehouse", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Quantity"), field: "quantity", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("AlertQuantity"), field: "stock_alert", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     },
     columns_products() {
       return [
-        { label: this.$t("ProductName"), field: "name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("TotalSales"), field: "total_sales", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("TotalAmount"), field: "total", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("ProductName"), field: "name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("TotalSales"), field: "total_sales", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("TotalAmount"), field: "total", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     },
 
@@ -1312,7 +1312,7 @@ export default {
     this.GetMonth();
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     this.cleanupDashboardViewport();
   }
 };

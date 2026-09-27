@@ -6,7 +6,7 @@
     <b-card class="toolbar-card shadow-soft mb-3 border-0">
       <div class="d-flex flex-wrap align-items-center">
         <!-- Date range (responsive) -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('DateRange')}}</label>
           <date-range-picker
             v-model="dateRange"
@@ -21,10 +21,10 @@
             :linkedCalendars="false"
             @update="fetchReport"
           >
-            <!-- Vue 2.6+ slot syntax; for Vue 2.5 use slot="input" slot-scope="picker" -->
+            <!-- Vue 2.6+ slot syntax (v-slot) -->
             <template v-slot:input="picker">
               <b-button variant="light" class="btn-pill">
-                <lucide-icon class="mr-1" name="calendar-days" />
+                <lucide-icon class="me-1" name="calendar-days" />
                 {{ isMobile
                     ? (fmtShort(picker.startDate) + ' - ' + fmtShort(picker.endDate))
                     : (fmt(picker.startDate)      + ' - ' + fmt(picker.endDate))
@@ -35,7 +35,7 @@
         </div>
 
         <!-- Quick ranges -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('QuickRanges')}}</label>
           <div class="btn-group quick-ranges">
             <b-button size="sm" variant="outline-primary" @click="quick('7d')">7D</b-button>
@@ -47,7 +47,7 @@
         </div>
 
         <!-- Warehouse (single) -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('warehouse')}}</label>
           <v-select class="w-280"
             v-model="warehouse_id"
@@ -60,7 +60,7 @@
         </div>
 
         <!-- Direction -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('Direction')}}</label>
           <b-button-group size="sm">
             <b-button :variant="direction==='all'?'primary':'outline-primary'" @click="direction='all'; fetchReport()">{{$t('All')}}</b-button>
@@ -69,16 +69,16 @@
           </b-button-group>
         </div>
 
-        <div class="ml-auto mb-2">
-          <b-button variant="primary" class="btn-pill mr-2" @click="fetchReport">
-            <lucide-icon class="mr-1" name="refresh-cw" />{{$t('Refresh')}}
+        <div class="ms-auto mb-2">
+          <b-button variant="primary" class="btn-pill me-2" @click="fetchReport">
+            <lucide-icon class="me-1" name="refresh-cw" />{{$t('Refresh')}}
           </b-button>
-          <b-button variant="outline-secondary" class="btn-pill mr-2" @click="printTableOnly()">
-            <lucide-icon class="mr-1" name="printer" />{{$t('print')}}
+          <b-button variant="outline-secondary" class="btn-pill me-2" @click="printTableOnly()">
+            <lucide-icon class="me-1" name="printer" />{{$t('print')}}
           </b-button>
           <!-- Export PDF -->
           <b-button variant="danger" class="btn-pill" @click="exportPDF">
-            <lucide-icon class="mr-1" name="file-text" />{{$t('Export_PDF')}}
+            <lucide-icon class="me-1" name="file-text" />{{$t('Export_PDF')}}
           </b-button>
         </div>
       </div>
@@ -160,7 +160,7 @@
           @on-sort-change="onSortChange"
           @on-search="onSearch"
         >
-          <template slot="table-row" slot-scope="p">
+          <template #table-row="p">
             <span v-if="p.column.field==='value'">{{ money(p.row.value) }}</span>
             <span v-else>{{ p.formattedRow[p.column.field] }}</span>
           </template>
@@ -171,11 +171,11 @@
 </template>
 
 <script>
+import { BButton, BButtonGroup, BCard, BCol, BRow, BSkeletonImg } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
-import VueApexCharts from "vue-apexcharts";
-import DateRangePicker from "vue2-daterange-picker";
-import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
+import VueApexCharts from "vue3-apexcharts";
+import DateRangePicker from "@/components/DateRangePicker.vue";
 import moment from "moment";
 
 // No ECharts, using ApexCharts
@@ -186,25 +186,14 @@ import autoTable from "jspdf-autotable";
 
 const StatTile = {
   name: "StatTile",
-  functional: true,
+  compilerOptions: { whitespace: 'condense' },
   props: { icon:String, label:String, sub:String, value:[String,Number], theme:{type:String,default:'blue'} },
-  render(h,{props}) {
-    return h('div',{class:['stat-card',`theme-${props.theme}`,'shadow-soft','rounded-xl','mb-2']},[
-      h('div',{class:'stat-inner'},[
-        h('div',{class:'stat-icon'},[ h('lucide-icon', { props: { name: props.icon } }) ]),
-        h('div',{class:'stat-content'},[
-          h('div',{class:'stat-label'},props.label),
-          props.sub ? h('div',{class:'stat-sub text-muted'},props.sub) : null,
-          h('div',{class:'stat-value'},props.value),
-        ])
-      ])
-    ]);
-  }
+  template: `<div :class="['stat-card', 'theme-' + theme, 'shadow-soft', 'rounded-xl', 'mb-2']"><div class="stat-inner"><div class="stat-icon"><lucide-icon :name="icon" /></div><div class="stat-content"><div class="stat-label">{{ label }}</div><div v-if="sub" class="stat-sub text-muted">{{ sub }}</div><div class="stat-value">{{ value }}</div></div></div></div>`
 };
 
 export default {
   metaInfo: { title: "Stock Transfer Report" },
-  components: { apexchart: VueApexCharts, "date-range-picker": DateRangePicker, StatTile },
+  components: { BSkeletonImg, BButton, BButtonGroup, BCard, BCol, BRow, apexchart: VueApexCharts, "date-range-picker": DateRangePicker, StatTile },
   data() {
     const end = new Date(); const start = new Date(); start.setDate(end.getDate()-6);
     return {
@@ -247,7 +236,7 @@ export default {
     labelRange(){ return `${this.fmt(this.dateRange.startDate)} - ${this.fmt(this.dateRange.endDate)}`; },
     columns(){
       return [
-        { label: this.$t('ID'), field:'transfer_id', sortable:true, tdClass:'text-left', thClass:'text-left' },
+        { label: this.$t('ID'), field:'transfer_id', sortable:true, tdClass:'text-start', thClass:'text-start' },
         { label: this.$t('date'), field:'date_time',  sortable:true },
         { label: this.$t('From'), field:'from',       sortable:true },
         { label: this.$t('to'),   field:'to',         sortable:true },
@@ -711,7 +700,7 @@ export default {
     this.onResize();
     window.addEventListener('resize', this.onResize, { passive: true });
   },
-  beforeDestroy(){
+  beforeUnmount(){
     window.removeEventListener('resize', this.onResize);
   }
 };

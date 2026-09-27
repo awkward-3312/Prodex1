@@ -90,6 +90,8 @@
 </template>
 
 <script>
+import { BForm } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import {
@@ -113,7 +115,7 @@ export default {
   metaInfo: {
     title: "Account"
   },
-  components: {
+  components: { BForm,
     PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab,
     PxField, PxInput, PxTextarea, PxModal, PxEmptyState
   },
@@ -256,7 +258,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

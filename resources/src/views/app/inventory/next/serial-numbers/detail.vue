@@ -95,6 +95,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -146,7 +147,7 @@ export default {
       this.$router.push({ name: "index_serial_numbers" });
     },
     makeToast(variant, msg) {
-      this.$root.$bvToast.toast(msg, { variant, solid: true });
+      notifications.notify(msg, { variant, solid: true });
     },
     setStatus(status) {
       this.saving = status;

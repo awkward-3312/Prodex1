@@ -21,7 +21,7 @@
 </template>
 
 <script>
-import VueApexCharts from "vue-apexcharts";
+import VueApexCharts from "vue3-apexcharts";
 import PxChartFrame from "@/components/px-next/PxChartFrame.vue";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 

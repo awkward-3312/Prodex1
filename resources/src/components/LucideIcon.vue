@@ -1,4 +1,5 @@
 <script>
+import { h } from 'vue';
 import {
   // navigation / chevrons / arrows
   Plus, ChevronDown, ChevronLeft, ChevronRight, ArrowLeft, ArrowUpCircle,
@@ -49,7 +50,7 @@ import {
   PackageSearch, Percent, Rocket, ScanLine, SearchX, ServerCog, ShieldPlus,
   Truck, WalletCards, Webhook, ZoomIn,
   Shapes, ChevronsDown, ImageOff
-} from 'lucide-vue';
+} from '@lucide/vue';
 
 const REGISTRY = {
   // navigation
@@ -271,40 +272,45 @@ const REGISTRY = {
   'image-off': ImageOff,
 };
 
+// Componente con estado mínimo escrito con la API de Vue 3 (`setup` + `h` de vue): sustituye al antiguo componente
+// `functional: true` con `render(h, ctx)`. Los atributos (class, style, data-*, aria-*, listeners) se reenvían tal cual al icono.
+// `@lucide/vue` (sucesor Vue-3-nativo de `lucide-vue`) exporta cada icono como una función simple `(props, {slots})
+// => vnode` (componente funcional idiomático de Vue 3) y se invoca con `h(Icon, ...)` tal cual — sin runtime de
+// compatibilidad de por medio, Vue 3 nativo ya la trata como el componente funcional que es.
 export default {
   name: 'LucideIcon',
-  functional: true,
+  inheritAttrs: false,
   props: {
     name: { type: String, required: true },
     size: { type: [Number, String], default: 18 },
     strokeWidth: { type: [Number, String], default: 2 },
   },
-  render(h, ctx) {
-    const Icon = REGISTRY[ctx.props.name];
-    if (!Icon) {
-      if (typeof console !== 'undefined' && console.warn) {
-        console.warn('[LucideIcon] missing icon:', ctx.props.name);
+  setup(props, { attrs }) {
+    return () => {
+      const { class: cls, style, ...rest } = attrs;
+      const Icon = REGISTRY[props.name];
+      if (!Icon) {
+        if (typeof console !== 'undefined' && console.warn) {
+          console.warn('[LucideIcon] missing icon:', props.name);
+        }
+        // Reserve the same box a real icon would occupy so surrounding text/layout
+        // does not shift, and stay faintly visible so a missing name is noticeable.
+        const px = (parseFloat(props.size) || 18) + 'px';
+        return h('span', {
+          ...rest,
+          'data-name': props.name,
+          class: ['lucide-icon', 'lucide-missing', cls],
+          style: [{ display: 'inline-block', width: px, height: px, verticalAlign: 'middle' }, style],
+        });
       }
-      // Reserve the same box a real icon would occupy so surrounding text/layout
-      // does not shift, and stay faintly visible so a missing name is noticeable.
-      const px = (parseFloat(ctx.props.size) || 18) + 'px';
-      return h('span', {
-        class: ['lucide-icon', 'lucide-missing', ctx.data.class, ctx.data.staticClass].filter(Boolean),
-        style: [
-          { display: 'inline-block', width: px, height: px, verticalAlign: 'middle' },
-          ctx.data.style,
-          ctx.data.staticStyle,
-        ].filter(Boolean),
-        attrs: Object.assign({ 'data-name': ctx.props.name }, ctx.data.attrs),
+      return h(Icon, {
+        ...rest,
+        class: ['lucide-icon', cls],
+        style,
+        size: props.size,
+        strokeWidth: props.strokeWidth,
       });
-    }
-    return h(Icon, {
-      class: ['lucide-icon', ctx.data.class, ctx.data.staticClass].filter(Boolean),
-      style: [ctx.data.style, ctx.data.staticStyle].filter(Boolean),
-      attrs: ctx.data.attrs,
-      props: { size: ctx.props.size, strokeWidth: ctx.props.strokeWidth },
-      on: ctx.listeners,
-    });
+    };
   },
 };
 </script>

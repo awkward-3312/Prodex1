@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Subscribers')" :folder="$t('Store')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else class="wrapper">
       <vue-good-table
@@ -17,9 +17,9 @@
         @on-sort-change="onSortChange"
         styleClass="table-hover tableOne vgt-table"
       >
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field==='actions'">
-            <a v-b-tooltip.hover :title="$t('Delete')" class="ml-2" @click="remove(props.row.id)">
+            <a v-b-tooltip.hover :title="$t('Delete')" class="ms-2" @click="remove(props.row.id)">
               <lucide-icon class="text-20 text-danger" name="x" />
             </a>
           </span>
@@ -31,7 +31,8 @@
 </template>
 
 <script>
-export default {
+import { vBTooltip, BCard } from "@/platform/bootstrap";
+export default { components: { BCard }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Suscriptores de la tienda"
   },

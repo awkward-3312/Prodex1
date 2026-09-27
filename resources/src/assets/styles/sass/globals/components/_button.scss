@@ -39,10 +39,9 @@ html [type="button"],
     }
 }
 
-// Preserve full-width behavior with flex layout intact.
-.btn-block {
-    display: flex;
-    width: 100%;
+// Botones a todo el ancho con maquetación flex intacta (`d-block w-100` de Bootstrap 5, que reemplaza a `btn-block`).
+.btn.d-block.w-100 {
+    display: flex !important;
 }
 
 .btn-secondary,

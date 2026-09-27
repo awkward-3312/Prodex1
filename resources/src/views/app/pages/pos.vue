@@ -24,7 +24,7 @@
           type="button"
           class="pos-shell-register-pill"
           :class="(currentRegister && currentRegister.status === 'open') ? 'is-open' : 'is-closed'"
-          @click="(currentRegister && currentRegister.status === 'open') ? $bvModal.show('CloseRegisterModal') : $bvModal.show('OpenRegisterModal')"
+          @click="(currentRegister && currentRegister.status === 'open') ? $modals.show('CloseRegisterModal') : $modals.show('OpenRegisterModal')"
           :title="(currentRegister && currentRegister.status === 'open') ? $t('Close Register') : $t('Open Register')">
           <span class="pos-shell-register-pill-dot"></span>
           <span v-if="currentRegister && currentRegister.status === 'open'">OPEN</span>
@@ -1060,7 +1060,7 @@
       @result="onScan"
     />
     <div class="text-center mt-2">
-      <b-button variant="primary" @click="$bvModal.hide('open_scan')">{{ $t('Close') }}</b-button>
+      <b-button variant="primary" @click="$modals.hide('open_scan')">{{ $t('Close') }}</b-button>
     </div>
   </b-modal>
 
@@ -1133,7 +1133,7 @@
         <button type="button" class="btn btn-primary" @click="printGeneratedVoucher">
           <i class="i-Billing"></i> Imprimir vale
         </button>
-        <button type="button" class="btn btn-outline-secondary" @click="$bvModal.hide('store-credit-voucher-generated')">
+        <button type="button" class="btn btn-outline-secondary" @click="$modals.hide('store-credit-voucher-generated')">
           {{ $t('Close') || 'Cerrar' }}
         </button>
       </div>
@@ -1333,8 +1333,8 @@
                 </thead>
 
                 <tbody>
-                  <template v-for="payment_pos in payments">
-                    <tr :key="'pay-' + payment_pos.id">
+                  <template v-for="payment_pos in payments" :key="'pay-' + payment_pos.id">
+                    <tr>
                       <td style="text-align: left;" colspan="1">{{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}</td>
                       <td style="text-align: center;" colspan="2">
                         {{ formatPriceDisplay(payment_pos.montant ,2) }}
@@ -1352,7 +1352,7 @@
                 </tbody>
               </table>
 
-              <div id="legalcopy" class="ml-2">
+              <div id="legalcopy" class="ms-2">
                 <p v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;margin:0;">
                   {{$t('sale_note')}}: {{invoice_pos.sale.notes}}
                 </p>
@@ -1417,8 +1417,8 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <template v-for="detail_invoice in invoice_pos.details">
-                    <tr :key="'l2-item-' + detail_invoice.detail_id">
+                  <template v-for="detail_invoice in invoice_pos.details" :key="'l2-item-' + detail_invoice.detail_id">
+                    <tr>
                       <td>
                         {{detail_invoice.name}}
                         <br v-show="detail_invoice.is_imei && detail_invoice.imei_number !==null">
@@ -1540,8 +1540,8 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <template v-for="payment_pos in payments">
-                    <tr :key="'pay2-' + payment_pos.id">
+                  <template v-for="payment_pos in payments" :key="'pay2-' + payment_pos.id">
+                    <tr>
                       <td style="text-align: left;" colspan="1">{{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}</td>
                       <td style="text-align: center;" colspan="2">
                         {{formatNumber(payment_pos.montant ,2)}}
@@ -1559,7 +1559,7 @@
                 </tbody>
               </table>
 
-              <div id="legalcopy" class="ml-2">
+              <div id="legalcopy" class="ms-2">
                 <p v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;margin:0;">
                   {{$t('sale_note')}}: {{invoice_pos.sale.notes}}
                 </p>
@@ -1729,8 +1729,8 @@
                 </thead>
 
                 <tbody>
-                  <template v-for="payment_pos in payments">
-                    <tr :key="'pay3-' + payment_pos.id">
+                  <template v-for="payment_pos in payments" :key="'pay3-' + payment_pos.id">
+                    <tr>
                       <td style="text-align: left;" colspan="1">{{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}</td>
                       <td style="text-align: center;" colspan="2">
                         {{formatNumber(payment_pos.montant ,2)}}
@@ -1748,7 +1748,7 @@
                 </tbody>
               </table>
 
-              <div id="legalcopy" class="ml-2">
+              <div id="legalcopy" class="ms-2">
                 <p v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;margin:0;">
                   {{$t('sale_note')}}: {{invoice_pos.sale.notes}}
                 </p>
@@ -1930,8 +1930,8 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <template v-for="payment_pos in payments">
-                    <tr :key="'pay4-' + payment_pos.id">
+                  <template v-for="payment_pos in payments" :key="'pay4-' + payment_pos.id">
+                    <tr>
                       <td style="text-align:left;" colspan="1">{{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}</td>
                       <td style="text-align:center;" colspan="2">{{ formatPriceDisplay(payment_pos.montant ,2) }}</td>
                       <td style="text-align:right;" colspan="1">{{ formatPriceDisplay(payment_pos.change ,2) }}</td>
@@ -1945,7 +1945,7 @@
                 </tbody>
               </table>
 
-              <div id="legalcopy" class="ml-2">
+              <div id="legalcopy" class="ms-2">
                 <div v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;">
                   {{$t('sale_note')}} / ملاحظة البيع: {{invoice_pos.sale.notes}}
                 </div>
@@ -2087,8 +2087,8 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <template v-for="payment_pos in payments">
-                    <tr :key="'pay5-' + payment_pos.id">
+                  <template v-for="payment_pos in payments" :key="'pay5-' + payment_pos.id">
+                    <tr>
                       <td>{{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}</td>
                       <td>{{ formatPriceDisplay(payment_pos.montant, 2) }}</td>
                       <td>{{ formatPriceDisplay(payment_pos.change, 2) }}</td>
@@ -2129,8 +2129,8 @@
             <th>{{ $t('date') }}</th>
             <th>{{ $t('Reference') }}</th>
             <th>{{ $t('Customer') }}</th>
-            <th class="text-right">{{ $t('Total') }}</th>
-            <th class="text-right">{{ $t('Action') }}</th>
+            <th class="text-end">{{ $t('Total') }}</th>
+            <th class="text-end">{{ $t('Action') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -2141,9 +2141,9 @@
             <td>{{ d.date }}</td>
             <td>{{ d.Ref }}</td>
             <td>{{ d.client_name }}</td>
-            <td class="text-right">{{ formatNumber(d.GrandTotal, 2) }}</td>
-            <td class="text-right">
-              <b-button size="sm" variant="outline-success" class="mr-2" @click="loadDraftSale(d.id)" :disabled="openingDraftId === d.id" :title="openingDraftId === d.id ? $t('Loading') : $t('Open')">
+            <td class="text-end">{{ formatNumber(d.GrandTotal, 2) }}</td>
+            <td class="text-end">
+              <b-button size="sm" variant="outline-success" class="me-2" @click="loadDraftSale(d.id)" :disabled="openingDraftId === d.id" :title="openingDraftId === d.id ? $t('Loading') : $t('Open')">
                 <template v-if="openingDraftId === d.id">
                   <span class="spinner sm spinner-primary"></span>
                 </template>
@@ -2199,7 +2199,7 @@
                     v-model="detail.Unit_price"
                     :state="getValidationState(validationContext)"
                     aria-describedby="Price-feedback"
-                    class="mr-2"
+                    class="me-2"
                   ></b-form-input>
                   <select
                     class="form-control pos-price-select"
@@ -2218,7 +2218,7 @@
            <!-- Unit Sale -->
            <b-col lg="6" md="6" sm="12" v-if="detail.product_type != 'is_service'" v-show="!detailLoading">
             <validation-provider name="Unit Sale" :rules="{ required: true}">
-              <b-form-group slot-scope="{ valid, errors }" :label="$t('UnitSale') + ' ' + '*'"><v-select
+              <template #default="{ valid, errors }"><b-form-group :label="$t('UnitSale') + ' ' + '*'"><v-select
                   :class="{'is-invalid': !!errors.length}"
                   :state="errors[0] ? false : (valid ? true : null)"
                   v-model="detail.sale_unit_id"
@@ -2227,7 +2227,7 @@
                   :options="units.map(units => ({label: units.name, value: units.id}))"
                 />
                 <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-              </b-form-group>
+              </b-form-group></template>
             </validation-provider>
           </b-col>
 
@@ -2256,7 +2256,7 @@
           <!-- Tax Method -->
           <b-col lg="6" md="6" sm="12" v-show="!detailLoading">
             <validation-provider name="Tax Method" :rules="{ required: true}">
-              <b-form-group slot-scope="{ valid, errors }" :label="$t('TaxMethod') + ' ' + '*'"><v-select
+              <template #default="{ valid, errors }"><b-form-group :label="$t('TaxMethod') + ' ' + '*'"><v-select
                   :class="{'is-invalid': !!errors.length}"
                   :state="errors[0] ? false : (valid ? true : null)"
                   v-model="detail.tax_method"
@@ -2269,7 +2269,7 @@
                  ]"
                 ></v-select>
                 <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-      </b-form-group>
+      </b-form-group></template>
             </validation-provider>
           </b-col>
 
@@ -2298,7 +2298,7 @@
           <!-- Discount Method -->
           <b-col lg="6" md="6" sm="12" v-show="!detailLoading">
             <validation-provider name="Discount Method" :rules="{ required: true}">
-              <b-form-group slot-scope="{ valid, errors }" :label="$t('Discount_Method') + ' ' + '*'"><v-select
+              <template #default="{ valid, errors }"><b-form-group :label="$t('Discount_Method') + ' ' + '*'"><v-select
                   v-model="detail.discount_Method"
                   :reduce="label => label.value"
                   :placeholder="$t('Choose_Method')"
@@ -2311,7 +2311,7 @@
                     ]"
                 ></v-select>
                 <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-      </b-form-group>
+      </b-form-group></template>
             </validation-provider>
           </b-col>
 
@@ -2323,7 +2323,7 @@
 
           <b-col md="12">
             <b-form-group class="d-flex justify-content-end mt-2">
-              <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('form_Update_Detail')">{{ $t('Cancel') }}</b-button>
+              <b-button variant="secondary" class="me-2" @click="$modals.hide('form_Update_Detail')">{{ $t('Cancel') }}</b-button>
               <b-button variant="primary" type="submit">{{ $t('Save') }}</b-button>
             </b-form-group>
           </b-col>
@@ -2387,7 +2387,7 @@
         </b-col>
 
         <b-col cols="12" class="d-flex justify-content-end">
-        <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('New_Customer')">{{ $t('Close') }}</b-button>
+        <b-button variant="secondary" class="me-2" @click="$modals.hide('New_Customer')">{{ $t('Close') }}</b-button>
         <b-button variant="primary" type="submit">{{ $t('Save') }}</b-button>
         </b-col>
       </b-row>
@@ -2520,8 +2520,8 @@
           </b-col>
 
           <b-col md="12" class="mt-3 d-flex justify-content-end align-items-center">
-            <div v-if="SubmitProcessing" class="spinner sm spinner-primary mr-3"></div>
-            <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
+            <div v-if="SubmitProcessing" class="spinner sm spinner-primary me-3"></div>
+            <b-button variant="secondary" class="me-2" @click="$modals.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
             <b-button variant="primary" type="submit" :disabled="SubmitProcessing">{{ $t('Save') }}</b-button>
           </b-col>
 
@@ -2546,7 +2546,7 @@
           type="button"
           class="ts-close"
           :aria-label="$t('Close')"
-          @click="$bvModal.hide('modal_today_sales')"
+          @click="$modals.hide('modal_today_sales')"
         >
           <lucide-icon name="x" />
         </button>
@@ -2652,7 +2652,7 @@
           type="button"
           class="ps-close"
           :aria-label="$t('Close')"
-          @click="$bvModal.hide('modal_pos_settings')"
+          @click="$modals.hide('modal_pos_settings')"
         >
           <lucide-icon name="x" />
         </button>
@@ -2873,7 +2873,7 @@
             <button
               type="button"
               class="ps-btn ps-btn-secondary"
-              @click="$bvModal.hide('modal_pos_settings')"
+              @click="$modals.hide('modal_pos_settings')"
             >
               {{ $t('Cancel') || 'Cancel' }}
             </button>
@@ -2917,8 +2917,8 @@
         <label>{{$t('notes')}}</label>
         <textarea class="form-control" v-model="registerForm.notes"></textarea>
       </div>
-      <div class="text-right">
-        <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('OpenRegisterModal')">{{$t('Cancel')}}</b-button>
+      <div class="text-end">
+        <b-button variant="secondary" class="me-2" @click="$modals.hide('OpenRegisterModal')">{{$t('Cancel')}}</b-button>
         <b-button variant="success" @click="submitOpenRegister" :disabled="registerBusy">{{$t('Open Register')}}</b-button>
       </div>
     </b-modal>
@@ -3079,8 +3079,8 @@
               Esperado {{ formatRegisterMoney(closeSummary.expected_cash || 0) }} · Contado {{ formatRegisterMoney(countedDenominationsTotal) }} · {{ cashCloseStatus.label }}
             </div>
           </div>
-          <div class="text-right">
-            <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('CloseRegisterModal')">{{$t('Cancel')}}</b-button>
+          <div class="text-end">
+            <b-button variant="secondary" class="me-2" @click="$modals.hide('CloseRegisterModal')">{{$t('Cancel')}}</b-button>
             <b-button variant="danger" @click="submitCloseRegister" :disabled="registerBusy">Cerrar caja</b-button>
           </div>
         </div>
@@ -3104,7 +3104,7 @@
         {{ $t('pos.ActiveCheckoutReloadQuestion') || 'You have an active checkout. Would you like to reload the page now or after completing the sale?' }}
       </p>
       <div class="d-flex justify-content-end">
-        <b-button variant="outline-primary" class="mr-2" @click="onOnlineReloadAfterSale">
+        <b-button variant="outline-primary" class="me-2" @click="onOnlineReloadAfterSale">
           {{ $t('pos.ReloadAfterSale') || 'After this sale' }}
         </b-button>
         <b-button variant="primary" @click="onOnlineReloadNow">
@@ -3170,14 +3170,14 @@
           <button
             type="button"
             class="pos-confirm-btn pos-confirm-btn-secondary"
-            @click="$bvModal.hide('pos-confirm-clear-cart'); Submit_Draft();">
+            @click="$modals.hide('pos-confirm-clear-cart'); Submit_Draft();">
             <lucide-icon name="bookmark" />
             <span>{{ $t('Draft_Hold') || 'Draft / Hold' }}</span>
           </button>
           <button
             type="button"
             class="pos-confirm-btn pos-confirm-btn-danger"
-            @click="$bvModal.hide('pos-confirm-clear-cart'); Reset_Pos();">
+            @click="$modals.hide('pos-confirm-clear-cart'); Reset_Pos();">
             <lucide-icon name="trash-2" />
             <span>{{ $t('Yes_Clear_It') || 'Yes, Clear It' }}</span>
           </button>
@@ -3575,10 +3575,11 @@
 </template>
 
 <script>
+import { BModal, BButton, BCol, BDropdown, BPagination, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormCheckbox, BFormRadioGroup, BFormSelect } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import NProgress from "nprogress";
 import { mapActions, mapGetters } from "vuex";
-import vueEasyPrint from "vue-easy-print";
-import VueBarcode from "vue-barcode";
+import VueBarcode from "@/components/Barcode.vue";
 import Util from "../../../utils";
 import { formatPriceDisplay, getPriceFormatSetting, getPriceDecimals } from "../../../utils/priceFormat";
 import { openCashDrawer } from "../../../utils/cashDrawerQz";
@@ -3589,8 +3590,7 @@ import CustomFieldsForm from "../../../components/CustomFieldsForm.vue";
 import posKeyboardShortcutsMixin, { POS_SHORTCUTS } from "../../../mixins/posKeyboardShortcuts";
 
 export default {
-  components: {
-    vueEasyPrint,
+  components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormCheckbox, BFormRadioGroup, BFormSelect, BButton, BCol, BDropdown, BPagination, BRow, BModal,
     barcode: VueBarcode,
     ModernPaymentModal,
     PosReturnModal,
@@ -4486,37 +4486,37 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Customer"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("warehouse"),
           field: "warehouse_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
        
         {
           label: this.$t("Total"),
           field: "GrandTotal",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
 
@@ -4524,8 +4524,8 @@ export default {
           label: this.$t("Action"),
           field: "actions",
           html: true,
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
      
@@ -4941,7 +4941,7 @@ export default {
           opening_balance: this.registerForm.opening_balance || 0,
           notes: this.registerForm.notes || ''
         });
-        this.$bvModal.hide('OpenRegisterModal');
+        modals.hide('OpenRegisterModal');
         this.makeToast('success', this.$t('RegisterOpened'), this.$t('Success'));
         // Immediately reflect UI without waiting for fetch
         this.currentRegister = data && data.register ? data.register : this.currentRegister;
@@ -4973,7 +4973,7 @@ export default {
           transfer_notes: this.closeForm.transfer_notes || '',
           notes: this.closeForm.notes || ''
         });
-        this.$bvModal.hide('CloseRegisterModal');
+        modals.hide('CloseRegisterModal');
         this.makeToast('success', this.$t('RegisterClosed'), this.$t('Success'));
         this.resetCloseForm();
         this.refreshCurrentRegister();
@@ -5040,7 +5040,7 @@ export default {
 
     
     showModal() {
-      this.$bvModal.show('open_scan');
+      modals.show('open_scan');
       
     },
 
@@ -5048,7 +5048,7 @@ export default {
       const code = decodedText;
       this.search_input = code;
       this.search();
-      this.$bvModal.hide('open_scan');
+      modals.hide('open_scan');
     },
 
     addPaymentLine() {
@@ -5526,7 +5526,7 @@ export default {
               const afterCleanup = () => {
                 this.last_sale_id = saleId;
                 this.Invoice_POS(saleId);
-                this.$bvModal.hide("Add_Payment");
+                modals.hide("Add_Payment");
                 this.Reset_Pos();
               };
               if (draftId) {
@@ -5639,7 +5639,7 @@ export default {
               const afterCleanup = () => {
                 this.last_sale_id = saleId;
                 this.Invoice_POS(saleId);
-                this.$bvModal.hide("Add_Payment");
+                modals.hide("Add_Payment");
                 this.Reset_Pos();
               };
               if (draftId) {
@@ -5722,7 +5722,7 @@ export default {
     },
 
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -6343,7 +6343,7 @@ export default {
       const newItem = JSON.parse(JSON.stringify(this.product));
       if (!newItem.price_type) newItem.price_type = 'retail';
       // ensure reactivity for newly-added prop on some browsers
-      this.$set(newItem, 'price_type', newItem.price_type || 'retail');
+      (newItem)['price_type'] = newItem.price_type || 'retail';
       // Apply min_price on add: ensure Net_price >= min_price by adjusting Unit_price if required
       try {
         const min = Number(newItem.min_price || 0);
@@ -6528,7 +6528,7 @@ export default {
       this.detailLoading = true;
       this.detail = {};
       this.detail.name = detail.name;
-      this.$bvModal.show("form_Update_Detail");
+      modals.show("form_Update_Detail");
       this.get_units(detail.product_id)
         .catch(() => {})
         .finally(() => {
@@ -6632,7 +6632,7 @@ export default {
       }
       this.CalculTotal();
       setTimeout(() => {
-        this.$bvModal.hide("form_Update_Detail");
+        modals.hide("form_Update_Detail");
       }, 1000);
     },
 
@@ -6782,7 +6782,7 @@ export default {
     // Ensure each rendered item always has a default price_type for binding
     ensurePriceType(detail){
       if (!detail) return;
-      if (!detail.price_type) this.$set(detail, 'price_type', 'retail');
+      if (!detail.price_type) (detail)['price_type'] = 'retail';
     },
 
     // ==================== RESET METHOD ====================
@@ -7036,7 +7036,7 @@ export default {
       this.draft_sales_page = 1;
       this.get_Draft_Sales(1);
       setTimeout(() => {
-        this.$bvModal.show("show_draft_sales");
+        modals.show("show_draft_sales");
       }, 1000);
     },
 
@@ -7299,7 +7299,7 @@ export default {
           }
 
           // Close draft list modal
-          try { this.$bvModal.hide('show_draft_sales'); } catch (e) {}
+          try { modals.hide('show_draft_sales'); } catch (e) {}
 
           NProgress.done();
         })
@@ -7493,14 +7493,14 @@ export default {
           const key = (u.id != null ? u.id : '?') + ':' + (u.product_variant_id != null ? u.product_variant_id : 'null');
           const pi = productsIdx.get(key);
           if (pi != null && this.products[pi]) {
-            this.$set(this.products[pi], 'qte', u.qte);
-            this.$set(this.products[pi], 'qte_sale', u.qte_sale);
+            (this.products[pi])['qte'] = u.qte;
+            (this.products[pi])['qte_sale'] = u.qte_sale;
             changed++;
           }
           const ppi = productsPosIdx.get(key);
           if (ppi != null && this.products_pos[ppi]) {
-            this.$set(this.products_pos[ppi], 'qte', u.qte);
-            this.$set(this.products_pos[ppi], 'qte_sale', u.qte_sale);
+            (this.products_pos[ppi])['qte'] = u.qte;
+            (this.products_pos[ppi])['qte_sale'] = u.qte_sale;
           }
         }
       }
@@ -7591,7 +7591,7 @@ export default {
       if (Array.isArray(this.details)) {
         for (const d of this.details) {
           if (d && d.is_batch_tracked) {
-            this.$set(d, "batches", []);
+            (d)["batches"] = [];
             this.fetch_batches_for_detail(d);
           }
         }
@@ -7602,37 +7602,37 @@ export default {
     fetch_batches_for_detail(detail) {
       if (!detail) return;
       // Make sure all batch-related fields exist reactively on the cart line.
-      if (!("batches_loading" in detail)) this.$set(detail, "batches_loading", false);
-      if (!("available_batches" in detail)) this.$set(detail, "available_batches", []);
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!("batches_loading" in detail)) (detail)["batches_loading"] = false;
+      if (!("available_batches" in detail)) (detail)["available_batches"] = [];
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
 
       if (!detail.is_batch_tracked) {
-        this.$set(detail, "batches_loading", false);
+        (detail)["batches_loading"] = false;
         return;
       }
       // Offline: skip live fetch — backend will auto-FEFO at submit time.
       if (this.isOnline === false) {
-        this.$set(detail, "batches_loading", false);
+        (detail)["batches_loading"] = false;
         return;
       }
       const wid = this.sale && this.sale.warehouse_id;
       const productId = detail.product_id || detail.id;
       if (!wid || !productId) {
-        this.$set(detail, "batches_loading", false);
+        (detail)["batches_loading"] = false;
         return;
       }
       const variantSeg = (detail.product_variant_id != null && detail.product_variant_id !== "")
         ? detail.product_variant_id
         : 0;
-      this.$set(detail, "batches_loading", true);
+      (detail)["batches_loading"] = true;
       axios
         .get(`batches_for_sale/${productId}/${wid}/${variantSeg}`, { timeout: 15000 })
         .then(response => {
           const list = (response && response.data && Array.isArray(response.data.batches))
             ? response.data.batches
             : [];
-          this.$set(detail, "available_batches", list);
-          if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+          (detail)["available_batches"] = list;
+          if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
           // Auto-seed the first batch row with the full line qty so the cashier only has
           // to pick a batch — keeps the strict-validation flow fast on the happy path.
           if (detail.batches.length === 0 && list.length > 0) {
@@ -7640,15 +7640,15 @@ export default {
           }
         })
         .catch(() => {
-          this.$set(detail, "available_batches", []);
+          (detail)["available_batches"] = [];
         })
         .then(() => {
-          this.$set(detail, "batches_loading", false);
+          (detail)["batches_loading"] = false;
         });
     },
 
     add_batch_to_detail(detail) {
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
       detail.batches.push({
         product_batch_id: null,
         batch_no: "",
@@ -7668,15 +7668,15 @@ export default {
       const row = detail.batches[idx];
       if (!row) return;
       const ab = list.find(x => x.id === batchId);
-      this.$set(row, "product_batch_id", ab ? ab.id : null);
-      this.$set(row, "batch_no", ab ? ab.batch_no : "");
-      this.$set(row, "expiry_date", ab ? ab.expiry_date : null);
-      this.$set(row, "qty_available", ab ? Number(ab.qty_available) || 0 : 0);
+      (row)["product_batch_id"] = ab ? ab.id : null;
+      (row)["batch_no"] = ab ? ab.batch_no : "";
+      (row)["expiry_date"] = ab ? ab.expiry_date : null;
+      (row)["qty_available"] = ab ? Number(ab.qty_available) || 0 : 0;
     },
 
     on_batch_qty_input(b, val) {
       const num = parseFloat(String(val).replace(",", "."));
-      this.$set(b, "qty", Number.isFinite(num) ? num : 0);
+      (b)["qty"] = Number.isFinite(num) ? num : 0;
     },
 
     batch_total_qty(detail) {
@@ -7911,7 +7911,7 @@ export default {
       this.detailLoading = true;
       this.detail = {};
       this.detail.name = detail.name;
-      this.$bvModal.show("form_Update_Detail");
+      modals.show("form_Update_Detail");
       this.get_units(detail.product_id)
         .catch(() => {})
         .finally(() => {
@@ -8028,7 +8028,7 @@ export default {
       }
       this.CalculTotal();
       setTimeout(() => {
-        this.$bvModal.hide("form_Update_Detail");
+        modals.hide("form_Update_Detail");
       }, 1000);
     },
 
@@ -8391,7 +8391,7 @@ export default {
         } catch (e) {}
 
         setTimeout(() => {
-          try { this.$bvModal.show('Show_invoice'); } catch(e) {}
+          try { modals.show('Show_invoice'); } catch(e) {}
           this.$nextTick(() => {
             const qrReady = this.awaitQrReady();
             if (autoPrintable) {
@@ -8745,7 +8745,7 @@ export default {
             this.$t("Success")
           );
           this.Get_Client_Without_Paginate();
-          this.$bvModal.hide("New_Customer");
+          modals.hide("New_Customer");
         })
         .catch(() => {
           NProgress.done();
@@ -8794,7 +8794,7 @@ export default {
                 this.$t("Success")
               );
               this.Get_Client_Without_Paginate();
-              this.$bvModal.hide("Quick_Add_Customer");
+              modals.hide("Quick_Add_Customer");
               this.reset_Form_client();
               this.quickAddCustomFieldValues = {};
             };
@@ -8821,11 +8821,11 @@ export default {
     },
     New_Client() {
       this.reset_Form_client();
-      this.$bvModal.show("New_Customer");
+      modals.show("New_Customer");
     },
     Quick_Add_Client() {
       this.reset_Form_client();
-      this.$bvModal.show("Quick_Add_Customer");
+      modals.show("Quick_Add_Customer");
     },
     reset_Form_client() {
       this.client = {
@@ -8855,7 +8855,7 @@ export default {
         .then(response => {
           this.today_sales = response.data;
           setTimeout(() => {
-            this.$bvModal.show("modal_today_sales");
+            modals.show("modal_today_sales");
             NProgress.done();
           }, 1000);
         })
@@ -8926,7 +8926,7 @@ export default {
     // ==================== POS SETTINGS MODAL ====================
     open_pos_settings_modal() {
       this.ps_loading = true;
-      this.$bvModal.show("modal_pos_settings");
+      modals.show("modal_pos_settings");
       // Refresh from server so the modal always shows authoritative state
       // (and so we have the row id needed for the PUT request).
       axios.get("get_pos_Settings_api")
@@ -9025,7 +9025,7 @@ export default {
         .then(() => {
           this.makeToast('success', this.$t('Successfully_Updated'), this.$t('Success'));
           try { Fire.$emit('Event_Pos_Settings'); } catch (e) {}
-          this.$bvModal.hide('modal_pos_settings');
+          modals.hide('modal_pos_settings');
         })
         .catch(() => {
           this.makeToast('danger', this.$t('InvalidData'), this.$t('Failed'));
@@ -9348,7 +9348,7 @@ export default {
         } catch (e) {}
         try { this.invoice_pos.details = details; } catch (e) {}
         try { this.invoice_pos.setting = normalizedSetting || {}; } catch (e) {}
-        try { this.$set(this.invoice_pos, 'symbol', symbol); } catch (e) { try { this.invoice_pos.symbol = symbol; } catch(_) {} }
+        try { (this.invoice_pos)['symbol'] = symbol; } catch (e) { try { this.invoice_pos.symbol = symbol; } catch(_) {} }
         try { this.invoice_pos.zatca_qr = zatca_qr; } catch (e) {}
         try { this.public_invoice_url = (data && data.public_invoice_url) ? data.public_invoice_url : ''; } catch (e) {}
         try { this.payments = payments; } catch (e) {}
@@ -9374,7 +9374,7 @@ export default {
 
         // If auto-print is disabled, just ensure the invoice modal/DOM is available and skip printing.
         if (!autoPrintable) {
-          try { this.$bvModal && this.$bvModal.show && this.$bvModal.show('Show_invoice'); } catch(e) {}
+          try { modals.show('Show_invoice'); } catch(e) {}
           // Still kick off QR rendering so the on-screen modal shows the codes.
           try { this.$nextTick(() => { this.awaitQrReady(); }); } catch (e) {}
         } else {
@@ -9387,7 +9387,7 @@ export default {
               const el = (typeof document !== 'undefined') ? document.getElementById('invoice-POS') : null;
               if (!el) {
                 // As a fallback, show the modal once so its DOM is guaranteed to exist, then print.
-                try { this.$bvModal && this.$bvModal.show && this.$bvModal.show('Show_invoice'); } catch(e) {}
+                try { modals.show('Show_invoice'); } catch(e) {}
                 this.$nextTick(() => {
                   this.awaitQrReady().then(doPrint);
                 });
@@ -9476,7 +9476,7 @@ export default {
           try {
             const sym = (this.currentUser && this.currentUser.currency) ? this.currentUser.currency : '';
             if (!this.invoice_pos.symbol) {
-              try { this.$set(this.invoice_pos, 'symbol', sym); } catch (e) { this.invoice_pos.symbol = sym; }
+              try { (this.invoice_pos)['symbol'] = sym; } catch (e) { this.invoice_pos.symbol = sym; }
             }
           } catch (e) {}
 
@@ -9610,7 +9610,7 @@ export default {
               try {
                 const sym = (this.currentUser && this.currentUser.currency) ? this.currentUser.currency : '';
                 if (!this.invoice_pos.symbol) {
-                  try { this.$set(this.invoice_pos, 'symbol', sym); } catch (e) { this.invoice_pos.symbol = sym; }
+                  try { (this.invoice_pos)['symbol'] = sym; } catch (e) { this.invoice_pos.symbol = sym; }
                 }
               } catch (e) {}
 
@@ -10185,7 +10185,7 @@ export default {
     // ===== Calculator =====
     openCalculator() {
       this.calcClear();
-      this.$bvModal.show('pos_calculator');
+      modals.show('pos_calculator');
     },
     calcClear() {
       this.calc.display = '0';
@@ -10265,9 +10265,7 @@ export default {
       if (voucher && voucher.code) {
         this.generatedReturnVoucher = voucher;
         this.$nextTick(() => {
-          if (this.$bvModal && typeof this.$bvModal.show === 'function') {
-            this.$bvModal.show('store-credit-voucher-generated');
-          }
+          modals.show('store-credit-voucher-generated');
         });
       }
     },
@@ -10394,9 +10392,7 @@ export default {
     confirmClearCart() {
       if (!this.details || !this.details.length) return;
       try {
-        if (this.$bvModal && typeof this.$bvModal.show === 'function') {
-          this.$bvModal.show('pos-confirm-clear-cart');
-        }
+        modals.show('pos-confirm-clear-cart');
       } catch (e) {}
     },
   },
@@ -10497,14 +10493,9 @@ export default {
       this.registerForm.cash_drawer_id = this.sale.cash_drawer_id || '';
       this.refreshCurrentRegister();
     });
-    // Reset POS after successful payment from ModernPaymentModal
-    if (this.$refs && this.$refs.modernPaymentModal) {
-      try {
-        this.$refs.modernPaymentModal.$on('payment-success', () => {
-          this.Reset_Pos();
-        });
-      } catch(e) {}
-    }
+    // `Reset_Pos()` tras un pago exitoso: ya lo hace `onModernPaymentSuccess` (enlazado en la plantilla con
+    // `@payment-success`); esto era un segundo registro redundante vía `.$on` de instancia (API de eventos de
+    // Vue 2 sin equivalente en Vue 3, y ya inofensivo por el `try/catch`).
     Fire.$on("pay_now", () => {
       setTimeout(() => {
         // Guard: prevent opening legacy payment modal if total is negative
@@ -10521,7 +10512,7 @@ export default {
         }];
         this.globalPaymentNote = '';
         this.selectedAccount= null; 
-        this.$bvModal.show("Add_Payment");
+        modals.show("Add_Payment");
         // Complete the animation of theprogress bar.
         NProgress.done();
       }, 500);
@@ -10574,7 +10565,7 @@ export default {
     } catch (e) {}
 
   },
-  beforeDestroy() {
+  beforeUnmount() {
     this.stopPosResize();
     try {
       if (typeof document !== 'undefined' && document.documentElement) {
@@ -12471,10 +12462,6 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 8px;
   }
 
-  .custom-control-label {
-    user-select: none;
-  }
-
   .loyalty-eligible-row {
     display: flex;
     flex-direction: column;
@@ -13003,7 +12990,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     flex-direction: column;
     align-items: stretch;
   }
-  .cr-footer .text-right {
+  .cr-footer .text-end {
     text-align: left !important;
   }
 }
@@ -18843,7 +18830,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
    any other route — otherwise the topnav fullscreen button there would
    hide the topnav+sidebar and zero the main-content-wrap padding,
    shifting the footer. The class is added in mounted() above and
-   removed in beforeDestroy(). */
+   removed in beforeUnmount(). */
 @media (min-width: 769px) {
   html.pos-active:fullscreen,
   html.pos-active:-webkit-full-screen,
@@ -19206,14 +19193,14 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
   font-weight: var(--pxn-fw-semibold);
   color: var(--pxn-ink);
 }
-.modal.px-next .modal-header .close {
+.modal.px-next .modal-header .btn-close {
   color: var(--pxn-ink-3);
   opacity: 1;
   text-shadow: none;
   font-weight: 400;
   transition: color var(--pxn-dur-1) var(--pxn-ease);
 }
-.modal.px-next .modal-header .close:hover { color: var(--pxn-ink); }
+.modal.px-next .modal-header .btn-close:hover { color: var(--pxn-ink); opacity: 1; }
 .modal.px-next .modal-body {
   padding: var(--pxn-space-5) var(--pxn-space-6);
   font-family: var(--pxn-font-sans);
@@ -19225,14 +19212,14 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
   gap: var(--pxn-space-4);
 }
 .modal.px-next .modal-body .form-control,
-.modal.px-next .modal-body .custom-select {
+.modal.px-next .modal-body .form-select {
   border: 1px solid var(--pxn-border-control);
   border-radius: var(--pxn-radius-md);
   color: var(--pxn-ink);
   background: var(--pxn-surface);
 }
 .modal.px-next .modal-body .form-control:focus,
-.modal.px-next .modal-body .custom-select:focus {
+.modal.px-next .modal-body .form-select:focus {
   border-color: var(--pxn-primary);
   box-shadow: 0 0 0 3px var(--pxn-focus-ring);
 }
@@ -19274,7 +19261,7 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
 }
 .modal.px-next .modal-body .form-control,
 .modal.px-next .modal-body textarea.form-control,
-.modal.px-next .modal-body .custom-select {
+.modal.px-next .modal-body .form-select {
   height: auto;
   min-height: var(--pxn-control-h-md);
   padding: var(--pxn-space-3) var(--pxn-space-4);
@@ -19298,13 +19285,6 @@ html.pos-active:fullscreen .layout-sidebar-large .main-content-wrap {
 }
 .modal.px-next .modal-body .loyalty-help,
 .modal.px-next .modal-body .loyalty-eligible-row small { color: var(--pxn-ink-3); font-size: var(--pxn-fs-xs); }
-.modal.px-next .modal-body .custom-control-label { color: var(--pxn-ink); font-weight: var(--pxn-fw-medium); }
-.modal.px-next .modal-body .custom-control-input:checked ~ .custom-control-label::before {
-  background: var(--pxn-primary);
-  border-color: var(--pxn-primary);
-}
-.modal.px-next .modal-body .custom-switch .custom-control-label::before { border-color: var(--pxn-border-control); }
-
 /* Buttons row footer inside body */
 .modal.px-next .modal-body .btn {
   height: auto;

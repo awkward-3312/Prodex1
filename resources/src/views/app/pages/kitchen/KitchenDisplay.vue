@@ -24,7 +24,7 @@
 
         <b-button class="kh-btn" size="sm" variant="light" :disabled="refreshing" @click="fetch(true)">
           <lucide-icon name="rotate-cw" :size="15" :class="{ spin: refreshing }" />
-          <span class="d-none d-md-inline ml-1">{{ $t('Refresh') || 'Refresh' }}</span>
+          <span class="d-none d-md-inline ms-1">{{ $t('Refresh') || 'Refresh' }}</span>
         </b-button>
       </div>
     </div>
@@ -241,13 +241,13 @@
           <b-thead>
             <b-tr>
               <b-th>{{ $t('Product') || 'Product' }}</b-th>
-              <b-th class="text-right">{{ $t('Quantity') || 'Quantity' }}</b-th>
+              <b-th class="text-end">{{ $t('Quantity') || 'Quantity' }}</b-th>
             </b-tr>
           </b-thead>
           <b-tbody>
             <b-tr v-for="item in selected.items" :key="item.id">
               <b-td>{{ item.name }}</b-td>
-              <b-td class="text-right">{{ formatQty(item.quantity) }}<span v-if="item.unit"> {{ item.unit }}</span></b-td>
+              <b-td class="text-end">{{ formatQty(item.quantity) }}<span v-if="item.unit"> {{ item.unit }}</span></b-td>
             </b-tr>
           </b-tbody>
         </b-table-simple>
@@ -260,7 +260,7 @@
         <div v-if="canManage" class="km-assign">
           <label>{{ $t('AssignedStaff') || 'Assigned Staff' }}</label>
           <div class="d-flex">
-            <b-form-select v-model="assignChoice" :options="staffOptions" class="mr-2" />
+            <b-form-select v-model="assignChoice" :options="staffOptions" class="me-2" />
             <b-button variant="primary" :disabled="assignBusy" @click="saveAssignment">
               <span v-if="assignBusy" class="spinner-border spinner-border-sm"></span>
               <span v-else>{{ $t('Save') || 'Save' }}</span>
@@ -273,9 +273,11 @@
 </template>
 
 <script>
+import { BModal, BTableSimple, BThead, BTbody, BTr, BTh, BTd, BBadge, BButton, BFormSelect, BFormDatepicker } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 
-export default {
+export default { components: { BFormDatepicker, BFormSelect, BBadge, BButton, BTableSimple, BThead, BTbody, BTr, BTh, BTd, BModal },
   metaInfo: { title: "Kitchen Display" },
   data() {
     return {
@@ -340,7 +342,7 @@ export default {
     this.clockTimer = setInterval(() => { this.nowTs = Date.now(); }, 30000);
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     this.stopPolling();
     if (this.clockTimer) clearInterval(this.clockTimer);
   },
@@ -453,8 +455,8 @@ export default {
         if (resp && resp.status < 400) {
           await this.fetch(false);
           const wh = this.warehouses.find((w) => String(w.id) === String(warehouseId));
-          if (this.$bvToast) {
-            this.$bvToast.toast(
+          if (notifications.hasDriver()) {
+            notifications.notify(
               (this.$t("SentToWarehouse") || "Sent to") + " " + (wh ? wh.name : ""),
               { title: this.$t("Success") || "Success", variant: "success", solid: true }
             );
@@ -506,8 +508,8 @@ export default {
       }
     },
     notifyNewOrder(count) {
-      if (this.$bvToast) {
-        this.$bvToast.toast(
+      if (notifications.hasDriver()) {
+        notifications.notify(
           (this.$t("NewKitchenOrders") || "New kitchen order(s)") + (count > 1 ? " (" + count + ")" : ""),
           { title: this.$t("Kitchen") || "Kitchen", variant: "info", solid: true, autoHideDelay: 4000 }
         );
@@ -538,8 +540,8 @@ export default {
         const resp = await axios.patch("/kitchen/orders/" + order.id + "/status", { status }, { validateStatus: () => true });
         if (resp && resp.status < 400) {
           await this.fetch(false);
-          if (this.$bvToast) {
-            this.$bvToast.toast(this.$t("Successfully_Updated") || "Updated", {
+          if (notifications.hasDriver()) {
+            notifications.notify(this.$t("Successfully_Updated") || "Updated", {
               title: this.$t("Success") || "Success",
               variant: "success",
               solid: true,
@@ -573,8 +575,8 @@ export default {
         if (resp && resp.status < 400) {
           await this.fetch(false);
           if (resp.data && resp.data.order) this.selected = resp.data.order;
-          if (this.$bvToast) {
-            this.$bvToast.toast(this.$t("Successfully_Updated") || "Updated", {
+          if (notifications.hasDriver()) {
+            notifications.notify(this.$t("Successfully_Updated") || "Updated", {
               title: this.$t("Success") || "Success",
               variant: "success",
               solid: true,
@@ -595,8 +597,8 @@ export default {
         (resp && resp.data && (resp.data.error || resp.data.message)) ||
         this.$t("Network_error") ||
         "Error";
-      if (this.$bvToast) {
-        this.$bvToast.toast(String(msg), { title: this.$t("Failed") || "Failed", variant: "danger", solid: true });
+      if (notifications.hasDriver()) {
+        notifications.notify(String(msg), { title: this.$t("Failed") || "Failed", variant: "danger", solid: true });
       }
     },
   },

@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('CustomerManagement')" :folder="$t('Customers')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <div v-else>
       <div class="mb-5">
         <div class="alert alert-danger" v-show="clients_without_ecommerce > 0">
@@ -38,10 +38,10 @@
       }"
        :styleClass="showDropdown?'tableOne table-hover vgt-table full-height':'tableOne table-hover vgt-table non-height'"
       >
-        <div slot="selected-row-actions" v-if="currentUserPermissions.includes('Customers_delete')">
+        <template v-if="currentUserPermissions.includes('Customers_delete')" #selected-row-actions><div>
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
+        </div></template>
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button variant="outline-info m-1" size="sm" v-b-toggle.sidebar-right>
             <lucide-icon name="filter" />
             {{ $t("Filter") }}
@@ -76,16 +76,16 @@
             <lucide-icon name="plus" />
             {{$t('Add')}}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'opening_balance'">
-            <span :class="props.row.opening_balance > 0 ? 'text-danger font-weight-bold' : ''">
+            <span :class="props.row.opening_balance > 0 ? 'text-danger fw-bold' : ''">
               {{ formatPriceWithSymbol(currentUser.currency, props.row.opening_balance || 0, 2) }}
             </span>
           </span>
           <span v-else-if="props.column.field == 'credit_limit'">
-            <span class="text-info font-weight-bold">
+            <span class="text-info fw-bold">
               {{ (props.row.credit_limit && props.row.credit_limit > 0)
                   ? formatPriceWithSymbol(currentUser.currency, props.row.credit_limit, 2)
                   : $t('No_limit') }}
@@ -107,7 +107,7 @@
                 </template>
 
                  <b-dropdown-item @click="$router.push({ name: 'CustomerLedger', params: { id: props.row.id } })">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="receipt" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="receipt" />
                  {{$t('Customer_Ledger')}}
                 </b-dropdown-item>
 
@@ -116,7 +116,7 @@
                  (currentUserPermissions && currentUserPermissions.includes('Customers_edit'))"
                   @click="Edit_Online_Store_Account(props.row)"
                 >
-                <lucide-icon class="nav-icon font-weight-bold mr-2" name="pencil" />
+                <lucide-icon class="nav-icon fw-bold me-2" name="pencil" />
                   {{$t('Edit_Online_Store_Account')}}
                 </b-dropdown-item>
 
@@ -124,7 +124,7 @@
                   v-if="props.row.due > 0 && currentUserPermissions && currentUserPermissions.includes('pay_due')"
                   @click="Pay_due(props.row)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="dollar-sign" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="dollar-sign" />
                   {{$t('pay_all_sell_due_at_a_time')}}
                 </b-dropdown-item>
 
@@ -132,29 +132,29 @@
                   v-if="props.row.return_Due > 0 && currentUserPermissions && currentUserPermissions.includes('pay_sale_return_due')"
                   @click="Pay_return_due(props.row)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="dollar-sign" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="dollar-sign" />
                   {{$t('pay_all_sell_return_due_at_a_time')}}
                 </b-dropdown-item>
 
                  <b-dropdown-item 
                   @click="$router.push({ name: 'CustomerDetails', params: { id: props.row.id } })"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="eye" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="eye" />
                   {{$t('Customer_details')}}
                 </b-dropdown-item>
 
                 <b-dropdown-item @click="openPointsModal(props.row)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="pencil" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="pencil" />
                   {{$t('Adjust_Customer_Points')}}
                 </b-dropdown-item>
 
                 <b-dropdown-item @click="openOpeningBalanceModal(props.row)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="calculator" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="calculator" />
                   {{ $t('Adjust_Opening_Balance') || 'Adjust Opening Balance' }}
                 </b-dropdown-item>
 
                 <b-dropdown-item @click="openPortalClientModal(props.row)">
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="key" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="key" />
                   {{ $t('Portal_Client') || 'Portal Client' }}
                 </b-dropdown-item>
                
@@ -162,7 +162,7 @@
                  v-if="currentUserPermissions && currentUserPermissions.includes('Customers_edit')"
                   @click="Edit_Client(props.row)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="pencil" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="pencil" />
                   {{$t('Edit_Customer')}}
                 </b-dropdown-item>
 
@@ -173,7 +173,7 @@
                   v-if="currentUserPermissions.includes('Customers_delete')"
                   @click="Remove_Client(props.row.id)"
                 >
-                  <lucide-icon class="nav-icon font-weight-bold mr-2" name="x" />
+                  <lucide-icon class="nav-icon fw-bold me-2" name="x" />
                   {{$t('Delete_Customer')}}
                 </b-dropdown-item>
                 </b-dropdown>
@@ -247,7 +247,7 @@
           />
         </b-form-group>
 
-        <div class="text-right">
+        <div class="text-end">
           <b-button variant="secondary" @click="$refs.pointsModal.hide()">
             {{ $t('Cancel') }}
           </b-button>
@@ -268,7 +268,7 @@
         <small class="text-muted">{{ $t('Customer') }}</small>
         <h5 class="mb-1">{{ adjustOpeningBalanceForm.customer_name }}</h5>
         <small class="text-muted">{{ $t('Current_Opening_Balance') || 'Current opening balance' }}</small>
-        <h4 :class="adjustOpeningBalanceForm.current > 0 ? 'text-danger font-weight-bold' : 'text-success font-weight-bold'">
+        <h4 :class="adjustOpeningBalanceForm.current > 0 ? 'text-danger fw-bold' : 'text-success fw-bold'">
           {{ formatPriceWithSymbol(currentUser.currency, adjustOpeningBalanceForm.current || 0, 2) }}
         </h4>
       </div>
@@ -304,12 +304,12 @@
 
         <div class="alert alert-info py-2 px-3 mb-3" v-if="adjustOpeningBalanceForm.amount !== '' && adjustOpeningBalanceForm.amount !== null">
           <small>{{ $t('New_Opening_Balance') || 'New opening balance' }}:</small>
-          <strong class="ml-1">
+          <strong class="ms-1">
             {{ formatPriceWithSymbol(currentUser.currency, openingBalancePreview, 2) }}
           </strong>
         </div>
 
-        <div class="text-right">
+        <div class="text-end">
           <b-button variant="secondary" @click="$refs.openingBalanceModal.hide()" :disabled="adjustOpeningBalanceForm.submitting">
             {{ $t('Cancel') }}
           </b-button>
@@ -328,12 +328,12 @@
       id="modal_Pay_due"
       title="Pay Due"
     >
-      <validation-observer ref="ref_pay_due">
+      <px-validation-observer ref="ref_pay_due">
         <b-form @submit.prevent="Submit_Payment_sell_due">
           <b-row>
             <!-- Customer Name -->
             <b-col lg="12" md="12" sm="12" class="mb-3">
-              <h5 class="text-primary"><lucide-icon class="mr-2" name="user" />{{ payment.client_name }}</h5>
+              <h5 class="text-primary"><lucide-icon class="me-2" name="user" />{{ payment.client_name }}</h5>
             </b-col>
 
             <!-- Summary Cards -->
@@ -349,7 +349,7 @@
                       <lucide-icon class="text-primary" name="calendar-days" style="font-size: 2rem;" />
                     </div>
                     <h6 class="text-muted mb-2">{{ $t('Opening_Balance') }}</h6>
-                    <h4 class="mb-0" :class="payment.opening_balance > 0 ? 'text-danger font-weight-bold' : 'text-success'">
+                    <h4 class="mb-0" :class="payment.opening_balance > 0 ? 'text-danger fw-bold' : 'text-success'">
                       {{ formatPriceWithSymbol(currentUser.currency, payment.opening_balance || 0, 2) }}
                     </h4>
                     <small class="text-muted">{{ $t('Previous_Dues') }}</small>
@@ -366,7 +366,7 @@
                       <lucide-icon class="text-warning" name="shopping-cart" style="font-size: 2rem;" />
                     </div>
                     <h6 class="text-muted mb-2">Sales Due</h6>
-                    <h4 class="mb-0" :class="payment.due > 0 ? 'text-danger font-weight-bold' : 'text-success'">
+                    <h4 class="mb-0" :class="payment.due > 0 ? 'text-danger fw-bold' : 'text-success'">
                       {{ formatPriceWithSymbol(currentUser.currency, payment.due || 0, 2) }}
                     </h4>
                     <small class="text-muted">Current Sales</small>
@@ -383,7 +383,7 @@
                       <lucide-icon class="text-danger" name="wallet" style="font-size: 2rem;" />
                     </div>
                     <h6 class="text-muted mb-2">Total Due</h6>
-                    <h4 class="mb-0 font-weight-bold" :class="totalDue > 0 ? 'text-danger' : 'text-success'">
+                    <h4 class="mb-0 fw-bold" :class="totalDue > 0 ? 'text-danger' : 'text-success'">
                       {{ formatPriceWithSymbol(currentUser.currency, totalDue, 2) }}
                     </h4>
                     <small class="text-muted">Grand Total</small>
@@ -396,7 +396,7 @@
             <b-col lg="12" md="12" sm="12" class="mb-3">
               <b-alert variant="info" show class="mb-0">
                 <div class="d-flex align-items-center">
-                  <lucide-icon class="mr-2" name="info" style="font-size: 1.5rem;" />
+                  <lucide-icon class="me-2" name="info" style="font-size: 1.5rem;" />
                   <div>
                     <strong>{{ $t('Payment_Allocation') }}:</strong> {{ $t('Payment_Allocation_description') }}
                   </div>
@@ -406,7 +406,7 @@
           
             <!-- Paying Amount  -->
             <b-col lg="12" md="12" sm="12" class="mt-3">
-              <validation-provider
+              <px-validation-provider
                 name="Amount"
                 :rules="{ required: true , regex: /^\d*\.?\d*$/}"
                 v-slot="validationContext"
@@ -425,14 +425,14 @@
                     Maximum payment: <strong>{{ formatPriceWithSymbol(currentUser.currency, totalDue, 2) }}</strong>
                   </small>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
 
              <!-- Payment choice -->
              <b-col lg="12" md="12" sm="12">
-              <validation-provider name="Payment choice" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice')+ ' ' + '*'">
+              <px-validation-provider name="Payment choice" :rules="{ required: true}">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Paymentchoice')+ ' ' + '*'">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -443,14 +443,14 @@
 
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
+                </b-form-group></template>
+              </px-validation-provider>
             </b-col>
 
              <!-- Account -->
              <b-col lg="12" md="6" sm="12">
-              <validation-provider name="Account">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
+              <px-validation-provider name="Account">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Account')">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -460,8 +460,8 @@
                     :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
                   />
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
+                </b-form-group></template>
+              </px-validation-provider>
             </b-col>
 
             <!-- Note -->
@@ -476,7 +476,7 @@
                 variant="primary"
                 type="submit"
                 :disabled="paymentProcessing"
-              ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+              ><lucide-icon class="me-2 fw-bold" name="check" /> {{$t('submit')}}</b-button>
               <div v-once class="typo__p" v-if="paymentProcessing">
                 <div class="spinner sm spinner-primary mt-3"></div>
               </div>
@@ -484,11 +484,11 @@
 
           </b-row>
         </b-form>
-      </validation-observer>
+      </px-validation-observer>
     </b-modal>
 
     <!-- Modal Pay_return_Due-->
-    <validation-observer ref="ref_pay_return_due">
+    <px-validation-observer ref="ref_pay_return_due">
       <b-modal
         hide-footer
         size="md"
@@ -500,7 +500,7 @@
           
             <!-- Paying Amount -->
             <b-col lg="12" md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="Amount"
                 :rules="{ required: true , regex: /^\d*\.?\d*$/}"
                 v-slot="validationContext"
@@ -517,14 +517,14 @@
                   <b-form-invalid-feedback id="Amount-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   <span class="badge badge-danger">{{$t('Due')}} : {{currentUser.currency}} {{payment_return.return_Due}}</span>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
 
             <!-- Payment choice -->
             <b-col lg="12" md="12" sm="12">
-              <validation-provider name="Payment choice" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice')+ ' ' + '*'">
+              <px-validation-provider name="Payment choice" :rules="{ required: true}">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Paymentchoice')+ ' ' + '*'">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -535,14 +535,14 @@
 
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
+                </b-form-group></template>
+              </px-validation-provider>
             </b-col>
 
             <!-- Account -->
             <b-col lg="12" md="12" sm="12">
-              <validation-provider name="Account">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
+              <px-validation-provider name="Account">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Account')">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -552,8 +552,8 @@
                     :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
                   />
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
-              </validation-provider>
+                </b-form-group></template>
+              </px-validation-provider>
             </b-col>
 
             <!-- Note -->
@@ -568,7 +568,7 @@
                 variant="primary"
                 type="submit"
                 :disabled="payment_return_Processing"
-              ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+              ><lucide-icon class="me-2 fw-bold" name="check" /> {{$t('submit')}}</b-button>
               <div v-once class="typo__p" v-if="payment_return_Processing">
                 <div class="spinner sm spinner-primary mt-3"></div>
               </div>
@@ -577,7 +577,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
 
     <!-- Modal Show Customer_Invoice-->
     <b-modal hide-footer size="sm" scrollable id="Show_invoice" :title="$t('Customer_Credit_Note')">
@@ -746,7 +746,7 @@
           <!-- Custom Fields Section -->
           <div v-if="clientCustomFields && clientCustomFields.length > 0" class="mt-4">
             <h6 class="text-primary mb-3">
-              <lucide-icon class="mr-2" name="database-zap" />
+              <lucide-icon class="me-2" name="database-zap" />
               {{ $t('CustomFields') }}
             </h6>
             <table class="table table-striped table-md">
@@ -840,7 +840,7 @@
     </b-modal>
 
      <!-- Modal edit store account for Customer -->
-     <validation-observer ref="Edit_Online_Store_Account">
+     <px-validation-observer ref="Edit_Online_Store_Account">
       <b-modal hide-footer size="md" id="form_Edit_Online_Store_Account" title="Edit Store Account">
         <b-form @submit.prevent="Submit_Edit_Online_Store_Account">
           <b-row>
@@ -849,7 +849,7 @@
             </b-col>
             <!-- Customer email -->
             <b-col md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="email Customer"
                 :rules="{ required: true, email: true }"
                 v-slot="validationContext"
@@ -870,12 +870,12 @@
                     v-if="email_exist !=''"
                   >{{email_exist}}</b-alert>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
 
              <!-- New Password -->
              <b-col md="12" sm="12">
-              <validation-provider
+              <px-validation-provider
                 name="New password"
                 :rules="{min:6 , max:14}"
                 v-slot="validationContext"
@@ -892,7 +892,7 @@
                     id="Nawpassword-feedback"
                   >{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
           
 
@@ -906,7 +906,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
 
     <!-- Portal Client Modal -->
     <b-modal
@@ -928,15 +928,15 @@
             <div class="portal-client-avatar rounded-circle d-flex align-items-center justify-content-center">
               <lucide-icon class="text-white" name="user" />
             </div>
-            <div class="ml-3">
-              <h6 class="mb-0 font-weight-bold text-dark">{{ portalClient.client_name }}</h6>
+            <div class="ms-3">
+              <h6 class="mb-0 fw-bold text-dark">{{ portalClient.client_name }}</h6>
               <small class="text-muted">{{ $t('Customer') || 'Customer' }}</small>
             </div>
           </div>
         </div>
 
         <b-alert v-if="portalClient.errors.length" variant="danger" dismissible show class="small">
-          <ul class="mb-0 pl-3" v-if="portalClient.errors.length > 1">
+          <ul class="mb-0 ps-3" v-if="portalClient.errors.length > 1">
             <li v-for="(err, idx) in portalClient.errors" :key="idx">{{ err }}</li>
           </ul>
           <span v-else>{{ portalClient.errors[0] }}</span>
@@ -945,11 +945,11 @@
         <div class="portal-status-card mb-4" :class="portalClient.enabled ? 'portal-enabled' : 'portal-disabled'">
           <div class="d-flex align-items-center justify-content-between">
             <div class="d-flex align-items-center">
-              <div class="portal-status-icon rounded-circle d-flex align-items-center justify-content-center mr-3">
+              <div class="portal-status-icon rounded-circle d-flex align-items-center justify-content-center me-3">
                 <lucide-icon class="text-white" :name="portalClient.enabled ? 'key' : 'lock'" />
               </div>
               <div>
-                <span class="font-weight-bold d-block">{{ portalClient.enabled ? ($t('Portal_Enabled') || 'Portal enabled') : ($t('Portal_Disabled') || 'Portal disabled') }}</span>
+                <span class="fw-bold d-block">{{ portalClient.enabled ? ($t('Portal_Enabled') || 'Portal enabled') : ($t('Portal_Disabled') || 'Portal disabled') }}</span>
                 <small class="text-muted" v-if="portalClient.portal_email">{{ portalClient.portal_email }}</small>
               </div>
             </div>
@@ -987,7 +987,7 @@
                 v-model="portalClient.password"
                 :type="portalClient.showPassword ? 'text' : 'password'"
                 :placeholder="$t('Portal_Password_Optional') || 'Leave blank to keep current password'"
-                class="form-control-lg pr-5"
+                class="form-control-lg pe-5"
                 autocomplete="new-password"
               />
               <b-button
@@ -1005,7 +1005,7 @@
         </template>
 
         <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
-          <b-button variant="secondary" @click="$bvModal.hide('modal_portal_client')">
+          <b-button variant="secondary" @click="$modals.hide('modal_portal_client')">
             {{ $t('Cancel') }}
           </b-button>
           <b-button
@@ -1013,7 +1013,7 @@
             type="submit"
             :disabled="portalClient.sending || (portalClient.enabled && !portalClient.email.trim())"
           >
-            <span v-if="portalClient.sending" class="d-inline-block mr-2">
+            <span v-if="portalClient.sending" class="d-inline-block me-2">
               <b-spinner small></b-spinner>
             </span>
             {{ $t('Save') }}
@@ -1025,6 +1025,8 @@
 </template>
 
 <script>
+import { modals, notifications, events } from "@/platform";
+import { BSpinner, BSidebar, vBToggle, BModal, BAlert, BButton, BCard, BCol, BDropdown, BDropdownItem, BRow, BFormGroup, BFormInput, BForm, BFormRadioGroup, BFormInvalidFeedback, BFormTextarea, BFormCheckbox } from "@/platform/bootstrap";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
@@ -1034,7 +1036,8 @@ import {
   getPriceFormatSetting
 } from "../../../../utils/priceFormat";
 
-export default {
+export default { directives: { 'b-toggle': vBToggle },
+  components: { BFormGroup, BFormInput, BForm, BFormRadioGroup, BFormInvalidFeedback, BFormTextarea, BFormCheckbox, BAlert, BButton, BCard, BCol, BDropdown, BDropdownItem, BRow, BModal, BSidebar, BSpinner },
   metaInfo: {
     title: "Customer"
   },
@@ -1146,10 +1149,12 @@ export default {
   },
 
    mounted() {
-    this.$root.$on("bv::dropdown::show", bvEvent => {
+    // Antes `this.$root.$on(...)` (API de eventos de instancia de Vue 2, sin equivalente en Vue 3): ahora por el
+    // bus de plataforma (mismo nombre de evento, emitido por platform/bootstrap/nav.js).
+    events.$on("bv::dropdown::show", bvEvent => {
       this.showDropdown = true;
     });
-    this.$root.$on("bv::dropdown::hide", bvEvent => {
+    events.$on("bv::dropdown::hide", bvEvent => {
       this.showDropdown = false;
     });
   },
@@ -1189,67 +1194,67 @@ export default {
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Code"),
           field: "code",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Name"),
           field: "name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Firstname"),
           field: "firstname",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("lastname"),
           field: "lastname",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
 
         {
           label: this.$t("Phone"),
           field: "phone",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Email"),
           field: "email",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Points"),
           field: "points",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
           {
           label: this.$t("Credit_Limit"),
           field: "credit_limit",
           type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Opening_Balance"),
           field: "opening_balance",
           type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
       
@@ -1257,16 +1262,16 @@ export default {
           label: this.$t("Total_Sale_Due"),
           field: "due",
           type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Total_Sell_Return_Due"),
           field: "return_Due",
           type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -1287,7 +1292,7 @@ export default {
       this.portalClient.email = row.email || "";
       this.portalClient.password = "";
       this.portalClient.errors = [];
-      this.$bvModal.show("modal_portal_client");
+      modals.show("modal_portal_client");
     },
 
     onPortalModalShow() {
@@ -1349,7 +1354,7 @@ export default {
           })
           .then(({ data }) => {
             this.makeToast("success", data.message || this.$t("Successfully_Updated"), this.$t("Success"));
-            this.$bvModal.hide("modal_portal_client");
+            modals.hide("modal_portal_client");
             this.Get_Clients(this.serverParams.page);
           })
           .catch((e) => {
@@ -1379,7 +1384,7 @@ export default {
           .post("clients/" + clientId + "/portal-disable")
           .then(({ data }) => {
             this.makeToast("success", data.message || (this.$t("Portal_Disabled") || "Portal disabled"), this.$t("Success"));
-            this.$bvModal.hide("modal_portal_client");
+            modals.hide("modal_portal_client");
             this.Get_Clients(this.serverParams.page);
           })
           .catch(() => {
@@ -1475,7 +1480,7 @@ export default {
       this.get_client_store_data(client.id);
       this.client_store.NewPassword = null;
       setTimeout(() => {
-        this.$bvModal.show("form_Edit_Online_Store_Account");
+        modals.show("form_Edit_Online_Store_Account");
       }, 500);
     },
 
@@ -1610,7 +1615,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -1750,7 +1755,7 @@ export default {
 
     //----------------------------------- Show import Client -------------------------------\\
     Show_import_clients() {
-      this.$bvModal.show("importClients");
+      modals.show("importClients");
     },
 
     //------------------------------ Event Import clients -------------------------------\\
@@ -2108,7 +2113,7 @@ export default {
       this.payment.opening_balance = row.opening_balance || 0;
       this.payment.date = new Date().toISOString().slice(0, 10);
       setTimeout(() => {
-        this.$bvModal.show("modal_Pay_due");
+        modals.show("modal_Pay_due");
       }, 500);
       
     },
@@ -2158,9 +2163,9 @@ export default {
           Object.assign(this.payment, paymentDataForReceipt);
           
           // Close payment modal and show receipt
-          this.$bvModal.hide("modal_Pay_due");
+          modals.hide("modal_Pay_due");
           setTimeout(() => {
-            this.$bvModal.show("Show_invoice");
+            modals.show("Show_invoice");
           }, 300);
           
           // Refresh clients data without affecting receipt
@@ -2244,7 +2249,7 @@ export default {
       this.payment_return.payment_method_id = null;
       this.payment_return.date = new Date().toISOString().slice(0, 10);
       setTimeout(() => {
-        this.$bvModal.show("modal_Pay_return_due");
+        modals.show("modal_Pay_return_due");
       }, 500);
       
     },
@@ -2328,12 +2333,12 @@ export default {
 
     Fire.$on("get_credit_card_details", () => {
       setTimeout(() => NProgress.done(), 500);
-      this.$bvModal.show("show_credit_card_details");
+      modals.show("show_credit_card_details");
     });
 
     Fire.$on("Get_Details_customers", () => {
       setTimeout(() => NProgress.done(), 500);
-      this.$bvModal.show("showDetails");
+      modals.show("showDetails");
     });
 
     // Event_pay_due is now handled directly in Submit_Pay_due method
@@ -2345,15 +2350,15 @@ export default {
     Fire.$on("Event_pay_return_due", () => {
       setTimeout(() => {
         this.Get_Clients(this.serverParams.page);
-        this.$bvModal.hide("modal_Pay_return_due");
+        modals.hide("modal_Pay_return_due");
       }, 500);
-       this.$bvModal.show("Show_invoice_return");
+       modals.show("Show_invoice_return");
     });
 
     Fire.$on("Event_edit_store_account", () => {
       setTimeout(() => {
         this.Get_Clients(this.serverParams.page);
-        this.$bvModal.hide("form_Edit_Online_Store_Account");
+        modals.hide("form_Edit_Online_Store_Account");
       }, 500);
     });
 
@@ -2373,7 +2378,7 @@ export default {
     Fire.$on("Event_import", () => {
       setTimeout(() => {
         this.Get_Clients(this.serverParams.page);
-        this.$bvModal.hide("importClients");
+        modals.hide("importClients");
       }, 500);
     });
   }

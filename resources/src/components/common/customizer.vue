@@ -67,14 +67,14 @@
               </button>
             </div>
             <div class="custom-color-row mt-3">
-              <label class="mb-0 mr-2">Custom:</label>
+              <label class="mb-0 me-2">Custom:</label>
               <input
                 type="color"
                 class="custom-color-input"
                 :value="currentPrimaryColor"
                 @input="selectPrimaryColor($event.target.value)"
               />
-              <span class="ml-2 color-hex">{{ currentPrimaryColor }}</span>
+              <span class="ms-2 color-hex">{{ currentPrimaryColor }}</span>
             </div>
           </div>
         </div>
@@ -85,7 +85,7 @@
           </div>
 
           <div class="card-body">
-            <label class="switch switch-primary mr-3 mt-2" v-b-popover.hover.left="'Dark Mode'">
+            <label class="switch switch-primary me-3 mt-2" v-b-popover.hover.left="'Dark Mode'">
               <input type="checkbox" :checked="getThemeMode.dark" @click="handleDarkModeToggle" />
               <span class="slider"></span>
             </label>
@@ -136,9 +136,11 @@
 </template>
 
 <script>
+import { vBPopover } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import { mapGetters, mapActions } from "vuex";
 
-export default {
+export default { directives: { 'b-popover': vBPopover },
   data() {
     return {
       isOpen: false,
@@ -178,7 +180,7 @@ export default {
 
     changeSidebarLayout(layout) {
       this.setSidebarLayout(layout);
-      this.$root.$bvToast.toast(
+      notifications.notify(
         `Switched to ${layout} sidebar layout`,
         {
           title: 'Layout Changed',

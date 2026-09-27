@@ -30,7 +30,7 @@
         </px-field>
 
         <px-field label="Número de sesión">
-          <template #default="{ id }"><px-input :id="id" v-model="filters.register_id" placeholder="Ej. 25" @keyup.native.enter="getData(1)" /></template>
+          <template #default="{ id }"><px-input :id="id" v-model="filters.register_id" placeholder="Ej. 25" @keyup.enter="getData(1)" /></template>
         </px-field>
 
         <px-field :label="$t('Cashier')">
@@ -237,10 +237,10 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from 'nprogress'
 import moment from 'moment'
-import DateRangePicker from 'vue2-daterange-picker'
-import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import Util from '../../../../utils'
 import { formatPriceDisplay as formatPriceDisplayHelper, getPriceFormatSetting, getPriceDecimals } from '../../../../utils/priceFormat'
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -376,7 +376,7 @@ export default {
         this.drawers = payload.cash_drawers || []
         this.legacyWarehouses = payload.legacy_warehouses || []
       }).catch(() => {
-        if (this.$bvToast && this.$bvToast.toast) this.$bvToast.toast(this.$t('OperationFailed'), { title: this.$t('Failed'), variant: 'danger', solid: true })
+        notifications.notify(this.$t('OperationFailed'), { title: this.$t('Failed'), variant: 'danger', solid: true })
       }).finally(() => {
         this.isLoading = false
         setTimeout(() => NProgress.done(), 250)

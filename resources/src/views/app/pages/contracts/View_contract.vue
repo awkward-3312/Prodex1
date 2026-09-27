@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Contract') || 'Contract'" :folder="$t('Contracts') || 'Contracts'"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <template v-else-if="contract">
       <!-- Summary panel -->
@@ -29,8 +29,8 @@
               <span v-if="contract.signed_ip"> — IP: {{ contract.signed_ip }}</span>
             </div>
           </b-col>
-          <b-col md="4" class="text-right">
-            <b-button variant="outline-primary" @click="previewContractPdf" class="mb-2 mr-2" :disabled="pdfPreviewLoading">
+          <b-col md="4" class="text-end">
+            <b-button variant="outline-primary" @click="previewContractPdf" class="mb-2 me-2" :disabled="pdfPreviewLoading">
               <lucide-icon name="eye" /> {{ pdfPreviewLoading ? 'Loading...' : 'Preview PDF' }}
             </b-button>
             <b-button variant="primary" @click="downloadPdf" class="mb-2">
@@ -63,7 +63,7 @@
                 <span>{{ a.file_name }}</span>
                 <span>
                   <b-button size="sm" variant="outline-info" @click="downloadAttachment(a)">Download</b-button>
-                  <b-button v-if="canEdit" size="sm" variant="outline-danger" class="ml-1" @click="deleteAttachment(a.id)">Delete</b-button>
+                  <b-button v-if="canEdit" size="sm" variant="outline-danger" class="ms-1" @click="deleteAttachment(a.id)">Delete</b-button>
                 </span>
               </b-list-group-item>
               <b-list-group-item v-if="!contract.attachments || !contract.attachments.length" class="text-muted">No attachments.</b-list-group-item>
@@ -155,7 +155,7 @@
             <div v-if="templates.length" class="mt-3">
               <b-table :items="templates" :fields="templateFields" small striped hover>
                 <template #cell(actions)="row">
-                  <b-button size="sm" variant="link" class="p-0 mr-2" @click="editTemplate(row.item)" v-if="canEdit">Edit</b-button>
+                  <b-button size="sm" variant="link" class="p-0 me-2" @click="editTemplate(row.item)" v-if="canEdit">Edit</b-button>
                   <b-button size="sm" variant="link" class="p-0 text-danger" @click="deleteTemplate(row.item.id)" v-if="canEdit">Delete</b-button>
                 </template>
               </b-table>
@@ -167,7 +167,7 @@
             <div class="mt-2">
               <b-form-select v-model="selectedTemplateId" :options="templateOptions" class="mb-2" @change="loadTemplatePreview" />
               <div v-if="selectedTemplateId" class="mb-2">
-                <b-button size="sm" variant="outline-primary" @click="previewTemplatePdf" :disabled="pdfPreviewLoading" class="mr-2">
+                <b-button size="sm" variant="outline-primary" @click="previewTemplatePdf" :disabled="pdfPreviewLoading" class="me-2">
                   <lucide-icon name="eye" /> {{ pdfPreviewLoading ? 'Loading...' : 'Preview as PDF' }}
                 </b-button>
                 <b-button size="sm" variant="outline-secondary" @click="downloadTemplatePdf">
@@ -218,10 +218,12 @@
 </template>
 
 <script>
+import { BFormGroup, BFormInput, BFormTextarea, BFormSelect, BModal, BTable, BBadge, BButton, BCard, BCol, BLink, BListGroup, BListGroupItem, BRow, BTab, BTabs, BInputGroup } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import DOMPurify from "dompurify";
 
-export default {
+export default { components: { BInputGroup, BBadge, BButton, BCard, BCol, BLink, BListGroup, BListGroupItem, BRow, BTab, BTabs, BTable, BModal, BFormGroup, BFormInput, BFormTextarea, BFormSelect },
   metaInfo: { title: "View Contract" },
   data() {
     return {
@@ -269,7 +271,7 @@ export default {
   },
   methods: {
     makeToast(variant, msg, title) {
-      this.$bvToast.toast(msg, { title: title || this.$t("Notice") || "Notice", variant: variant, solid: true });
+      notifications.notify(msg, { title: title || this.$t("Notice") || "Notice", variant: variant, solid: true });
     },
     formatDate(val) {
       if (!val) return "";
@@ -330,7 +332,7 @@ export default {
       if (this.pdfPreviewUrl) window.URL.revokeObjectURL(this.pdfPreviewUrl);
       const pdfBlob = blob.type === "application/pdf" ? blob : new Blob([blob], { type: "application/pdf" });
       this.pdfPreviewUrl = window.URL.createObjectURL(pdfBlob);
-      this.$bvModal.show("pdf-preview-modal");
+      modals.show("pdf-preview-modal");
     },
     closePdfPreview() {
       if (this.pdfPreviewUrl) {
@@ -353,11 +355,11 @@ export default {
     },
     openTemplateForm() {
       this.templateForm = { id: null, name: "", content: "" };
-      this.$bvModal.show("contract-template-modal");
+      modals.show("contract-template-modal");
     },
     editTemplate(t) {
       this.templateForm = { id: t.id, name: t.name || "", content: t.content || "" };
-      this.$bvModal.show("contract-template-modal");
+      modals.show("contract-template-modal");
     },
     saveTemplate() {
       const name = (this.templateForm.name || "").trim();
@@ -371,7 +373,7 @@ export default {
         : axios.post("contracts-templates", payload);
       req.then(() => {
         this.makeToast("success", "Template saved.", "Success");
-        this.$bvModal.hide("contract-template-modal");
+        modals.hide("contract-template-modal");
         this.fetchTemplates().then(() => {
           if (this.selectedTemplateId) this.loadTemplatePreview();
         });

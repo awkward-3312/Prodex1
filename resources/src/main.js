@@ -1,11 +1,15 @@
+import { h } from 'vue';
+import { mountWithRouter } from './platform/mount';
+import { head, installHead } from './platform/head';
+import { bootstrapPlugin } from './platform/bootstrap';
+import { installDirectives } from './platform/directives';
 import store from "./store";
 
-import Vue from "vue";
 import router, { setupRouterGuards } from "./router";
 
 // New organization/operations routes are registered here to avoid destabilizing
 // the very large legacy router while these modules are introduced incrementally.
-router.addRoutes([
+[
   {
     path: "/app/organization",
     component: () => import("./views/app"),
@@ -30,7 +34,7 @@ router.addRoutes([
       { path: "missing", name: "inventory_missing", component: () => import("./views/app/pages/inventory/missing") },
     ],
   },
-]);
+].forEach((route) => router.addRoute(route));
 
 import App from "./App.vue";
 import Auth from './auth/index.js';
@@ -38,47 +42,44 @@ import { installSarInvoiceBridge } from './utils/sarInvoiceBridge';
 import { installPosOperationalLocationBridge } from './utils/posOperationalLocationBridge';
 import { installNavigationPerformance } from './utils/navigationPerformance';
 window.auth = new Auth();
-import { ValidationObserver, ValidationProvider, extend, localize } from 'vee-validate';
-import * as rules from "vee-validate/dist/rules";
+import { installValidation } from './platform/validation';
 
-localize({ es: { messages: { required: 'Este campo es obligatorio', required_if: 'Este campo es obligatorio', regex: 'Este campo debe tener un formato válido', mimes: 'Este archivo debe tener un tipo válido', size: (_, { size }) => `El tamaño del archivo debe ser menor de ${size}`, min: 'Este campo debe tener al menos {length} caracteres', max: (_, { length }) => `Este campo no puede tener más de ${length} caracteres` } } });
-localize('es');
-Object.keys(rules).forEach(rule => { extend(rule, rules[rule]); });
+// `app` real de Vue 3 (createApp), con el store (Vuex 4) y el router ya instalados. El resto del archivo registra
+// componentes/directivas/plugins propios sobre ESTA `app` (nunca sobre un `Vue` global) y monta al final, dentro
+// del `.then()` de `loadI18n()` (ver platform/mount.js).
+// Vue 3 real: `render()` no recibe `h` como argumento (Vue 2), se importa como función normal (arriba).
+const app = mountWithRouter({ render: () => h(App) }, { router, store });
 
-extend('url', { validate(value) { if (!value) return false; try { const parsed = new URL(value); return parsed.protocol === 'http:' || parsed.protocol === 'https:'; } catch (e) { return false; } }, message: 'Este campo debe contener una URL válida (http:// o https://)' });
+installHead(app);
+installDirectives(app);
+installValidation(app);
 
-Vue.component("ValidationObserver", ValidationObserver);
-Vue.component('ValidationProvider', ValidationProvider);
-
-Vue.component('qrcode-scanner', {
+app.component('qrcode-scanner', {
   props: { qrbox: { type: Number, default: 250 }, fps: { type: Number, default: 10 } },
   data() { return { isFirstScan: true, html5QrcodeScanner: null }; },
   template: `<div id="reader"></div>`,
+  compilerOptions: { whitespace: "condense" },
   mounted () { this.initializeScanner(); },
   methods: {
     initializeScanner() { const config = { fps: this.fps, qrbox: this.qrbox }; this.html5QrcodeScanner = new Html5QrcodeScanner('reader', config); this.html5QrcodeScanner.render(this.onScanSuccess); },
     onScanSuccess (decodedText, decodedResult) { if (this.isFirstScan) { this.isFirstScan = false; this.$emit('result', decodedText, decodedResult); } else { this.html5QrcodeScanner.stop(); } },
   },
-  beforeDestroy() { if (this.html5QrcodeScanner) this.html5QrcodeScanner.clear(); }
+  beforeUnmount() { if (this.html5QrcodeScanner) this.html5QrcodeScanner.clear(); }
 });
 
 import StockyKit from "./plugins/stocky.kit";
-Vue.use(StockyKit);
+app.use(StockyKit);
 import FriendlyNavigation from "./plugins/friendlyNavigation";
-Vue.use(FriendlyNavigation);
-import VueCookies from 'vue-cookies';
-Vue.use(VueCookies);
-var VueCookie = require('vue-cookie');
-Vue.use(VueCookie);
+app.use(FriendlyNavigation);
 
 import ExcelExport from "./components/ExcelExport.vue";
-Vue.component('vue-excel-xlsx', ExcelExport);
+app.component('vue-excel-xlsx', ExcelExport);
 import LucideIcon from "./components/LucideIcon.vue";
-Vue.component('lucide-icon', LucideIcon);
+app.component('lucide-icon', LucideIcon);
 import PxSkeleton from "./components/PxSkeleton.vue";
-Vue.component('px-skeleton', PxSkeleton);
+app.component('px-skeleton', PxSkeleton);
 import SerialNumbersField from "./components/SerialNumbersField.vue";
-Vue.component('serial-numbers-field', SerialNumbersField);
+app.component('serial-numbers-field', SerialNumbersField);
 
 window.axios = require('axios');
 window.axios.defaults.baseURL = '/api/';
@@ -124,33 +125,41 @@ axios.interceptors.response.use(response => { decrementPending(response && respo
     || /(^|\/)ping(\/|$)/i.test(requestUrl);
   const isNavigationalLoad = method === 'get' && !skipErrorRedirect && !isTransferLogisticsCapabilityRequest && !isOrganizationCapabilityRequest && !isBackgroundCapabilityRequest;
   if (status === 404 && isNavigationalLoad) router.push({ name: 'NotFound' });
-  if (status === 403) { if (data && data.status === 'limit_reached') { Vue.prototype.$limitReachedMessage = data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.'; window.Fire.$emit('show-limit-reached', data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.'); } else if (isNavigationalLoad) router.push({ name: 'not_authorize' }); }
+  if (status === 403) { if (data && data.status === 'limit_reached') { app.config.globalProperties.$limitReachedMessage = data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.'; window.Fire.$emit('show-limit-reached', data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.'); } else if (isNavigationalLoad) router.push({ name: 'not_authorize' }); }
   return Promise.reject(data || translateLegacyApiMessage(error.message));
 });
 
 installSarInvoiceBridge(window.axios);
 installPosOperationalLocationBridge(window.axios);
-import vSelect from 'vue-select';
-Vue.component('v-select', vSelect);
-import 'vue-select/dist/vue-select.css';
-import '@trevoreyre/autocomplete-vue/dist/style.css';
-window.Fire = new Vue();
-Vue.prototype.$uploadPath = window.__uploadPath || 'images';
-Vue.prototype.$imgUrl = function(subfolder, filename) { return '/' + this.$uploadPath + '/' + subfolder + '/' + filename; };
+import vSelect from './components/VSelect.vue';
+app.component('v-select', vSelect);
+// Bus de eventos global: `window.Fire` es un adaptador temporal de compatibilidad sobre el bus de plataforma (ya no es una
+// instancia de Vue). El código nuevo importa `events` desde "@/platform".
+window.Fire = events;
+app.config.globalProperties.$uploadPath = window.__uploadPath || 'images';
+app.config.globalProperties.$imgUrl = function(subfolder, filename) { return '/' + this.$uploadPath + '/' + subfolder + '/' + filename; };
 import Breadcumb from "./components/breadcumb";
-import VueI18n from 'vue-i18n';
-Vue.use(VueI18n);
-Vue.component("breadcumb", Breadcumb);
-Vue.config.productionTip = true;
-Vue.config.silent = true;
-Vue.config.devtools = false;
+app.component("breadcumb", Breadcumb);
+// `Vue.config.silent`/`productionTip`/`devtools` (Vue 2) no existen en Vue 3: no tienen equivalente real en
+// `app.config` (el control de devtools en producción ya lo hace `__VUE_PROD_DEVTOOLS__` en webpack.mix.js).
 import { loadI18n } from './plugins/i18n.loader';
 import { setupGlobalOfflineSync } from './utils/globalOfflineSync';
+import { events, installVue2Platform, installLegacyBridge } from './platform';
 
 loadI18n().then(i18n => {
   store.commit('SetDefaultLanguage', { i18n, Language: i18n.locale });
   setupRouterGuards(i18n);
   installNavigationPerformance(window.axios, router);
   try { setupGlobalOfflineSync(); } catch (e) {}
-  new Vue({ store, router, VueCookie, i18n, render: h => h(App) }).$mount('#app');
+  app.use(bootstrapPlugin);
+  app.use(i18n);
+  const vm = app.mount('#app');
+  // Conecta notificaciones, confirmaciones y modales por id (servicios de plataforma) con BootstrapVue/SweetAlert2.
+  installVue2Platform(vm);
+  // Puente explícito para los scripts sueltos prodex-*.js (sustituye a leer la instancia interna de Vue del DOM).
+  installLegacyBridge({
+    navigate: (path) => router.push(path),
+    getPermissions: () => store.getters.currentUserPermissions,
+    getPlanSummary: () => window.__planSummary,
+  });
 });

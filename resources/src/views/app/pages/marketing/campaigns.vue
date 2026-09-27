@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Campaign_List')" :folder="$t('Marketing_Management')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <b-row class="mb-3">
         <b-col md="3">
@@ -38,18 +38,18 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="selected-row-actions">
+        <template #selected-row-actions><div>
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{ $t('Del') }}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
+        </div></template>
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="New_Campaign()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
             <lucide-icon name="plus" /> {{ $t('New_Campaign') }}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'title'">
-            <a class="cursor-pointer text-primary font-weight-bold" @click="View_Details(props.row.id)">{{ props.row.title }}</a>
+            <a class="cursor-pointer text-primary fw-bold" @click="View_Details(props.row.id)">{{ props.row.title }}</a>
           </span>
           <span v-else-if="props.column.field == 'type'">
             <span class="badge badge-outline-info">{{ type_label(props.row.type) }}</span>
@@ -85,9 +85,11 @@
 </template>
 
 <script>
+import { BFormGroup, BFormSelect, BFormSelectOption, vBTooltip, BButton, BCard, BCol, BRow } from "@/platform/bootstrap";
+import { confirmDialog, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip }, components: { BButton, BCard, BCol, BRow, BFormGroup, BFormSelect, BFormSelectOption },
   metaInfo: { title: "Campaigns" },
   data() {
     return {
@@ -107,12 +109,12 @@ export default {
   computed: {
     columns() {
       return [
-        { label: this.$t("Campaign_Title"), field: "title", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Type"), field: "type", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Status"), field: "status", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Delivery_Status"), field: "progress", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Scheduled_At"), field: "schedule", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("Campaign_Title"), field: "title", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Type"), field: "type", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Status"), field: "status", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Delivery_Status"), field: "progress", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Scheduled_At"), field: "schedule", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     }
   },
@@ -134,7 +136,7 @@ export default {
     canEdit(row) { return ["draft", "scheduled", "failed", "cancelled"].includes(row.status); },
     canSend(row) { return ["draft", "scheduled", "failed"].includes(row.status); },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+      notifications.notify(msg, { title: title, variant: variant, solid: true });
     },
     updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
     onPageChange({ currentPage }) {
@@ -184,12 +186,12 @@ export default {
     },
 
     Send_Campaign(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Send_Campaign"), text: this.$t("Send_Now") + " ?", type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         confirmButtonText: this.$t("Send_Now")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.post("marketing/campaigns/" + id + "/send").then(() => {
             this.makeToast("success", this.$t("Created_in_successfully"), this.$t("Success"));
             this.Get_Campaigns(this.serverParams.page);
@@ -201,12 +203,12 @@ export default {
     },
 
     Remove_Campaign(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete("marketing/campaigns/" + id).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             this.Get_Campaigns(this.serverParams.page);
@@ -218,12 +220,12 @@ export default {
     },
 
     delete_by_selected() {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.post("marketing/campaigns/delete/by_selection", { selectedIds: this.selectedIds }).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             this.Get_Campaigns(this.serverParams.page);

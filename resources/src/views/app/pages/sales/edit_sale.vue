@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('EditSale')" :folder="$t('ListSales')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <validation-observer ref="edit_sale" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Sale">
@@ -42,7 +42,7 @@
                 <!-- Customer -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="Customer" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Customer') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Customer') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -53,14 +53,14 @@
                         :options="clients.map(clients => ({label: clients.name, value: clients.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                 <!-- warehouse -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="warehouse" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('warehouse') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('warehouse') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -72,14 +72,14 @@
                         :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                 <!-- Sales Agent -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="Sales Agent">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Sales_Agent')">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Sales_Agent')">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -89,14 +89,14 @@
                         :options="sales_agents.map(ag => ({label: ag.name, value: ag.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                 <!-- inventory location (MS7-B1 · sólo almacenes location_primary) -->
                 <b-col v-if="location_meta.requires" lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="inventory_location" :rules="{ required: true }">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Inventory_Location') + ' *'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -107,7 +107,7 @@
                         :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
@@ -164,10 +164,9 @@
                         <tr v-if="details.length <=0">
                           <td colspan="9">{{$t('NodataAvailable')}}</td>
                         </tr>
-                        <template v-for="detail in details">
+                        <template v-for="detail in details" :key="'d-' + detail.detail_id">
                         <tr
                           :class="{'row_deleted': detail.del === 1 || (detail.no_unit === 0 && detail.product_type != 'is_service')}"
-                          :key="'d-' + detail.detail_id"
 
                           >
                           <td>{{detail.detail_id}}</td>
@@ -205,12 +204,10 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <b-input-group-prepend>
                                   <span v-show="detail.no_unit !== 0 || detail.product_type == 'is_service'"
                                     class="btn btn-primary btn-sm"
                                     @click="decrement(detail ,detail.detail_id)"
                                   >-</span>
-                                </b-input-group-prepend>
                                 <input
                                   class="form-control"
                                   @keyup="Verified_Qty(detail,detail.detail_id)"
@@ -219,12 +216,10 @@
                                   v-model.number="detail.quantity"
                                   :disabled="detail.del === 1 || (detail.no_unit === 0 && detail.product_type != 'is_service')"
                                 >
-                                <b-input-group-append>
                                   <span v-show="detail.no_unit !== 0 || detail.product_type == 'is_service'"
                                     class="btn btn-primary btn-sm"
                                     @click="increment(detail ,detail.detail_id)"
                                   >+</span>
-                                </b-input-group-append>
                               </b-input-group>
                             </div>
                           </td>
@@ -408,11 +403,11 @@
                       </tr>
                       <tr>
                         <td>
-                          <span class="font-weight-bold">{{$t('Total')}}</span>
+                          <span class="fw-bold">{{$t('Total')}}</span>
                         </td>
                         <td>
                           <span
-                            class="font-weight-bold"
+                            class="fw-bold"
                           >{{currentUser.currency}} {{GrandTotal.toFixed(2)}}</span>
                         </td>
                       </tr>
@@ -564,7 +559,7 @@
                   <!-- Status  -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="Status" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Status') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Status') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -579,7 +574,7 @@
                                 ]"
                       ></v-select>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
@@ -595,13 +590,13 @@
                 </b-col>
                 <b-col md="12" v-if="sale.statut === 'completed' && hasBatchValidationErrors">
                   <div class="alert alert-warning mt-2" style="font-size: 13px; font-weight: 600;">
-                    <lucide-icon class="me-1" name="info" />
+                    <lucide-icon name="info" />
                     {{ firstBatchErrorMessage }}
                   </div>
                 </b-col>
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" @click="Submit_Sale" :disabled="SubmitProcessing || (sale.statut === 'completed' && hasBatchValidationErrors)"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" @click="Submit_Sale" :disabled="SubmitProcessing || (sale.statut === 'completed' && hasBatchValidationErrors)"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                      <div v-once class="typo__p" v-if="SubmitProcessing">
                       <div class="spinner sm spinner-primary mt-3"></div>
                     </div>
@@ -641,7 +636,7 @@
             <!-- Tax Method -->
            <b-col lg="6" md="6" sm="12">
               <validation-provider name="Tax Method" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('TaxMethod') + ' ' + '*'">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('TaxMethod') + ' ' + '*'">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -655,7 +650,7 @@
                            ]"
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
+                </b-form-group></template>
               </validation-provider>
             </b-col>
 
@@ -683,7 +678,7 @@
             <!-- Discount Method -->
            <b-col lg="6" md="6" sm="12">
               <validation-provider name="Discount Method" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Discount_Method') + ' ' + '*'">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Discount_Method') + ' ' + '*'">
                   <v-select
                     v-model="detail.discount_Method"
                     :reduce="label => label.value"
@@ -697,7 +692,7 @@
                            ]"
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
+                </b-form-group></template>
               </validation-provider>
             </b-col>
 
@@ -728,7 +723,7 @@
                   variant="primary"
                   type="submit"
                   :disabled="Submit_Processing_detail"
-                ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                ><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                 <div v-once class="typo__p" v-if="Submit_Processing_detail">
                   <div class="spinner sm spinner-primary mt-3"></div>
                 </div>
@@ -742,11 +737,13 @@
 </template>
 
 <script>
+import { BModal, BAlert, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormSelect } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 
-export default {
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormSelect, BAlert, BButton, BCard, BCol, BRow, BModal },
   metaInfo: {
     title: "Editar venta"
   },
@@ -921,7 +918,7 @@ export default {
   methods: {
 
     showModal() {
-      this.$bvModal.show('open_scan');
+      modals.show('open_scan');
       
     },
 
@@ -929,7 +926,7 @@ export default {
       const code = decodedText;
       this.search_input = code;
       this.search();
-      this.$bvModal.hide('open_scan');
+      modals.hide('open_scan');
     },
 
      handleFocus() {
@@ -976,7 +973,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -1001,7 +998,7 @@ export default {
 
       setTimeout(() => {
         NProgress.done();
-        this.$bvModal.show("form_Update_Detail");
+        modals.show("form_Update_Detail");
       }, 1000);
 
     },
@@ -1065,7 +1062,7 @@ export default {
        setTimeout(() => {
         NProgress.done();
         this.Submit_Processing_detail = false;
-        this.$bvModal.hide("form_Update_Detail");
+        modals.hide("form_Update_Detail");
       }, 1000);
 
     },
@@ -1334,9 +1331,9 @@ export default {
           qty_available: 0, // will be filled in by fetch_batches_for_detail
           qty: Number(b.qty) || 0,
         }));
-        this.$set(d, "batches", normalized);
-        this.$set(d, "available_batches", []);
-        this.$set(d, "batches_loading", false);
+        (d)["batches"] = normalized;
+        (d)["available_batches"] = [];
+        (d)["batches_loading"] = false;
         this.fetch_batches_for_detail(d);
       }
     },
@@ -1348,7 +1345,7 @@ export default {
       const variantSeg = (detail.product_variant_id != null && detail.product_variant_id !== "")
         ? detail.product_variant_id
         : 0;
-      this.$set(detail, "batches_loading", true);
+      (detail)["batches_loading"] = true;
       // Snapshot the prefilled batches before we rebuild availability.
       const existing = Array.isArray(detail.batches) ? detail.batches.slice() : [];
       const existingQtyById = {};
@@ -1392,7 +1389,7 @@ export default {
               });
             }
           }
-          this.$set(detail, "available_batches", merged);
+          (detail)["available_batches"] = merged;
           // Rebuild each prefilled batch row with the fresh availability number.
           const rebuilt = existing.map(b => {
             const match = merged.find(m => m.id === b.product_batch_id);
@@ -1404,17 +1401,17 @@ export default {
               qty: Number(b.qty) || 0,
             };
           });
-          this.$set(detail, "batches", rebuilt);
-          this.$set(detail, "batches_loading", false);
+          (detail)["batches"] = rebuilt;
+          (detail)["batches_loading"] = false;
         })
         .catch(() => {
-          this.$set(detail, "available_batches", []);
-          this.$set(detail, "batches_loading", false);
+          (detail)["available_batches"] = [];
+          (detail)["batches_loading"] = false;
         });
     },
 
     add_batch_to_detail(detail) {
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
       const used = this.batch_total_qty(detail);
       const remaining = Math.max(0, (Number(detail.quantity) || 0) - used);
       detail.batches.push({
@@ -1455,7 +1452,7 @@ export default {
       if (firstDot !== -1) {
         s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
       }
-      this.$set(batchRow, "qty", s);
+      (batchRow)["qty"] = s;
     },
 
     batch_total_qty(detail) {
@@ -2021,7 +2018,7 @@ export default {
         this.product.sale_unit_id = response.data.sale_unit_id;
         this.product.is_imei = response.data.is_imei;
         this.product.imei_number = '';
-        this.$set(this.product, 'serial_numbers', []);
+        (this.product)['serial_numbers'] = [];
         this.product.warehouse_location = response.data.warehouse_location
           ? (response.data.warehouse_location.name
               ? `${response.data.warehouse_location.code} - ${response.data.warehouse_location.name}`
@@ -2035,10 +2032,10 @@ export default {
         // Multi-Pack Selling: attach available packs and pre-select the default.
         const packs = response.data.packs || [];
         const defPack = packs.find(p => p.is_default) || null;
-        this.$set(this.product, "packs", packs);
-        this.$set(this.product, "product_pack_id", defPack ? defPack.id : null);
-        this.$set(this.product, "pack_multiplier", 1);
-        this.$set(this.product, "pack_name", defPack ? defPack.name : null);
+        (this.product)["packs"] = packs;
+        (this.product)["product_pack_id"] = defPack ? defPack.id : null;
+        (this.product)["pack_multiplier"] = 1;
+        (this.product)["pack_name"] = defPack ? defPack.name : null;
 
         // ensure min price respected on default
         if (this.product.Net_price < (this.product.min_price || 0)) {

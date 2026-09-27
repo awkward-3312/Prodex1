@@ -133,6 +133,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -319,8 +320,8 @@ export default {
       );
       const sub = this.meta ? `Período ${this.meta.from} — ${this.meta.to}` : "";
       const ok = printTableDoc({ title: "Informes / Rotación de inventario", headers, rows, landscape: true, subtitle: sub });
-      if (!ok && this.$root.$bvToast) {
-        this.$root.$bvToast.toast("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
+      if (!ok) {
+        notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
       }
     }
   }

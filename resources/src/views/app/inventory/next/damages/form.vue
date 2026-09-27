@@ -125,8 +125,8 @@
                     </thead>
                     <tbody>
                       <tr v-if="!details.length"><td colspan="6" class="pxdmgf-tbl__empty">Añade productos al daño.</td></tr>
-                      <template v-for="detail in details">
-                        <tr :key="'r-' + detail.detail_id" :class="{ 'is-deleted': detail.del === 1 }">
+                      <template v-for="detail in details" :key="'r-' + detail.detail_id">
+                        <tr :class="{ 'is-deleted': detail.del === 1 }">
                           <td class="pxn-num">{{ detail.detail_id }}</td>
                           <td class="pxn-mono">{{ detail.code }}</td>
                           <td>
@@ -230,6 +230,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "@/utils/priceFormat";
@@ -392,7 +393,7 @@ export default {
           const b = batches[0];
           const lineQty = Number(d.quantity);
           const batchQty = Number(b.qty);
-          if (Number.isFinite(lineQty) && lineQty > 0 && batchQty !== lineQty) this.$set(b, "qty", lineQty);
+          if (Number.isFinite(lineQty) && lineQty > 0 && batchQty !== lineQty) (b)["qty"] = lineQty;
         }
       }
     }
@@ -407,7 +408,7 @@ export default {
       return v.toFixed(this.priceDecimals);
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     },
     goCancel() {
       this.$router.push({ name: "index_damage" });
@@ -486,7 +487,7 @@ export default {
         for (const d of this.details) {
           if (d && d.is_batch_tracked) {
             // Create limpia batches; Edit las conserva y fusiona disponibilidad.
-            if (!this.isEdit) this.$set(d, "batches", []);
+            if (!this.isEdit) (d)["batches"] = [];
             this.fetchBatchesForDetail(d);
           }
         }
@@ -657,14 +658,14 @@ export default {
     //------- lotes: fetch de disponibilidad (padre; la edición de filas vive en LineBatchPicker)
     fetchBatchesForDetail(detail) {
       if (!detail) return;
-      if (!("batches_loading" in detail)) this.$set(detail, "batches_loading", false);
-      if (!("available_batches" in detail)) this.$set(detail, "available_batches", []);
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
-      if (!detail.is_batch_tracked) { this.$set(detail, "batches_loading", false); return; }
+      if (!("batches_loading" in detail)) (detail)["batches_loading"] = false;
+      if (!("available_batches" in detail)) (detail)["available_batches"] = [];
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
+      if (!detail.is_batch_tracked) { (detail)["batches_loading"] = false; return; }
 
       const wid = this.damage && this.damage.warehouse_id;
       const productId = detail.product_id || detail.id;
-      if (!wid || !productId) { this.$set(detail, "batches_loading", false); return; }
+      if (!wid || !productId) { (detail)["batches_loading"] = false; return; }
       const variantSeg = detail.product_variant_id != null && detail.product_variant_id !== "" ? detail.product_variant_id : 0;
 
       const existingQtyById = {};
@@ -676,7 +677,7 @@ export default {
         }
       }
 
-      this.$set(detail, "batches_loading", true);
+      (detail)["batches_loading"] = true;
       window.axios
         .get(`batches_for_damage/${productId}/${wid}/${variantSeg}`, { timeout: 15000 })
         .then(response => {
@@ -684,20 +685,20 @@ export default {
           const list = this.isEdit
             ? raw.map(ab => ({ ...ab, qty_available: (Number(ab.qty_available) || 0) + (existingQtyById[ab.id] || 0) }))
             : raw;
-          this.$set(detail, "available_batches", list);
+          (detail)["available_batches"] = list;
           if (this.isEdit && Array.isArray(detail.batches)) {
             for (const b of detail.batches) {
               if (b && b.product_batch_id != null) {
                 const ab = list.find(x => x.id === b.product_batch_id);
-                this.$set(b, "qty_available", ab ? Number(ab.qty_available) || 0 : (existingQtyById[b.product_batch_id] || 0));
-                this.$set(b, "batch_no", ab ? ab.batch_no : (b.batch_no || ""));
-                this.$set(b, "expiry_date", ab ? ab.expiry_date : (b.expiry_date || null));
+                (b)["qty_available"] = ab ? Number(ab.qty_available) || 0 : (existingQtyById[b.product_batch_id] || 0);
+                (b)["batch_no"] = ab ? ab.batch_no : (b.batch_no || "");
+                (b)["expiry_date"] = ab ? ab.expiry_date : (b.expiry_date || null);
               }
             }
           }
         })
-        .catch(() => { this.$set(detail, "available_batches", []); })
-        .then(() => { this.$set(detail, "batches_loading", false); });
+        .catch(() => { (detail)["available_batches"] = []; })
+        .then(() => { (detail)["batches_loading"] = false; });
     },
     batchBadgeTitle() {
       return "Se asignarán automáticamente los lotes que caducan antes (FEFO) al guardar si no los indicas.";
@@ -709,9 +710,9 @@ export default {
       const q = Number.isFinite(num) ? num : "";
       if (q !== "" && q > Number(detail.current)) {
         this.makeToast("warning", "Stock insuficiente.", "Aviso");
-        this.$set(detail, "quantity", Number(detail.current));
+        (detail)["quantity"] = Number(detail.current);
       } else {
-        this.$set(detail, "quantity", q);
+        (detail)["quantity"] = q;
       }
     },
     increment(detail) {
@@ -720,11 +721,11 @@ export default {
         this.makeToast("warning", "Stock insuficiente.", "Aviso");
         return;
       }
-      this.$set(detail, "quantity", next);
+      (detail)["quantity"] = next;
     },
     decrement(detail) {
       const next = (Number(detail.quantity) || 0) - 1;
-      if (next > 0) this.$set(detail, "quantity", next);
+      if (next > 0) (detail)["quantity"] = next;
     },
 
     //------- submit

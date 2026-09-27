@@ -21,21 +21,13 @@
       .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
   }
 
-  function resolveRouter() {
-    var sidebar = document.querySelector('.vertical-sidebar-wrapper, .vertical-sidebar');
-    var vm = sidebar && sidebar.__vue__;
-    if (vm && vm.$router) return vm.$router;
-    var root = document.getElementById('app');
-    vm = root && root.__vue__;
-    return vm && vm.$router ? vm.$router : null;
-  }
-
   function navigate(action) {
     if (!action) return;
     if (action.charAt(0) === '/') {
-      var router = resolveRouter();
-      if (router) {
-        router.push(action).catch(function () {});
+      // Puente explícito de la app (window.__prodexBridge, ver platform/legacy-bridge.js).
+      var bridge = window.__prodexBridge;
+      if (bridge && typeof bridge.navigate === 'function') {
+        bridge.navigate(action);
         return;
       }
     }

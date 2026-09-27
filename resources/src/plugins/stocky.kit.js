@@ -1,9 +1,7 @@
-import BootstrapVue from 'bootstrap-vue/dist/bootstrap-vue.esm';
-import VueGoodTablePlugin from "vue-good-table";
-import Meta from "vue-meta";
+import { defineAsyncComponent } from 'vue';
 import "./../assets/styles/sass/themes/lite-purple.scss";
-import "./sweetalert2.js";
-import VueHtmlToPaper from 'vue-html-to-paper';
+import sweetalert2Plugin from "./sweetalert2.js";
+import { makeHtmlToPaper } from '../platform/htmlToPaper';
 
 const options = {
   name: '_blank',
@@ -133,13 +131,13 @@ function installReceiptPresentationEnhancer(Vue) {
 
   Vue.mixin({
     mounted() {
-      const title = this.$options && this.$options.metaInfo && this.$options.metaInfo.title;
-      if (title !== 'POS Receipt' || !this.pos_settings || this.__receiptPresentationMounted) return;
+      // Marcador explícito de la vista (antes se deducía de `metaInfo.title === 'POS Receipt'`, que es solo el título del <head>).
+      if (!this.$options || this.$options.prodexReceiptPresentation !== true || !this.pos_settings || this.__receiptPresentationMounted) return;
       this.__receiptPresentationMounted = true;
 
       Object.keys(defaults).forEach(key => {
         if (this.pos_settings[key] === undefined || this.pos_settings[key] === null || this.pos_settings[key] === '') {
-          this.$set(this.pos_settings, key, defaults[key]);
+          (this.pos_settings)[key] = defaults[key];
         }
       });
 
@@ -224,7 +222,7 @@ function installReceiptPresentationEnhancer(Vue) {
       }
     },
 
-    beforeDestroy() {
+    beforeUnmount() {
       if (Array.isArray(this.__receiptPresentationUnwatch)) {
         this.__receiptPresentationUnwatch.forEach(unwatch => { if (typeof unwatch === 'function') unwatch(); });
       }
@@ -430,23 +428,21 @@ function installFriendlyNavigation(Vue) {
 }
 
 export default {
-  install(Vue) {
-    Vue.use(BootstrapVue);
-    Vue.component("large-sidebar", () => import(/* webpackChunkName: "largeSidebar" */ "../containers/layouts/largeSidebar"));
+  // `app` es la instancia real de Vue 3 (antes `Vue` global bajo compat): `app.component`/`app.mixin` tienen la
+  // misma firma que sus equivalentes de Vue 2, así que las funciones de más abajo no cambiaron; solo
+  // `Vue.prototype.$x` (que no existe en `app`) pasa a `app.config.globalProperties.$x`.
+  install(app) {
+    app.use(sweetalert2Plugin);
+    // Vue 3 real: el registro GLOBAL de un componente asíncrono necesita `defineAsyncComponent(...)` explícito
+    // (antes, `@vue/compat` reconocía automáticamente cualquier función `() => import(...)`).
+    app.component("large-sidebar", defineAsyncComponent(() => import(/* webpackChunkName: "largeSidebar" */ "../containers/layouts/largeSidebar")));
     // Milestone 3 — layout px-next persistente para /app/* (opt-in local).
-    Vue.component("px-shell-layout", () => import(/* webpackChunkName: "px-next-shell" */ "../containers/layouts/PxShellLayout.vue"));
-    Vue.component("customizer", () => import(/* webpackChunkName: "customizer" */ "../components/common/customizer.vue"));
-    Vue.component("vue-perfect-scrollbar", () => import(/* webpackChunkName: "vue-perfect-scrollbar" */ "vue-perfect-scrollbar"));
-    Vue.use(Meta, {
-      keyName: "metaInfo",
-      attribute: "data-vue-meta",
-      ssrAttribute: "data-vue-meta-server-rendered",
-      tagIDKeyName: "vmid",
-      refreshOnceOnNavigation: true
-    });
-    Vue.use(VueGoodTablePlugin);
-    Vue.use(VueHtmlToPaper, options);
-    installReceiptPresentationEnhancer(Vue);
-    installFriendlyNavigation(Vue);
+    app.component("px-shell-layout", defineAsyncComponent(() => import(/* webpackChunkName: "px-next-shell" */ "../containers/layouts/PxShellLayout.vue")));
+    app.component("customizer", defineAsyncComponent(() => import(/* webpackChunkName: "customizer" */ "../components/common/customizer.vue")));
+    app.component("vue-perfect-scrollbar", defineAsyncComponent(() => import(/* webpackChunkName: "vue-perfect-scrollbar" */ "../components/VuePerfectScrollbar.vue")));
+    app.component("vue-good-table", defineAsyncComponent(() => import(/* webpackChunkName: "vue-good-table" */ "../components/VueGoodTable.vue")));
+    app.config.globalProperties.$htmlToPaper = makeHtmlToPaper(options);
+    installReceiptPresentationEnhancer(app);
+    installFriendlyNavigation(app);
   }
 };

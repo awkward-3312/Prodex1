@@ -71,8 +71,8 @@
               </thead>
               <tbody>
                 <tr v-if="details.length <= 0"><td colspan="9" class="pxpurf__empty">{{ $t('NodataAvailable') }}</td></tr>
-                <template v-for="detail in details">
-                  <tr :key="'d-' + detail.detail_id">
+                <template v-for="detail in details" :key="'d-' + detail.detail_id">
+                  <tr>
                     <td class="pxn-num">{{ detail.detail_id }}</td>
                     <td>
                       <span class="pxn-mono">{{ detail.code }}</span><br />
@@ -178,6 +178,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
@@ -321,7 +322,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -591,7 +592,7 @@ export default {
       // serials that this location's candidate list no longer offers.
       this.details.forEach(d => {
         if (d && d.is_imei && Array.isArray(d.serial_numbers) && d.serial_numbers.length) {
-          this.$set(d, "serial_numbers", []);
+          (d)["serial_numbers"] = [];
         }
       });
       if (!id || !this.location_meta.requires) return;
@@ -605,7 +606,7 @@ export default {
           this.details.forEach(d => {
             const key = d.product_id + ":" + (d.product_variant_id || 0);
             if (Object.prototype.hasOwnProperty.call(byKey, key)) {
-              this.$set(d, "stock", byKey[key]);
+              (d)["stock"] = byKey[key];
             }
           });
         })

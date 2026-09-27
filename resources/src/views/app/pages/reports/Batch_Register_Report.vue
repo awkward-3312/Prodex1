@@ -2,27 +2,27 @@
   <div class="main-content">
     <breadcumb :page="$t('Batch_Register_Report') || 'Batch Register'" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="wrapper" v-if="!isLoading">
       <!-- Toolbar / filters -->
       <div class="d-flex flex-wrap align-items-end mb-3">
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2 d-block">{{ $t('Warehouse') }}</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2 d-block">{{ $t('Warehouse') }}</label>
           <b-form-select v-model="filters.warehouse_id" size="sm" class="w-auto" @change="onFilterChange">
             <option :value="''">{{ $t('All') }}</option>
             <option v-for="w in warehouses" :key="w.id" :value="w.id">{{ w.name }}</option>
           </b-form-select>
         </div>
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2 d-block">{{ $t('Supplier') || 'Supplier' }}</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2 d-block">{{ $t('Supplier') || 'Supplier' }}</label>
           <b-form-select v-model="filters.supplier_id" size="sm" class="w-auto" @change="onFilterChange">
             <option :value="''">{{ $t('All') }}</option>
             <option v-for="s in suppliers" :key="s.id" :value="s.id">{{ s.name }}</option>
           </b-form-select>
         </div>
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2 d-block">{{ $t('Expiry_Window') }}</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2 d-block">{{ $t('Expiry_Window') }}</label>
           <b-form-select v-model="filters.expiry_window" size="sm" class="w-auto" @change="onFilterChange">
             <option value="all">{{ $t('All') }}</option>
             <option value="expired">{{ $t('Expired') }}</option>
@@ -31,8 +31,8 @@
             <option value="expired_or_near">{{ $t('Expired') }} + {{ $t('Near_Expiry') }}</option>
           </b-form-select>
         </div>
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2 d-block">{{ $t('Status') }}</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2 d-block">{{ $t('Status') }}</label>
           <b-form-select v-model="filters.status" size="sm" class="w-auto" @change="onFilterChange">
             <option :value="''">{{ $t('All') }}</option>
             <option value="active">{{ $t('Batch_Status_active') }}</option>
@@ -41,18 +41,18 @@
             <option value="written_off">{{ $t('Batch_Status_written_off') }}</option>
           </b-form-select>
         </div>
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2 d-block">{{ $t('From') || 'From' }}</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2 d-block">{{ $t('From') || 'From' }}</label>
           <b-form-input type="date" size="sm" v-model="filters.purchase_date_from" @change="onFilterChange" style="width: 140px;" />
         </div>
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2 d-block">{{ $t('To') || 'To' }}</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2 d-block">{{ $t('To') || 'To' }}</label>
           <b-form-input type="date" size="sm" v-model="filters.purchase_date_to" @change="onFilterChange" style="width: 140px;" />
         </div>
 
-        <div class="ml-auto mb-2">
+        <div class="ms-auto mb-2">
           <b-button size="sm" variant="outline-secondary" class="btn-pill" @click="printTableOnly()">
-            <lucide-icon class="mr-1" name="printer" />{{ $t('print') }}
+            <lucide-icon class="me-1" name="printer" />{{ $t('print') }}
           </b-button>
         </div>
       </div>
@@ -78,11 +78,11 @@
         }"
         styleClass="tableOne table-hover vgt-table mt-2"
       >
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field === 'product'">
             <div>
               <strong>{{ props.row.product_name }}</strong>
-              <small v-if="props.row.product_code" class="text-muted ml-1">[{{ props.row.product_code }}]</small>
+              <small v-if="props.row.product_code" class="text-muted ms-1">[{{ props.row.product_code }}]</small>
             </div>
             <small v-if="props.row.generic_name" class="text-muted">
               {{ props.row.generic_name }}
@@ -90,12 +90,12 @@
               <span v-if="props.row.dosage_form"> · {{ props.row.dosage_form }}</span>
             </small>
             <div v-if="props.row.variant_name">
-              <span class="badge badge-pill" style="background:#ede9fe; color:#6d28d9;">{{ props.row.variant_name }}</span>
+              <span class="badge rounded-pill" style="background:#ede9fe; color:#6d28d9;">{{ props.row.variant_name }}</span>
             </div>
           </span>
 
           <span v-else-if="props.column.field === 'batch_no'">
-            <a href="#" class="text-primary font-weight-bold" @click.prevent="openHistory(props.row)">
+            <a href="#" class="text-primary fw-bold" @click.prevent="openHistory(props.row)">
               {{ props.row.batch_no || '—' }}
             </a>
           </span>
@@ -169,7 +169,7 @@
 
           <span v-else-if="props.column.field === 'actions'">
             <b-button size="sm" variant="outline-primary" class="btn-pill" @click="openHistory(props.row)">
-              <lucide-icon class="mr-1" name="file-text" />{{ $t('History') || 'History' }}
+              <lucide-icon class="me-1" name="file-text" />{{ $t('History') || 'History' }}
             </b-button>
           </span>
 
@@ -181,11 +181,12 @@
 </template>
 
 <script>
+import { BButton, BCard, BFormSelect, BFormInput } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 
-export default {
+export default { components: { BFormSelect, BFormInput, BButton, BCard },
   metaInfo: { title: "Batch Register" },
 
   data() {
@@ -227,17 +228,17 @@ export default {
 
     columns() {
       return [
-        { label: this.$t('Product'), field: 'product', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Batch_No'), field: 'batch_no', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Warehouse'), field: 'warehouse_name', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Mfg_Date'), field: 'mfg_date', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Expiry_Date'), field: 'expiry_date', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Quantity'), field: 'qty', tdClass: 'text-right', thClass: 'text-right' },
-        { label: this.$t('Unit_Cost') || 'Unit Cost', field: 'unit_cost', sortable: false, tdClass: 'text-right', thClass: 'text-right' },
-        { label: this.$t('Value'), field: 'value', sortable: false, tdClass: 'text-right', thClass: 'text-right' },
-        { label: this.$t('Status'), field: 'status', tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Purchase_Ref') || 'Purchase Ref', field: 'origin_purchase_ref', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
-        { label: this.$t('Supplier') || 'Supplier', field: 'origin_supplier_name', sortable: false, tdClass: 'text-left', thClass: 'text-left' },
+        { label: this.$t('Product'), field: 'product', sortable: false, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Batch_No'), field: 'batch_no', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Warehouse'), field: 'warehouse_name', sortable: false, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Mfg_Date'), field: 'mfg_date', sortable: false, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Expiry_Date'), field: 'expiry_date', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Quantity'), field: 'qty', tdClass: 'text-end', thClass: 'text-end' },
+        { label: this.$t('Unit_Cost') || 'Unit Cost', field: 'unit_cost', sortable: false, tdClass: 'text-end', thClass: 'text-end' },
+        { label: this.$t('Value'), field: 'value', sortable: false, tdClass: 'text-end', thClass: 'text-end' },
+        { label: this.$t('Status'), field: 'status', tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Purchase_Ref') || 'Purchase Ref', field: 'origin_purchase_ref', sortable: false, tdClass: 'text-start', thClass: 'text-start' },
+        { label: this.$t('Supplier') || 'Supplier', field: 'origin_supplier_name', sortable: false, tdClass: 'text-start', thClass: 'text-start' },
         { label: '', field: 'actions', sortable: false, tdClass: 'text-center', thClass: 'text-center' }
       ];
     }

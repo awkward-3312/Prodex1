@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Serial_Management')" :folder="$t('Serial_Numbers')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -17,7 +17,7 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="tableOne table-hover vgt-table mt-3"
       >
-        <div slot="table-actions" class="mt-2 mb-3" style="display:flex; gap:10px; flex-wrap:wrap;">
+        <template #table-actions><div class="mt-2 mb-3" style="display:flex; gap:10px; flex-wrap:wrap;">
           <b-form-group :label="$t('warehouse')" style="min-width:200px;">
             <v-select
               @input="loadOnFilter"
@@ -36,9 +36,9 @@
               :options="statusOptions"
             />
           </b-form-group>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'status'">
             <span class="badge" :class="statusBadge(props.row.status)">{{ statusLabel(props.row.status) }}</span>
           </span>
@@ -55,9 +55,10 @@
 </template>
 
 <script>
+import { BButton, BCard, BFormGroup } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BFormGroup, BButton, BCard },
   metaInfo: { title: "Serial Numbers" },
   data() {
     return {
@@ -85,13 +86,13 @@ export default {
     },
     columns() {
       return [
-        { label: this.$t("Serial_Number"), field: "serial_number", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Name_product"), field: "product_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("warehouse"), field: "warehouse_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Serial_Status"), field: "status", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Supplier"), field: "provider_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Customer"), field: "client_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Action"), field: "actions", tdClass: "text-left", thClass: "text-left", sortable: false }
+        { label: this.$t("Serial_Number"), field: "serial_number", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Name_product"), field: "product_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("warehouse"), field: "warehouse_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Serial_Status"), field: "status", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Supplier"), field: "provider_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Customer"), field: "client_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Action"), field: "actions", tdClass: "text-start", thClass: "text-start", sortable: false }
       ];
     }
   },

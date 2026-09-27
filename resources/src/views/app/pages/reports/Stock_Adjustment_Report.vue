@@ -7,7 +7,7 @@
       <div class="d-flex flex-wrap align-items-center">
 
         <!-- Date range -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('DateRange')}}</label>
           <date-range-picker
             v-model="dateRange"
@@ -22,7 +22,7 @@
           >
             <template v-slot:input="picker">
               <b-button variant="light" class="btn-pill">
-                <lucide-icon class="mr-1" name="calendar-days" />
+                <lucide-icon class="me-1" name="calendar-days" />
                 {{ fmt(picker.startDate) }} - {{ fmt(picker.endDate) }}
               </b-button>
             </template>
@@ -30,7 +30,7 @@
         </div>
 
         <!-- Warehouse -->
-        <div class="mr-3 mb-2">
+        <div class="me-3 mb-2">
           <label class="mb-1 d-block text-muted">{{$t('warehouse')}}</label>
           <v-select class="w-250"
             v-model="warehouse_id"
@@ -42,15 +42,15 @@
           />
         </div>
 
-        <div class="ml-auto mb-2 d-flex">
-          <b-button @click="printTableOnly()" variant="outline-secondary" class="btn-pill mr-2">
-            <lucide-icon class="mr-1" name="printer" /> {{ $t("print") }}
+        <div class="ms-auto mb-2 d-flex">
+          <b-button @click="printTableOnly()" variant="outline-secondary" class="btn-pill me-2">
+            <lucide-icon class="me-1" name="printer" /> {{ $t("print") }}
           </b-button>
-          <b-button variant="primary" class="btn-pill mr-2" @click="fetchReport">
-            <lucide-icon class="mr-1" name="refresh-cw" /> {{$t('Refresh')}}
+          <b-button variant="primary" class="btn-pill me-2" @click="fetchReport">
+            <lucide-icon class="me-1" name="refresh-cw" /> {{$t('Refresh')}}
           </b-button>
           <b-button variant="danger" class="btn-pill" @click="exportPDF">
-            <lucide-icon class="mr-1" name="file-text" /> {{$t('Export_PDF')}}
+            <lucide-icon class="me-1" name="file-text" /> {{$t('Export_PDF')}}
           </b-button>
         </div>
       </div>
@@ -128,12 +128,12 @@
           @on-sort-change="onSortChange"
           @on-search="onSearch"
         >
-          <div slot="table-actions" class="mt-2 mb-3">
+          <template #table-actions><div class="mt-2 mb-3">
             <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
               <lucide-icon name="printer" /> {{ $t("print") }}
             </b-button>
-          </div>
-          <template slot="table-row" slot-scope="p">
+          </div></template>
+          <template #table-row="p">
             <span v-if="p.column.field === 'qty' || p.column.field === 'net_qty'">
               {{ formatQty(p.row[p.column.field]) }}
             </span>
@@ -162,14 +162,14 @@
 </template>
 
 <script>
+import { BButton, BCard, BCol, BRow, BSkeletonImg } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
-import DateRangePicker from "vue2-daterange-picker";
-import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
+import DateRangePicker from "@/components/DateRangePicker.vue";
 import moment from "moment";
 
 /* Charts: VueApexCharts replacement for ECharts */
-import VueApexCharts from "vue-apexcharts";
+import VueApexCharts from "vue3-apexcharts";
 
 /* PDF export */
 import jsPDF from "jspdf";
@@ -177,24 +177,14 @@ import autoTable from "jspdf-autotable";
 
 const StatTile = {
   name: "StatTile",
-  functional: true,
+  compilerOptions: { whitespace: 'condense' },
   props: { icon:String, label:String, value:[String,Number], theme:{type:String,default:'blue'} },
-  render(h,{props}){
-    return h("div",{class:["stat-card",`theme-${props.theme}`,"shadow-soft","rounded-xl","mb-2"]},[
-      h("div",{class:"stat-inner"},[
-        h("div",{class:"stat-icon"},[h('lucide-icon', { props: { name: props.icon } })]),
-        h("div",{class:"stat-content"},[
-          h("div",{class:"stat-label"},props.label),
-          h("div",{class:"stat-value"},props.value)
-        ])
-      ])
-    ]);
-  }
+  template: `<div :class="['stat-card', 'theme-' + theme, 'shadow-soft', 'rounded-xl', 'mb-2']"><div class="stat-inner"><div class="stat-icon"><lucide-icon :name="icon" /></div><div class="stat-content"><div class="stat-label">{{ label }}</div><div class="stat-value">{{ value }}</div></div></div></div>`
 };
 
 export default {
   metaInfo: { title: "Stock Adjustment Report" },
-  components: {
+  components: { BSkeletonImg, BButton, BCard, BCol, BRow,
     apexchart: VueApexCharts,
     "date-range-picker": DateRangePicker,
     StatTile
@@ -604,7 +594,7 @@ export default {
     this.onResize();
     window.addEventListener('resize', this.onResize, { passive: true });
   },
-  beforeDestroy(){
+  beforeUnmount(){
     window.removeEventListener('resize', this.onResize);
   }
 };

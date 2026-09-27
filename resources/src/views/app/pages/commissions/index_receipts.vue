@@ -129,6 +129,7 @@
 </template>
 
 <script>
+import { BForm } from "@/platform/bootstrap";
 import { mapGetters } from 'vuex';
 import NProgress from 'nprogress';
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -144,7 +145,7 @@ import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
-  components: {
+  components: { BForm,
     PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton,
     PxField, PxInput, PxTextarea, PxModal, PxEmptyState, "vs-px": VsPx
   },

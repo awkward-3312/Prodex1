@@ -10,10 +10,10 @@
     />
 
     <px-card :title="isEdit ? ($t('Edit') + ' ' + $t('Article')) : ($t('New') + ' ' + $t('Article'))" class="pxkb__card">
-      <validation-observer ref="form_article">
+      <px-validation-observer ref="form_article">
         <form @submit.prevent="save">
           <div class="pxkb__formgrid">
-            <validation-provider ref="groupProvider" name="Group" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="groupProvider" name="Group" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('Group') + ' *'" :error="v.errors[0]">
                 <template #default="{ id }">
                   <vs-px
@@ -26,19 +26,19 @@
                   />
                 </template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
-            <validation-provider ref="titleProvider" name="Title" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="titleProvider" name="Title" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('Title') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="form.title" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
-            <validation-provider ref="slugProvider" name="Slug" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="slugProvider" name="Slug" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('Slug') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="form.slug" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
             <px-field :label="$t('Content')">
               <template #default>
@@ -70,7 +70,7 @@
             </div>
           </div>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer>
         <px-button variant="ghost" @click="$router.push({ name: 'KnowledgeBaseArticles' })">{{ $t('Cancel') }}</px-button>
@@ -82,6 +82,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import RichTextEditor from '@/components/RichTextEditor.vue';
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
@@ -159,8 +160,8 @@ export default {
         };
         this.syncValidators();
       } catch (e) {
-        if (this.$root && this.$root.$bvToast) {
-          this.$root.$bvToast.toast(this.$t('Failed_to_load') || 'Failed to load', { variant: 'danger', solid: true });
+        if (notifications.hasDriver()) {
+          notifications.notify(this.$t('Failed_to_load') || 'Failed to load', { variant: 'danger', solid: true });
         }
       }
     },
@@ -173,20 +174,20 @@ export default {
         if (!payload.published_at) payload.published_at = null;
         if (this.isEdit) {
           await axios.put('/knowledge-base/articles/' + this.id, payload);
-          if (this.$root && this.$root.$bvToast) {
-            this.$root.$bvToast.toast(this.$t('Updated') || 'Updated', { variant: 'success', solid: true });
+          if (notifications.hasDriver()) {
+            notifications.notify(this.$t('Updated') || 'Updated', { variant: 'success', solid: true });
           }
         } else {
           await axios.post('/knowledge-base/articles', payload);
-          if (this.$root && this.$root.$bvToast) {
-            this.$root.$bvToast.toast(this.$t('Saved') || 'Saved', { variant: 'success', solid: true });
+          if (notifications.hasDriver()) {
+            notifications.notify(this.$t('Saved') || 'Saved', { variant: 'success', solid: true });
           }
         }
         this.$router.push({ name: 'KnowledgeBaseArticles' });
       } catch (e) {
         const msg = (e.response && e.response.data && (e.response.data.message || (e.response.data.errors && Object.values(e.response.data.errors).flat()[0]))) || this.$t('InvalidData') || 'Invalid data';
-        if (this.$root && this.$root.$bvToast) {
-          this.$root.$bvToast.toast(msg, { variant: 'danger', solid: true });
+        if (notifications.hasDriver()) {
+          notifications.notify(msg, { variant: 'danger', solid: true });
         }
       } finally {
         this.saving = false;

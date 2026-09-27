@@ -90,7 +90,7 @@
 
 <script>
 import NProgress from 'nprogress';
-import VueApexCharts from 'vue-apexcharts';
+import VueApexCharts from 'vue3-apexcharts';
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxToolbar from "@/components/px-next/PxToolbar.vue";
 import PxTable from "@/components/px-next/PxTable.vue";

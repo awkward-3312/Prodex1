@@ -2,12 +2,12 @@
   <div class="main-content">
   <breadcumb :page="$t('Edit_Collection')" :folder="$t('Store')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else class="px-0">
       <b-form @submit.prevent="update">
         <!-- ROW 1: Header + Sticky side -->
-        <div class="row no-gutters">
+        <div class="row g-0">
           <!-- LEFT: Collection header -->
           <div class="col-lg-8 p-3 p-lg-4">
             <div class="card card-soft shadow-sm mb-4">
@@ -28,7 +28,7 @@
 
                 <b-form-group :label="$t('Slug')">
                   <b-input-group>
-                    <b-input-group-prepend is-text>/collections/</b-input-group-prepend>
+<div class="input-group-text">/collections/</div>
                     <b-form-input v-model.trim="form.slug" required />
                   </b-input-group>
                 </b-form-group>
@@ -55,13 +55,13 @@
                 <div class="card-body">
                   <div class="d-grid gap-2">
                     <b-button :disabled="saving" type="submit" variant="btn btn-primary btn-block">
-                      <span v-if="saving" class="spinner-border spinner-border-sm mr-2"></span>
+                      <span v-if="saving" class="spinner-border spinner-border-sm me-2"></span>
                       <lucide-icon name="check" /> {{ $t('Save') }}
                     </b-button>
                     <b-button :disabled="saving" variant="btn btn-outline-secondary btn-block" @click="updateAndClose">
                       <lucide-icon name="check" /> {{ $t('Save_and_Close') }}
                     </b-button>
-                    <router-link :to="{ name:'StoreCollections' }" class="btn btn-outline-dark btn-block">
+                    <router-link :to="{ name:'StoreCollections' }" class="btn btn-outline-dark d-block w-100">
                       {{ $t('Cancel') }}
                     </router-link>
                   </div>
@@ -101,12 +101,10 @@
                             :placeholder="$t('Search_products') + '…'"
                             @input="debouncedSearch"
                           />
-                          <b-input-group-append>
                             <b-button :disabled="searching" variant="outline-secondary" @click="searchProducts">
-                              <span v-if="searching" class="spinner-border spinner-border-sm mr-1"></span>
+                              <span v-if="searching" class="spinner-border spinner-border-sm me-1"></span>
                               <lucide-icon name="search" v-else />
                             </b-button>
-                          </b-input-group-append>
                         </b-input-group>
                       </div>
 
@@ -170,7 +168,7 @@
                             <tr>
                               <th style="width:60px">#</th>
                               <th>{{ $t('Product') }}</th>
-                              <th class="text-right" style="width:220px">{{ $t('Actions') }}</th>
+                              <th class="text-end" style="width:220px">{{ $t('Actions') }}</th>
                             </tr>
                           </thead>
                           <tbody>
@@ -178,7 +176,7 @@
                               <td><code class="small">{{ idx+1 }}</code></td>
                               <td>
                                 <div class="d-flex align-items-center">
-                                  <div class="thumb mr-2" v-if="item.thumb">
+                                  <div class="thumb me-2" v-if="item.thumb">
                                     <img :src="item.thumb" alt="thumb" />
                                   </div>
                                   <div>
@@ -188,7 +186,7 @@
                                 </div>
                               </td>
                             
-                              <td class="text-right">
+                              <td class="text-end">
                                 <div class="btn-group btn-group-sm">
                                   <b-button variant="outline-secondary" :disabled="idx===0" @click="move(idx,-1)">↑</b-button>
                                   <b-button variant="outline-secondary" :disabled="idx===selected.length-1" @click="move(idx,1)">↓</b-button>
@@ -224,8 +222,10 @@
 </template>
 
 <script>
+import { BButton, BCard, BForm, BFormGroup, BFormInput, BInputGroup, BFormTextarea } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 
-export default {
+export default { components: { BForm, BFormGroup, BFormInput, BInputGroup, BFormTextarea, BButton, BCard },
   metaInfo: {
     title: "Store Collections Edit"
   },
@@ -264,8 +264,8 @@ export default {
 
   methods: {
     makeToast (variant, msg, title) {
-      if (this.$root && this.$root.$bvToast) {
-        this.$root.$bvToast.toast(msg, { title, variant, solid: true })
+      if (notifications.hasDriver()) {
+        notifications.notify(msg, { title, variant, solid: true })
       }
     },
 
@@ -468,7 +468,7 @@ export default {
 
 /* Sticky side */
 .side { top: 88px; }
-.btn-block { width: 100%; }
+.d-block w-100 { width: 100%; }
 
 /* Helpers */
 .fw-600 { font-weight: 600; }

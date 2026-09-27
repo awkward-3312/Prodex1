@@ -2,7 +2,7 @@
   <div class="main-content projects-page-modern">
     <breadcumb :page="$t('Project_List')" :folder="$t('Projects')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
 
@@ -128,7 +128,7 @@
               styleClass="modern-table table-hover vgt-table"
             >
 
-              <template slot="table-row" slot-scope="props">
+              <template #table-row="props">
                 <span v-if="props.column.field == 'actions'">
                   <div class="action-buttons-cell">
                     <router-link
@@ -668,12 +668,14 @@
 </template>
 
 <script>
+import { BFormGroup, BFormInput, vBTooltip, BSidebar, vBToggle, BButton, BCol, BRow } from "@/platform/bootstrap";
+import { confirmDialog } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default {
+export default { components: { BButton, BCol, BRow, BSidebar, BFormGroup, BFormInput }, directives: { 'b-toggle': vBToggle, 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Projects"
   },
@@ -716,44 +718,44 @@ export default {
         {
           label: this.$t("title"),
           field: "title",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Customer"),
           field: "client_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label:  this.$t("Company"),
           field: "company_name",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("start_date"),
           field: "start_date",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Finish_Date"),
           field: "end_date",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Status"),
           field: "status",
-          tdClass: "text-left",
-          thClass: "text-left"
+          tdClass: "text-start",
+          thClass: "text-start"
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -961,7 +963,7 @@ export default {
     //------------------------------- Remove projects -------------------------\\
 
     Remove_Project(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"),
         text: this.$t("Delete_Text"),
         type: "warning",
@@ -970,8 +972,8 @@ export default {
         cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"),
         confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           // Start the progress bar.
           NProgress.start();
           NProgress.set(0.1);
@@ -1778,7 +1780,7 @@ export default {
       padding: 1.5rem;
       border-bottom: 2px solid #f1f5f9;
 
-      .close {
+      .btn-close {
         font-size: 1.5rem;
         opacity: 0.5;
         transition: opacity 0.3s ease;

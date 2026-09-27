@@ -153,6 +153,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import Util from "../../../../../utils";
@@ -372,8 +373,8 @@ export default {
       );
       const title = "Informes / Kardex valorizado" + (this.productMeta ? " — " + this.productMeta.name : "");
       const ok = printTableDoc({ title, headers, rows, landscape: true });
-      if (!ok && this.$root.$bvToast) {
-        this.$root.$bvToast.toast("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
+      if (!ok && notifications.hasDriver()) {
+        notifications.notify("Permite las ventanas emergentes para imprimir.", { title: "Aviso", variant: "warning", solid: true });
       }
     }
   }

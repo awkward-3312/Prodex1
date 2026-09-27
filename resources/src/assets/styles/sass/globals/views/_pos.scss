@@ -1140,11 +1140,6 @@ $pos-transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !default;
 // 16. TOAST/NOTIFICATION OVERRIDES
 // ========================================
 
-.b-toaster .b-toast {
-  border-radius: $pos-radius;
-  box-shadow: $pos-shadow-lg;
-}
-
 // ========================================
 // 17. LEGACY SUPPORT & COMPATIBILITY
 // ========================================

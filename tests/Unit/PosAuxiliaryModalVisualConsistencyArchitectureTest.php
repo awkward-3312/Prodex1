@@ -39,7 +39,8 @@ class PosAuxiliaryModalVisualConsistencyArchitectureTest extends TestCase
         $source = $this->source();
 
         $this->assertStringContainsString('ensurePosAuxiliaryStyles()', $source);
-        $this->assertStringContainsString('this.$bvModal.show("Quick_Add_Customer")', file_get_contents(base_path('resources/src/views/app/pages/pos.vue')));
+        // Fase 4: el modal se abre por el servicio de plataforma (antes `this.$bvModal.show`); el flujo de negocio es el mismo.
+        $this->assertStringContainsString('modals.show("Quick_Add_Customer")', file_get_contents(base_path('resources/src/views/app/pages/pos.vue')));
         $this->assertStringContainsString('this.$swal({', $source);
         $this->assertStringContainsString('preConfirm:()=>({', $source);
     }

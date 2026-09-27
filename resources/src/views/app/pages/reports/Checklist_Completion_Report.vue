@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Checklist_Completion_Report')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card v-else>
       <b-row class="mb-3">
@@ -48,18 +48,19 @@
         :pagination-options="{ enabled: false }"
         styleClass="tableOne vgt-table"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
-        </div>
+        </div></template>
       </vue-good-table>
     </b-card>
   </div>
 </template>
 
 <script>
-export default {
+import { BButton, BCard, BCol, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
+export default { components: { BFormGroup, BFormInput, BButton, BCard, BCol, BRow },
   name: 'ChecklistCompletionReport',
   data() {
     return {

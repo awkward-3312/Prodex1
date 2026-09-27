@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('Create_Susbscription')" :folder="$t('Subscriptions')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <validation-observer ref="ref_for_subscription" v-if="!isLoading">
       <b-form @submit.prevent="Submit_subscription">
@@ -23,7 +23,7 @@
                  <!-- client -->
                  <b-col lg="4" md="6" sm="12">
                   <validation-provider name="client" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Customer') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Customer') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -33,14 +33,14 @@
                         :options="clients.map(clients => ({label: clients.name, value: clients.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                 <!-- warehouse -->
                 <b-col lg="4" md="6" sm="12">
                   <validation-provider name="warehouse" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('warehouse') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('warehouse') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -50,14 +50,14 @@
                         :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                  <!-- product -->
                  <b-col lg="4" md="6" sm="12">
                   <validation-provider name="product" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('ProductName') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('ProductName') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -67,7 +67,7 @@
                         :options="products.map(products => ({label: products.name, value: products.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
@@ -77,7 +77,7 @@
                     <b-form-group  :label="$t('total_cycles') + ' ' + '*'">
                       <template #label>
                         Total Cycles *  
-                      <lucide-icon class="text-info font-weight-bold" name="help-circle" v-b-tooltip.hover.bottom title="How long the subscription lasts (e.g., 12 months, 52 weeks, 3 years)" />
+                      <lucide-icon class="text-info fw-bold" name="help-circle" v-b-tooltip.hover.bottom title="How long the subscription lasts (e.g., 12 months, 52 weeks, 3 years)" />
                      </template>
                       <b-input-group>
                         <b-form-input
@@ -87,14 +87,12 @@
                           :state="!validationContext.errors.length"
                           aria-describedby="totalCycles-feedback"
                         ></b-form-input>
-                        <b-input-group-append>
                           <!-- Cycle Type Dropdown -->
                           <b-form-select v-model="form.cycle_type">
                             <option value="monthly">Months</option>
                             <option value="weekly">Weeks</option>
                             <option value="yearly">Years</option>
                           </b-form-select>
-                        </b-input-group-append>
                       </b-input-group>
                       <b-form-invalid-feedback id="totalCycles-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                     </b-form-group>
@@ -107,7 +105,7 @@
                     <b-form-group  :label="$t('Billing_Cycle') + ' ' + '*'">
                       <template #label>
                         Billing Cycle *  
-                      <lucide-icon class="text-info font-weight-bold" name="help-circle" v-b-tooltip.hover.bottom title="How often the user pays (e.g., monthly, weekly, yearly)" />
+                      <lucide-icon class="text-info fw-bold" name="help-circle" v-b-tooltip.hover.bottom title="How often the user pays (e.g., monthly, weekly, yearly)" />
                      </template>
                       <b-form-select v-model="form.billing_cycle" :state="!errors.length">
                         <option value="monthly">Monthly</option>
@@ -175,7 +173,7 @@
       
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                       <div v-once class="typo__p" v-if="SubmitProcessing">
                         <div class="spinner sm spinner-primary mt-3"></div>
                       </div>
@@ -192,9 +190,11 @@
 </template>
 
 <script>
+import { vBTooltip, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormSelect } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormSelect, BButton, BCard, BCol, BRow }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Create Subscription"
   },
@@ -244,7 +244,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

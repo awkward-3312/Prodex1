@@ -341,10 +341,12 @@
 </template>
 
 <script>
+import { BModal } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import { loadStripe } from "@stripe/stripe-js";
 import Util from "../../../utils";
 import { getPriceDecimals } from "../../../utils/priceFormat";
-export default {
+export default { components: { BModal },
   name: 'ModernPaymentModal',
   props: {
     paymentMethods: { type: Array, default: () => [] },
@@ -562,8 +564,8 @@ export default {
     },
     //------ Toast (mirror old POS behavior)
     makeToast(variant, msg, title) {
-      if (this.$root && this.$root.$bvToast) {
-        this.$root.$bvToast.toast(msg, {
+      if (notifications.hasDriver()) {
+        notifications.notify(msg, {
           title: title,
           variant: variant,
           solid: true
@@ -722,7 +724,7 @@ export default {
       // Avoid editing when zero due
       if (Number(this.paymentForm.amountDue) === 0) val = 0;
       const dec = this.priceDecimals;
-      this.$set ? this.$set(this.paymentLines[idx], 'amount', Number(val.toFixed ? val.toFixed(dec) : val)) : (this.paymentLines[idx].amount = val);
+      this.$set ? (this.paymentLines[idx])['amount'] = Number(val.toFixed ? val.toFixed(dec) : val) : (this.paymentLines[idx].amount = val);
     },
     async loadStripePayment(lineIndex) {
       try {

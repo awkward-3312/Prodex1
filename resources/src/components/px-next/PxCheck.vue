@@ -1,13 +1,14 @@
 <template>
-  <label class="pxn-check" :class="[`pxn-check--${type}`, { 'is-disabled': disabled }]">
+  <label v-bind="plainAttrs()" class="pxn-check" :class="[`pxn-check--${type}`, { 'is-disabled': disabled }, $attrs.class]" :style="$attrs.style">
     <input
+      v-bind="listeners()"
       class="pxn-check__native pxn-ring"
       :type="type === 'switch' ? 'checkbox' : type"
       :checked="isChecked"
       :name="name"
       :value="nativeValue"
       :disabled="disabled"
-      v-on="listeners"
+      @change="onChange"
     />
     <span class="pxn-check__box" aria-hidden="true">
       <lucide-icon v-if="type === 'checkbox'" name="check" :size="12" class="pxn-check__tick" />
@@ -19,10 +20,16 @@
 </template>
 
 <script>
+import { forwardListeners, forwardPlainAttrs } from "@/utils/forwardListeners";
+
 // One component for checkbox / radio / switch — same label + focus behaviour.
 export default {
   name: "PxCheck",
-  model: { prop: "modelValue", event: "change" },
+  inheritAttrs: false,
+  // `v-model` nativo de Vue 3 siempre usa `modelValue`/`update:modelValue` (la opción `model:` de Vue 2 para
+  // remapear el evento ya no existe/se ignora); se emite `update:modelValue` además de `change` (evento propio,
+  // varios consumidores lo escuchan directo sin v-model).
+  emits: ["update:modelValue", "change"],
   props: {
     type: { type: String, default: "checkbox" }, // checkbox | radio | switch
     modelValue: { type: [Boolean, String, Number, Array], default: false },
@@ -36,22 +43,23 @@ export default {
       if (this.type === "radio") return this.modelValue === this.nativeValue;
       return !!this.modelValue;
     },
-    listeners() {
-      return {
-        ...this.$listeners,
-        change: e => {
-          if (Array.isArray(this.modelValue)) {
-            const next = this.modelValue.slice();
-            const i = next.indexOf(this.nativeValue);
-            e.target.checked ? (i === -1 && next.push(this.nativeValue)) : (i > -1 && next.splice(i, 1));
-            this.$emit("change", next);
-          } else if (this.type === "radio") {
-            this.$emit("change", this.nativeValue);
-          } else {
-            this.$emit("change", e.target.checked);
-          }
-        }
-      };
+  },
+  methods: {
+    listeners() { return forwardListeners(this.$attrs); },
+    plainAttrs() { return forwardPlainAttrs(this.$attrs); },
+    onChange(e) {
+      let next;
+      if (Array.isArray(this.modelValue)) {
+        next = this.modelValue.slice();
+        const i = next.indexOf(this.nativeValue);
+        e.target.checked ? (i === -1 && next.push(this.nativeValue)) : (i > -1 && next.splice(i, 1));
+      } else if (this.type === "radio") {
+        next = this.nativeValue;
+      } else {
+        next = e.target.checked;
+      }
+      this.$emit("update:modelValue", next);
+      this.$emit("change", next);
     }
   }
 };

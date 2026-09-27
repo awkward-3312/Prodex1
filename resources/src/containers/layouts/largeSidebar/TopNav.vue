@@ -48,7 +48,7 @@
           toggle-class="dropdown-toggle-no-caret"
           no-caret
         >
-          <template slot="button-content">
+          <template #button-content>
             <lucide-icon name="globe" />
           </template>
           <vue-perfect-scrollbar
@@ -82,7 +82,7 @@
           toggle-class="dropdown-toggle-no-caret"
           no-caret
         >
-          <template slot="button-content">
+          <template #button-content>
             <span class="badge badge-primary" v-if="notifs_alert > 0">1</span>
             <lucide-icon name="bell" />
           </template>
@@ -95,7 +95,7 @@
                 <lucide-icon class="text-primary" name="bell" />
               </div>
               <div class="notif-content" v-if="currentUserPermissions && currentUserPermissions.includes('Reports_quantity_alerts')">
-                <router-link tag="a" to="/app/reports/quantity_alerts">
+                <router-link to="/app/reports/quantity_alerts">
                   <p>{{ notifs_alert }} {{ $t('ProductQuantityAlerts') }}</p>
                 </router-link>
               </div>
@@ -113,7 +113,7 @@
           no-caret
           variant="link"
         >
-          <template slot="button-content">
+          <template #button-content>
             <div class="user-avatar">
               <img
                 v-if="currentUser && currentUser.avatar"
@@ -125,7 +125,7 @@
           </template>
           <div class="user-dropdown-menu">
             <div class="dropdown-header">
-              <lucide-icon class="mr-1" name="lock" />
+              <lucide-icon class="me-1" name="lock" />
               <span v-if="currentUser">{{ currentUser.username }}</span>
             </div>
             <router-link to="/app/profile" class="dropdown-item">
@@ -150,15 +150,14 @@
   <!-- header top menu end -->
 </template>
 <script>
+import { BDropdown } from "@/platform/bootstrap";
 import Util from "./../../../utils";
 // import Sidebar from "./Sidebar";
 import { isMobile } from "mobile-device-detect";
 import { mapGetters, mapActions } from "vuex";
-import { mixin as clickaway } from "vue-clickaway";
 // import { setTimeout } from 'timers';
 
-export default {
-  mixins: [clickaway],
+export default { components: { BDropdown },
  
   data() {
   

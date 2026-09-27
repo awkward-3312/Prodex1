@@ -116,8 +116,8 @@
               </thead>
               <tbody>
                 <tr v-if="details.length <= 0"><td colspan="9" class="pxpuf__empty">{{ $t('NodataAvailable') }}</td></tr>
-                <template v-for="detail in details">
-                  <tr :key="'detail-' + detail.detail_id">
+                <template v-for="detail in details" :key="'detail-' + detail.detail_id">
+                  <tr>
                     <td class="pxn-num">{{ detail.detail_id }}</td>
                     <td>
                       <span class="pxn-mono">{{ detail.code }}</span><br />
@@ -443,6 +443,7 @@
 
 
 <script>
+import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
@@ -723,7 +724,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -1006,7 +1007,7 @@ export default {
 
     //----------------------------------------- Batch helpers (pharmacy) ------------\\
     add_batch(detail) {
-      if (!detail.batches) this.$set(detail, 'batches', []);
+      if (!detail.batches) (detail)['batches'] = [];
       detail.batches.push({
         batch_no: '',
         expiry_date: '',
@@ -1026,7 +1027,7 @@ export default {
         s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, '');
       }
       // store the string so mid-typing "0." isn't lost; total helpers already coerce via Number()
-      this.$set(batchRow, field, s);
+      (batchRow)[field] = s;
     },
     remove_batch(detail, idx) {
       if (!detail.batches) return;
@@ -1407,9 +1408,9 @@ export default {
         this.product.purchase_unit_operator_value = Number(response.data.purchase_unit_operator_value) || 1;
         this.product.is_imei = response.data.is_imei;
         this.product.imei_number = '';
-        this.$set(this.product, 'serial_numbers', []);
+        (this.product)['serial_numbers'] = [];
         this.product.is_batch_tracked = !!response.data.is_batch_tracked;
-        this.$set(this.product, 'batches', []);
+        (this.product)['batches'] = [];
         this.product.warehouse_location = response.data.warehouse_location
           ? (response.data.warehouse_location.name
               ? `${response.data.warehouse_location.code} - ${response.data.warehouse_location.name}`
@@ -1637,10 +1638,6 @@ export default {
   .input-group.category-input-group .v-select .vs__dropdown-toggle {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
-  }
-
-  .input-group.category-input-group .input-group-append {
-    align-items: stretch;
   }
 
   .input-group.category-input-group .category-add-btn {

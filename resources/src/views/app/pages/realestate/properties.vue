@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Properties')" :folder="$t('Real_Estate')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <b-row class="mb-3">
         <b-col md="3">
@@ -49,22 +49,22 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="selected-row-actions">
+        <template #selected-row-actions><div>
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{ $t('Del') }}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
+        </div></template>
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="New_Property()" class="btn-rounded" variant="btn btn-primary btn-icon m-1">
             <lucide-icon name="plus" /> {{ $t('Add_Property') }}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'featured_image'">
             <img v-if="props.row.featured_image" :src="'/' + props.row.featured_image" class="rounded" style="width:54px;height:42px;object-fit:cover" />
             <span v-else class="text-muted">—</span>
           </span>
           <span v-else-if="props.column.field == 'title'">
-            <a class="cursor-pointer text-primary font-weight-bold" @click="Edit_Property(props.row.id)">{{ props.row.title }}</a>
+            <a class="cursor-pointer text-primary fw-bold" @click="Edit_Property(props.row.id)">{{ props.row.title }}</a>
             <div class="text-small text-muted">{{ [props.row.city, props.row.region].filter(Boolean).join(', ') }}</div>
           </span>
           <span v-else-if="props.column.field == 'category'">
@@ -100,9 +100,11 @@
 </template>
 
 <script>
+import { vBTooltip, BButton, BCard, BCol, BRow, BFormGroup, BFormSelect, BFormSelectOption } from "@/platform/bootstrap";
+import { confirmDialog, notifications } from "@/platform";
 import NProgress from "nprogress";
 
-export default {
+export default { components: { BFormGroup, BFormSelect, BFormSelectOption, BButton, BCard, BCol, BRow }, directives: { 'b-tooltip': vBTooltip },
   metaInfo: { title: "Properties" },
   data() {
     return {
@@ -122,14 +124,14 @@ export default {
   computed: {
     columns() {
       return [
-        { label: this.$t("Image"), field: "featured_image", sortable: false, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Property_Title"), field: "title", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Property_Type"), field: "category", sortable: false, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Purpose"), field: "purpose", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Price"), field: "price", tdClass: "text-left", thClass: "text-left" },
+        { label: this.$t("Image"), field: "featured_image", sortable: false, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Property_Title"), field: "title", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Property_Type"), field: "category", sortable: false, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Purpose"), field: "purpose", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Price"), field: "price", tdClass: "text-start", thClass: "text-start" },
         { label: this.$t("Featured"), field: "featured", sortable: false, tdClass: "text-center", thClass: "text-center" },
-        { label: this.$t("Status"), field: "status", tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Action"), field: "actions", sortable: false, tdClass: "text-left", thClass: "text-left" }
+        { label: this.$t("Status"), field: "status", tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Action"), field: "actions", sortable: false, tdClass: "text-start", thClass: "text-start" }
       ];
     }
   },
@@ -144,7 +146,7 @@ export default {
       return map[s] || "badge-outline-secondary";
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title: title, variant: variant, solid: true });
+      notifications.notify(msg, { title: title, variant: variant, solid: true });
     },
     updateParams(newProps) { this.serverParams = Object.assign({}, this.serverParams, newProps); },
     onPageChange({ currentPage }) {
@@ -198,12 +200,12 @@ export default {
     },
 
     Remove_Property(id) {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.delete("realestate/properties/" + id).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             this.Get_Properties(this.serverParams.page);
@@ -215,12 +217,12 @@ export default {
     },
 
     delete_by_selected() {
-      this.$swal({
+      confirmDialog({
         title: this.$t("Delete_Title"), text: this.$t("Delete_Text"), type: "warning",
         showCancelButton: true, confirmButtonColor: "var(--px-primary)", cancelButtonColor: "#d33",
         cancelButtonText: this.$t("Delete_cancelButtonText"), confirmButtonText: this.$t("Delete_confirmButtonText")
-      }).then(result => {
-        if (result.value) {
+      }).then((confirmed) => {
+        if (confirmed) {
           axios.post("realestate/properties/delete/by_selection", { selectedIds: this.selectedIds }).then(() => {
             this.$swal(this.$t("Delete_Deleted"), this.$t("Deleted_in_successfully"), "success");
             this.Get_Properties(this.serverParams.page);

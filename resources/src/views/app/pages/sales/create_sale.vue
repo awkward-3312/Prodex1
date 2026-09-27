@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb :page="$t('AddSale')" :folder="$t('ListSales')"/>
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <validation-observer ref="create_sale" v-if="!isLoading">
       <b-form @submit.prevent="Submit_Sale">
@@ -44,7 +44,7 @@
                 <!-- Customer -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="Customer" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Customer') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Customer') + ' ' + '*'">
                       <b-input-group class="category-input-group">
                         <v-select
                           :class="{'is-invalid': !!errors.length}"
@@ -55,9 +55,7 @@
                           :placeholder="$t('Choose_Customer')"
                           :options="clients.map(clients => ({label: clients.name, value: clients.id}))"
                         />
-                        <b-input-group-append
-                          v-if="currentUserPermissions && currentUserPermissions.includes('Customers_add')"
-                        >
+                        <template v-if="currentUserPermissions && currentUserPermissions.includes('Customers_add')">
                           <b-button
                             variant="primary"
                             @click="Quick_Add_Client"
@@ -66,17 +64,17 @@
                           >
                             <lucide-icon name="plus" />
                           </b-button>
-                        </b-input-group-append>
+                        </template>
                       </b-input-group>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                 <!-- warehouse -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="warehouse" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('warehouse') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('warehouse') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -88,14 +86,14 @@
                         :options="warehouses.map(warehouses => ({label: warehouses.name, value: warehouses.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                 <!-- Sales Agent -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="Sales Agent">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Sales_Agent')">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Sales_Agent')">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -105,14 +103,14 @@
                         :options="sales_agents.map(ag => ({label: ag.name, value: ag.id}))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
                 <!-- inventory location (MS7-B1 · sólo almacenes location_primary) -->
                 <b-col v-if="location_meta.requires" lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="inventory_location" :rules="{ required: true }">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Inventory_Location') + ' *'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Inventory_Location') + ' *'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -123,7 +121,7 @@
                         :options="inventory_locations.map(l => ({ label: l.name + ' · ' + l.type, value: l.id }))"
                       />
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
@@ -180,8 +178,8 @@
                         <tr v-if="details.length <=0">
                           <td colspan="9">{{$t('NodataAvailable')}}</td>
                         </tr>
-                        <template v-for="detail in details">
-                        <tr :key="'row-' + detail.detail_id">
+                        <template v-for="detail in details" :key="'row-' + detail.detail_id">
+                        <tr>
                           <td >{{detail.detail_id}}</td>
                           <td>
                             <span>{{detail.code}}</span>
@@ -198,7 +196,7 @@
                           </td>
                           <td>
                             <div class="d-flex align-items-center">
-                              <div class="mr-2">
+                              <div class="me-2">
                                 <span>{{currentUser.currency}} {{formatNumber(detail.Net_price, 3)}}</span>
                                 <small
                                   v-if="detail.min_price && detail.Net_price < detail.min_price"
@@ -206,7 +204,7 @@
                                 >{{ $t('Price_below_min_not_allowed') }}</small>
                               </div>
                               <v-select
-                                class="ml-2"
+                                class="ms-2"
                                 :options="[
                                   {label: $t('Retail Price'), value: 'retail'},
                                   {label: $t('Wholesale Price'), value: 'wholesale'}
@@ -218,7 +216,7 @@
                               />
                               <select
                                 v-if="detail.packs && detail.packs.length"
-                                class="form-control form-control-sm ml-2"
+                                class="form-control form-control-sm ms-2"
                                 style="min-width: 160px"
                                 v-model="detail.product_pack_id"
                                 @change="onChangePack(detail)"
@@ -237,12 +235,10 @@
                           <td>
                             <div class="quantity">
                               <b-input-group>
-                                <b-input-group-prepend>
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="decrement(detail ,detail.detail_id)"
                                   >-</span>
-                                </b-input-group-prepend>
                                 <input
                                   class="form-control"
                                   @keyup="Verified_Qty(detail,detail.detail_id)"
@@ -250,12 +246,10 @@
                                   :max="detail.stock"
                                   v-model.number="detail.quantity"
                                 >
-                                <b-input-group-append>
                                   <span
                                     class="btn btn-primary btn-sm"
                                     @click="increment(detail ,detail.detail_id)"
                                   >+</span>
-                                </b-input-group-append>
                               </b-input-group>
                             </div>
                           </td>
@@ -438,11 +432,11 @@
                       </tr>
                       <tr>
                         <td>
-                          <span class="font-weight-bold">{{$t('Total')}}</span>
+                          <span class="fw-bold">{{$t('Total')}}</span>
                         </td>
                         <td>
                           <span
-                            class="font-weight-bold"
+                            class="fw-bold"
                           >{{currentUser.currency}} {{GrandTotal.toFixed(2)}}</span>
                         </td>
                       </tr>
@@ -602,7 +596,7 @@
                 <!-- Status  -->
                 <b-col lg="4" md="4" sm="12" class="mb-3">
                   <validation-provider name="Status" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Status') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Status') + ' ' + '*'">
                       <v-select
                         @input="Selected_Status"
                         :class="{'is-invalid': !!errors.length}"
@@ -618,7 +612,7 @@
                                 ]"
                       ></v-select>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
@@ -646,7 +640,7 @@
                 <!-- Payment choice -->
                 <b-col md="4" v-if="payment.status != 'pending' && sale.statut == 'completed'">
                   <validation-provider name="Payment choice" :rules="{ required: true}">
-                    <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice') + ' ' + '*'">
+                    <template #default="{ valid, errors }"><b-form-group :label="$t('Paymentchoice') + ' ' + '*'">
                       <v-select
                         :class="{'is-invalid': !!errors.length}"
                         :state="errors[0] ? false : (valid ? true : null)"
@@ -657,7 +651,7 @@
 
                       ></v-select>
                       <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                    </b-form-group>
+                    </b-form-group></template>
                   </validation-provider>
                 </b-col>
 
@@ -722,7 +716,7 @@
                    <!-- Account -->
                   <b-col lg="4" md="4" sm="12" v-if="payment.status != 'pending' && sale.statut == 'completed'">
                     <validation-provider name="Account">
-                      <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
+                      <template #default="{ valid, errors }"><b-form-group :label="$t('Account')">
                         <v-select
                           :class="{'is-invalid': !!errors.length}"
                           :state="errors[0] ? false : (valid ? true : null)"
@@ -732,7 +726,7 @@
                           :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
                         />
                         <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                      </b-form-group>
+                      </b-form-group></template>
                     </validation-provider>
                   </b-col>
 
@@ -756,7 +750,7 @@
 
                 <b-col md="12">
                   <b-form-group>
-                    <b-button variant="primary" :disabled="paymentProcessing || hasMinPriceViolation || (sale.statut === 'completed' && hasBatchValidationErrors)" @click="Submit_Sale"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                    <b-button variant="primary" :disabled="paymentProcessing || hasMinPriceViolation || (sale.statut === 'completed' && hasBatchValidationErrors)" @click="Submit_Sale"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                     <div v-once class="typo__p" v-if="paymentProcessing">
                     <div class="spinner sm spinner-primary mt-3"></div>
                   </div>
@@ -878,7 +872,7 @@
             </b-col>
 
             <b-col md="12" class="mt-3">
-              <b-button variant="secondary" class="mr-2" @click="$bvModal.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
+              <b-button variant="secondary" class="me-2" @click="$modals.hide('Quick_Add_Customer')">{{ $t('Cancel') }}</b-button>
               <b-button variant="primary" type="submit" :disabled="SubmitProcessing">{{$t('submit')}}</b-button>
               <div v-once class="typo__p" v-if="SubmitProcessing">
                 <div class="spinner sm spinner-primary mt-3"></div>
@@ -934,7 +928,7 @@
             <!-- Tax Method -->
             <b-col lg="6" md="6" sm="12">
               <validation-provider name="Tax Method" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('TaxMethod') + ' ' + '*'">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('TaxMethod') + ' ' + '*'">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -948,7 +942,7 @@
                            ]"
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
+                </b-form-group></template>
               </validation-provider>
             </b-col>
 
@@ -976,7 +970,7 @@
             <!-- Discount Method -->
              <b-col lg="6" md="6" sm="12">
               <validation-provider name="Discount Method" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('Discount_Method') + ' ' + '*'">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('Discount_Method') + ' ' + '*'">
                   <v-select
                     v-model="detail.discount_Method"
                     :reduce="label => label.value"
@@ -990,7 +984,7 @@
                            ]"
                   ></v-select>
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
+                </b-form-group></template>
               </validation-provider>
             </b-col>
 
@@ -1016,7 +1010,7 @@
             <!-- Unit Sale -->
             <b-col lg="6" md="6" sm="12" v-if="detail.product_type != 'is_service'">
               <validation-provider name="Unit Sale" :rules="{ required: true}">
-                <b-form-group slot-scope="{ valid, errors }" :label="$t('UnitSale') + ' ' + '*'">
+                <template #default="{ valid, errors }"><b-form-group :label="$t('UnitSale') + ' ' + '*'">
                   <v-select
                     :class="{'is-invalid': !!errors.length}"
                     :state="errors[0] ? false : (valid ? true : null)"
@@ -1026,7 +1020,7 @@
                     :options="units.map(units => ({label: units.name, value: units.id}))"
                   />
                   <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                </b-form-group>
+                </b-form-group></template>
               </validation-provider>
             </b-col>
 
@@ -1038,7 +1032,7 @@
                   variant="primary"
                   type="submit"
                   :disabled="Submit_Processing_detail || detailHasMinPriceViolation"
-                ><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                ><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                 <div v-once class="typo__p" v-if="Submit_Processing_detail">
                   <div class="spinner sm spinner-primary mt-3"></div>
                 </div>
@@ -1053,11 +1047,13 @@
 
 
 <script>
+import { BModal, BAlert, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormSelect } from "@/platform/bootstrap";
+import { modals, notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import { resolveAutoInventoryLocation } from "../../../../utils/inventoryLocationAutoSelect";
 
-export default {
+export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormSelect, BAlert, BButton, BCard, BCol, BRow, BModal },
   metaInfo: {
     title: "Nueva venta"
   },
@@ -1342,7 +1338,7 @@ export default {
   methods: {
 
     showModal() {
-      this.$bvModal.show('open_scan');
+      modals.show('open_scan');
       
     },
 
@@ -1350,7 +1346,7 @@ export default {
       const code = decodedText;
       this.search_input = code;
       this.search();
-      this.$bvModal.hide('open_scan');
+      modals.hide('open_scan');
     },
     
 
@@ -1626,7 +1622,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -1668,7 +1664,7 @@ export default {
 
        setTimeout(() => {
         NProgress.done();
-        this.$bvModal.show("form_Update_Detail");
+        modals.show("form_Update_Detail");
       }, 1000);
     },
 
@@ -1774,7 +1770,7 @@ export default {
       setTimeout(() => {
         NProgress.done();
         this.Submit_Processing_detail = false;
-        this.$bvModal.hide("form_Update_Detail");
+        modals.hide("form_Update_Detail");
       }, 1000);
 
     },
@@ -1919,7 +1915,7 @@ export default {
       if (Array.isArray(this.details)) {
         for (const d of this.details) {
           if (d && d.is_batch_tracked) {
-            this.$set(d, "batches", []);
+            (d)["batches"] = [];
             this.fetch_batches_for_detail(d);
           }
         }
@@ -1960,7 +1956,7 @@ export default {
     // ---------------- Quick Add Customer (like POS) ---------------- \\
     Quick_Add_Client() {
       this.reset_Form_client();
-      this.$bvModal.show("Quick_Add_Customer");
+      modals.show("Quick_Add_Customer");
     },
 
     reset_Form_client() {
@@ -2026,7 +2022,7 @@ export default {
                 this.$t("Successfully_Created"),
                 this.$t("Success")
               );
-              this.$bvModal.hide("Quick_Add_Customer");
+              modals.hide("Quick_Add_Customer");
               this.reset_Form_client();
             })
             .catch(() => {
@@ -2074,48 +2070,48 @@ export default {
       if (!detail) return;
       // Ensure all batch-related fields are reactive on the detail (some are added post-push via
       // direct assignment, which in Vue 2 is non-reactive — $set fixes that).
-      if (!("batches_loading" in detail)) this.$set(detail, "batches_loading", false);
-      if (!("available_batches" in detail)) this.$set(detail, "available_batches", []);
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!("batches_loading" in detail)) (detail)["batches_loading"] = false;
+      if (!("available_batches" in detail)) (detail)["available_batches"] = [];
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
 
       if (!detail.is_batch_tracked) {
-        this.$set(detail, "batches_loading", false);
+        (detail)["batches_loading"] = false;
         return;
       }
       const wid = this.sale && this.sale.warehouse_id;
       if (!wid || !detail.product_id) {
         // Can't fetch yet — make sure we're not stuck in loading.
-        this.$set(detail, "batches_loading", false);
+        (detail)["batches_loading"] = false;
         return;
       }
       const variantSeg = (detail.product_variant_id != null && detail.product_variant_id !== "")
         ? detail.product_variant_id
         : 0;
-      this.$set(detail, "batches_loading", true);
+      (detail)["batches_loading"] = true;
       axios
         .get(`batches_for_sale/${detail.product_id}/${wid}/${variantSeg}`, { timeout: 15000 })
         .then(response => {
           const list = (response && response.data && Array.isArray(response.data.batches))
             ? response.data.batches
             : [];
-          this.$set(detail, "available_batches", list);
-          if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+          (detail)["available_batches"] = list;
+          if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
           // Seed a first empty batch row if we have availability and the row is empty.
           if (detail.batches.length === 0 && list.length > 0) {
             this.add_batch_to_detail(detail);
           }
         })
         .catch(() => {
-          this.$set(detail, "available_batches", []);
+          (detail)["available_batches"] = [];
         })
         .then(() => {
           // finally-equivalent: always clear the loading flag, even if unexpected errors slip through.
-          this.$set(detail, "batches_loading", false);
+          (detail)["batches_loading"] = false;
         });
     },
 
     add_batch_to_detail(detail) {
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
       detail.batches.push({
         product_batch_id: null,
         batch_no: "",
@@ -2154,7 +2150,7 @@ export default {
       if (firstDot !== -1) {
         s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
       }
-      this.$set(batchRow, "qty", s);
+      (batchRow)["qty"] = s;
     },
 
     batch_total_qty(detail) {
@@ -2793,7 +2789,7 @@ export default {
         this.product.sale_unit_id = response.data.sale_unit_id;
         this.product.is_imei = response.data.is_imei;
         this.product.imei_number = '';
-        this.$set(this.product, "serial_numbers", []);
+        (this.product)["serial_numbers"] = [];
         this.product.warehouse_location = response.data.warehouse_location
           ? (response.data.warehouse_location.name
               ? `${response.data.warehouse_location.code} - ${response.data.warehouse_location.name}`
@@ -2805,10 +2801,10 @@ export default {
         // Multi-Pack Selling: attach available packs and pre-select the default.
         const packs = response.data.packs || [];
         const defPack = packs.find(p => p.is_default) || null;
-        this.$set(this.product, "packs", packs);
-        this.$set(this.product, "product_pack_id", defPack ? defPack.id : null);
-        this.$set(this.product, "pack_multiplier", 1);
-        this.$set(this.product, "pack_name", defPack ? defPack.name : null);
+        (this.product)["packs"] = packs;
+        (this.product)["product_pack_id"] = defPack ? defPack.id : null;
+        (this.product)["pack_multiplier"] = 1;
+        (this.product)["pack_name"] = defPack ? defPack.name : null;
 
         // ensure min price respected
         if (this.product.Net_price < (this.product.min_price || 0)) {
@@ -2819,10 +2815,10 @@ export default {
         // Reset batch data for this product; will be hydrated after push if batch-tracked.
         // Use $set so Vue 2 tracks these fields reactively even though this.product was
         // reassigned to a bare {} in SearchProduct (direct assignment afterwards is non-reactive).
-        this.$set(this.product, "is_batch_tracked", !!response.data.is_batch_tracked);
-        this.$set(this.product, "batches", []);
-        this.$set(this.product, "available_batches", []);
-        this.$set(this.product, "batches_loading", false);
+        (this.product)["is_batch_tracked"] = !!response.data.is_batch_tracked;
+        (this.product)["batches"] = [];
+        (this.product)["available_batches"] = [];
+        (this.product)["batches_loading"] = false;
 
         this.add_product();
         this.CalculTotal();
@@ -3043,10 +3039,6 @@ export default {
   .input-group.category-input-group .v-select .vs__dropdown-toggle {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
-  }
-
-  .input-group.category-input-group .input-group-append {
-    align-items: stretch;
   }
 
   .input-group.category-input-group .category-add-btn {

@@ -1,3 +1,4 @@
+import { modals } from "@/platform";
 /**
  * POS keyboard shortcuts + Honduras fiscal checkout helpers.
  * Receipt rendering itself is global (utils/sarInvoiceBridge.js), so POS and
@@ -29,7 +30,7 @@ export const POS_SHORTCUTS = [
   { id:"inc", keys:"Ctrl + ArrowUp", descriptionKey:"Shortcut_Increase_Last", descriptionFallback:"Aumentar cantidad del último artículo", match:e=>e.ctrlKey&&e.key==="ArrowUp", action:vm=>{ const last=vm.details&&vm.details[vm.details.length-1];if(last&&vm.increment)vm.increment(last.detail_id); } },
   { id:"dec", keys:"Ctrl + ArrowDown", descriptionKey:"Shortcut_Decrease_Last", descriptionFallback:"Disminuir cantidad del último artículo", match:e=>e.ctrlKey&&e.key==="ArrowDown", action:vm=>{ const last=vm.details&&vm.details[vm.details.length-1];if(last&&vm.decrement)vm.decrement(last,last.detail_id); } },
   { id:"remove", keys:"Ctrl + Delete", descriptionKey:"Shortcut_Remove_Last", descriptionFallback:"Eliminar el último artículo del carrito", match:e=>e.ctrlKey&&e.key==="Delete", action:vm=>{ const last=vm.details&&vm.details[vm.details.length-1];if(last&&vm.delete_Product_Detail)vm.delete_Product_Detail(last.detail_id); } },
-  { id:"help", keys:"Shift + ?", descriptionKey:"Shortcut_Show_Help", descriptionFallback:"Mostrar ayuda de atajos", match:e=>e.shiftKey&&(e.key==="?"||e.key==="/"), action:vm=>{ if(vm.$bvModal&&vm.$bvModal.show)vm.$bvModal.show("pos-keyboard-shortcuts-help"); } },
+  { id:"help", keys:"Shift + ?", descriptionKey:"Shortcut_Show_Help", descriptionFallback:"Mostrar ayuda de atajos", match:e=>e.shiftKey&&(e.key==="?"||e.key==="/"), action:vm=>{ modals.show("pos-keyboard-shortcuts-help"); } },
 ];
 
 function isTypingTarget(target) {
@@ -79,27 +80,6 @@ function ensurePosAuxiliaryStyles() {
       font-weight: 700 !important;
       letter-spacing: -.01em;
     }
-    #OpenRegisterModal___BV_modal_header .close,
-    #CloseRegisterModal___BV_modal_header .close,
-    #Quick_Add_Customer___BV_modal_header .close {
-      width: 32px;
-      height: 32px;
-      padding: 0 !important;
-      margin: -4px -4px -4px auto !important;
-      border-radius: 8px;
-      color: #6b6b7d;
-      opacity: 1;
-      font-size: 22px;
-      font-weight: 400;
-      line-height: 30px;
-      transition: background .12s ease,color .12s ease;
-    }
-    #OpenRegisterModal___BV_modal_header .close:hover,
-    #CloseRegisterModal___BV_modal_header .close:hover,
-    #Quick_Add_Customer___BV_modal_header .close:hover {
-      background: #f5f3fd;
-      color: #6f53d9;
-    }
     #OpenRegisterModal___BV_modal_body,
     #CloseRegisterModal___BV_modal_body,
     #Quick_Add_Customer___BV_modal_body {
@@ -125,11 +105,11 @@ function ensurePosAuxiliaryStyles() {
       text-transform: none;
     }
     #OpenRegisterModal .form-control,
-    #OpenRegisterModal .custom-select,
+    #OpenRegisterModal .form-select,
     #CloseRegisterModal .form-control,
-    #CloseRegisterModal .custom-select,
+    #CloseRegisterModal .form-select,
     #Quick_Add_Customer .form-control,
-    #Quick_Add_Customer .custom-select,
+    #Quick_Add_Customer .form-select,
     #Quick_Add_Customer .vs__dropdown-toggle,
     .prodex-sar-popup .swal2-input {
       min-height: 40px !important;
@@ -150,19 +130,19 @@ function ensurePosAuxiliaryStyles() {
       resize: vertical;
     }
     #OpenRegisterModal .form-control:focus,
-    #OpenRegisterModal .custom-select:focus,
+    #OpenRegisterModal .form-select:focus,
     #CloseRegisterModal .form-control:focus,
-    #CloseRegisterModal .custom-select:focus,
+    #CloseRegisterModal .form-select:focus,
     #Quick_Add_Customer .form-control:focus,
-    #Quick_Add_Customer .custom-select:focus,
+    #Quick_Add_Customer .form-select:focus,
     #Quick_Add_Customer .vs__dropdown-toggle:focus-within,
     .prodex-sar-popup .swal2-input:focus {
       border-color: #8b73e7 !important;
       box-shadow: 0 0 0 3px rgba(111,83,217,.10) !important;
       outline: 0 !important;
     }
-    #OpenRegisterModal .text-right,
-    #CloseRegisterModal .text-right,
+    #OpenRegisterModal .text-end,
+    #CloseRegisterModal .text-end,
     #Quick_Add_Customer .mt-3.col-md-12 {
       display: flex !important;
       justify-content: flex-end !important;
@@ -293,9 +273,9 @@ function ensurePosAuxiliaryStyles() {
       gap: 8px;
     }
     @media (max-width: 575px) {
-      #OpenRegisterModal___BV_modal_outer_ .modal-dialog,
-      #CloseRegisterModal___BV_modal_outer_ .modal-dialog,
-      #Quick_Add_Customer___BV_modal_outer_ .modal-dialog { margin: 12px !important; }
+      #OpenRegisterModal .modal-dialog,
+      #CloseRegisterModal .modal-dialog,
+      #Quick_Add_Customer .modal-dialog { margin: 12px !important; }
       #OpenRegisterModal___BV_modal_body,
       #CloseRegisterModal___BV_modal_body,
       #Quick_Add_Customer___BV_modal_body { padding: 16px !important; }
@@ -418,14 +398,14 @@ export default {
         })
       }).then(result=>{
         if(result.isDenied){
-          this.$set(this,"sarFiscalSaleData",{});
+          (this)["sarFiscalSaleData"] = {};
           this.updateSarSaleButton();
           return;
         }
         if(result.value){
           const clean={};
           Object.keys(result.value).forEach(k=>{if(String(result.value[k]||"").trim()!=="")clean[k]=String(result.value[k]).trim();});
-          this.$set(this,"sarFiscalSaleData",clean);
+          (this)["sarFiscalSaleData"] = clean;
           this.updateSarSaleButton();
         }
       });
@@ -434,7 +414,7 @@ export default {
 
   mounted() {
     ensurePosAuxiliaryStyles();
-    if(this.sarFiscalSaleData===undefined)this.$set(this,"sarFiscalSaleData",{});
+    if(this.sarFiscalSaleData===undefined)(this)["sarFiscalSaleData"] = {};
 
     this._posShortcutsHandler=e=>{
       if(!posShortcutsEnabled())return;
@@ -481,7 +461,7 @@ export default {
           try{
             const url=response&&response.config?String(response.config.url||""):"";
             if(url.indexOf("pos/create_pos")!==-1&&response.data&&response.data.success===true){
-              this.$set(this,"sarFiscalSaleData",{});
+              (this)["sarFiscalSaleData"] = {};
               this.updateSarSaleButton();
             }
           }catch(e){}
@@ -491,7 +471,7 @@ export default {
     }catch(e){this._sarRequestInterceptor=null;this._sarResponseInterceptor=null;}
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     try{if(this._posShortcutsHandler)window.removeEventListener("keydown",this._posShortcutsHandler,true);}catch(e){}
     try{if(this._sarUiTimer)clearInterval(this._sarUiTimer);}catch(e){}
     try{const b=document.getElementById("prodex-sar-sale-data-btn");if(b&&b.parentNode)b.parentNode.removeChild(b);}catch(e){}

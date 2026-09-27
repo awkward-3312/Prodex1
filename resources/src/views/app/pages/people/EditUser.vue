@@ -15,44 +15,44 @@
       <px-skeleton variant="lines" :rows="10" />
     </div>
 
-    <validation-observer v-else ref="Edit_User">
+    <px-validation-observer v-else ref="Edit_User">
       <form @submit.prevent="Submit_User" enctype="multipart/form-data">
         <px-card title="Datos de acceso" class="pxcfg__card">
           <div class="pxcfg__grid">
-            <validation-provider ref="firstnameProvider" name="Nombre" :rules="{ required: true, min: 2, max: 30 }" v-slot="v">
+            <px-validation-provider ref="firstnameProvider" name="Nombre" :rules="{ required: true, min: 2, max: 30 }" v-slot="v">
               <px-field label="Nombre *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" :value="user.firstname" :invalid="invalid" @input="val => onTextInput('firstname', 'firstnameProvider', val)" /></template>
               </px-field>
-            </validation-provider>
-            <validation-provider ref="lastnameProvider" name="Apellido" :rules="{ required: true, min: 2, max: 30 }" v-slot="v">
+            </px-validation-provider>
+            <px-validation-provider ref="lastnameProvider" name="Apellido" :rules="{ required: true, min: 2, max: 30 }" v-slot="v">
               <px-field label="Apellido *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" :value="user.lastname" :invalid="invalid" @input="val => onTextInput('lastname', 'lastnameProvider', val)" /></template>
               </px-field>
-            </validation-provider>
-            <validation-provider ref="usernameProvider" name="Usuario" :rules="{ required: true, min: 3, max: 60 }" v-slot="v">
+            </px-validation-provider>
+            <px-validation-provider ref="usernameProvider" name="Usuario" :rules="{ required: true, min: 3, max: 60 }" v-slot="v">
               <px-field label="Nombre de usuario *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" :value="user.username" :invalid="invalid" @input="val => onTextInput('username', 'usernameProvider', val)" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
             <px-field label="Teléfono">
               <template #default="{ id }"><px-input :id="id" v-model="user.phone" /></template>
             </px-field>
-            <validation-provider ref="emailProvider" name="Correo" :rules="{ required: true, email: true }" v-slot="v">
+            <px-validation-provider ref="emailProvider" name="Correo" :rules="{ required: true, email: true }" v-slot="v">
               <px-field label="Correo *" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" type="email" :value="user.email" :invalid="invalid" @input="val => onTextInput('email', 'emailProvider', val)" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
             <px-field label="Nueva contraseña" hint="Déjala vacía para conservar la actual. Si la cambias, usa mínimo 8 caracteres.">
               <template #default="{ id }"><px-input :id="id" type="password" v-model="user.password" /></template>
             </px-field>
-            <validation-provider ref="roleProvider" name="Rol" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="roleProvider" name="Rol" :rules="{ required: true }" v-slot="v">
               <px-field label="Rol *" :error="v.errors[0]">
                 <template #default="{ id }">
                   <vs-px :input-id="id" v-model="user.role_id" :reduce="o => o.value" :options="roleOptions" placeholder="Seleccionar rol"
                     @input="onRoleSelected" />
                 </template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
             <px-field label="Estado">
               <template #default="{ id }">
                 <vs-px :input-id="id" v-model="user.statut" :reduce="o => o.value" :options="statusOptions" />
@@ -205,11 +205,12 @@
           <px-button variant="ghost" @click="$router.push({ name: 'Users' })">Cancelar</px-button>
         </div>
       </form>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import NProgress from 'nprogress';
 import { mapGetters } from 'vuex';
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -266,7 +267,7 @@ export default {
   methods: {
     goto(path) { this.$router.push(path).catch(() => {}); },
     getValidationState({ dirty, validated, valid = null }) { return dirty || validated ? valid : null; },
-    makeToast(variant, msg, title) { if (this.$root && this.$root.$bvToast) this.$root.$bvToast.toast(msg, { title, variant, solid: true }); },
+    makeToast(variant, msg, title) { if (notifications.hasDriver()) notifications.notify(msg, { title, variant, solid: true }); },
     // user.* is the single source of truth. The model-carrying control sits
     // inside PxField's scoped slot, which VeeValidate 3.4.15 cannot auto-detect,
     // so every required provider is fed its real value explicitly. (No password

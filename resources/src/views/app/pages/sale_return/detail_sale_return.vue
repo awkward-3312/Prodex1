@@ -81,8 +81,8 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <template v-for="(detail, dIdx) in details">
-                    <tr :key="'r-' + dIdx">
+                  <template v-for="(detail, dIdx) in details" :key="'r-' + dIdx">
+                    <tr>
                       <td>
                         <span>{{ detail.code }} ({{ detail.name }})</span>
                         <p v-show="detail.is_imei && detail.imei_number !== null" class="pxsrd__imei">{{ $t('IMEI_SN') }} : {{ detail.imei_number }}</p>
@@ -169,6 +169,7 @@
 
 
 <script>
+import { notifications } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import {
@@ -248,7 +249,7 @@ export default {
 
      //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

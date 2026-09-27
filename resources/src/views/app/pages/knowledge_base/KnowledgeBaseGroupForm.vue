@@ -10,20 +10,20 @@
     />
 
     <px-card :title="isEdit ? ($t('Edit') + ' ' + $t('Group')) : ($t('New') + ' ' + $t('Group'))" class="pxkb__card">
-      <validation-observer ref="form_group">
+      <px-validation-observer ref="form_group">
         <form @submit.prevent="save">
           <div class="pxkb__formgrid">
-            <validation-provider ref="nameProvider" name="Name" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="nameProvider" name="Name" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('Name') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="form.name" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
-            <validation-provider ref="slugProvider" name="Slug" :rules="{ required: true }" v-slot="v">
+            <px-validation-provider ref="slugProvider" name="Slug" :rules="{ required: true }" v-slot="v">
               <px-field :label="$t('Slug') + ' *'" :error="v.errors[0]">
                 <template #default="{ id, invalid }"><px-input :id="id" v-model="form.slug" :invalid="invalid" @input="v.validate" /></template>
               </px-field>
-            </validation-provider>
+            </px-validation-provider>
 
             <px-field :label="$t('Description')">
               <template #default="{ id }"><px-textarea :id="id" v-model="form.description" :rows="3" /></template>
@@ -34,7 +34,7 @@
             </px-field>
           </div>
         </form>
-      </validation-observer>
+      </px-validation-observer>
 
       <template #footer>
         <px-button variant="ghost" @click="$router.push({ name: 'KnowledgeBaseGroups' })">{{ $t('Cancel') }}</px-button>
@@ -45,6 +45,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
 import PxButton from "@/components/px-next/PxButton.vue";
@@ -86,8 +87,8 @@ export default {
         this.form = { name: g.name, slug: g.slug, description: g.description || '', sort_order: g.sort_order ?? 0 };
         this.syncValidators();
       } catch (e) {
-        if (this.$root && this.$root.$bvToast) {
-          this.$root.$bvToast.toast(this.$t('Failed_to_load') || 'Failed to load', { variant: 'danger', solid: true });
+        if (notifications.hasDriver()) {
+          notifications.notify(this.$t('Failed_to_load') || 'Failed to load', { variant: 'danger', solid: true });
         }
       }
     },
@@ -98,15 +99,15 @@ export default {
       try {
         if (this.isEdit) {
           await axios.put('/knowledge-base/groups/' + this.id, this.form);
-          if (this.$root && this.$root.$bvToast) this.$root.$bvToast.toast(this.$t('Updated') || 'Updated', { variant: 'success', solid: true });
+          if (notifications.hasDriver()) notifications.notify(this.$t('Updated') || 'Updated', { variant: 'success', solid: true });
         } else {
           await axios.post('/knowledge-base/groups', this.form);
-          if (this.$root && this.$root.$bvToast) this.$root.$bvToast.toast(this.$t('Saved') || 'Saved', { variant: 'success', solid: true });
+          if (notifications.hasDriver()) notifications.notify(this.$t('Saved') || 'Saved', { variant: 'success', solid: true });
         }
         this.$router.push({ name: 'KnowledgeBaseGroups' });
       } catch (e) {
         const msg = (e.response && e.response.data && e.response.data.message) || this.$t('InvalidData') || 'Invalid data';
-        if (this.$root && this.$root.$bvToast) this.$root.$bvToast.toast(msg, { variant: 'danger', solid: true });
+        if (notifications.hasDriver()) notifications.notify(msg, { variant: 'danger', solid: true });
       } finally {
         this.saving = false;
       }

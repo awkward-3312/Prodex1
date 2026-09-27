@@ -1,7 +1,7 @@
 <template>
   <div class="main-content">
     <breadcumb page="Números de serie vendidos" :folder="$t('Reports')" />
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -16,33 +16,34 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'Siguiente', prevLabel: 'Anterior' }"
         styleClass="tableOne table-hover vgt-table mt-3"
       >
-        <div slot="table-actions" class="mt-2 mb-3" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+        <template #table-actions><div class="mt-2 mb-3" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
           <b-form-group label="Almacén" style="min-width:200px;">
             <v-select @input="loadItems(1)" v-model="warehouse_id" :reduce="l => l.value" placeholder="Selecciona un almacén" :options="warehouses.map(w => ({label:w.name, value:w.id}))" />
           </b-form-group>
           <vue-excel-xlsx class="btn btn-sm btn-outline-danger ripple m-1" :data="reports" :columns="columns" :file-name="'seriales_vendidos'" :file-type="'xlsx'" :sheet-name="'seriales_vendidos'">
             <lucide-icon name="file-spreadsheet" /> EXCEL
           </vue-excel-xlsx>
-        </div>
+        </div></template>
       </vue-good-table>
     </b-card>
   </div>
 </template>
 
 <script>
+import { BCard, BFormGroup } from "@/platform/bootstrap";
 import NProgress from "nprogress";
-export default {
+export default { components: { BFormGroup, BCard },
   metaInfo: { title: "Informe de números de serie vendidos" },
   data() { return { isLoading: true, serverParams: { sort: { field: "id", type: "desc" }, page: 1, perPage: 10 }, limit: "10", search: "", totalRows: "", reports: [], warehouses: [], warehouse_id: "" }; },
   computed: {
     columns() {
       return [
-        { label: "Número de serie", field: "serial_number", thClass: "text-left", tdClass: "text-left" },
-        { label: "Producto", field: "product_name", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Almacén", field: "warehouse_name", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Cliente", field: "client_name", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Venta", field: "sale_ref", thClass: "text-left", tdClass: "text-left", sortable: false },
-        { label: "Fecha", field: "sale_date", thClass: "text-left", tdClass: "text-left", sortable: false }
+        { label: "Número de serie", field: "serial_number", thClass: "text-start", tdClass: "text-start" },
+        { label: "Producto", field: "product_name", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Almacén", field: "warehouse_name", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Cliente", field: "client_name", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Venta", field: "sale_ref", thClass: "text-start", tdClass: "text-start", sortable: false },
+        { label: "Fecha", field: "sale_date", thClass: "text-start", tdClass: "text-start", sortable: false }
       ];
     }
   },

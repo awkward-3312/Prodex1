@@ -34,7 +34,7 @@
 </template>
 
 <script>
-let uid = 0;
+let uid = 0; // identificador propio (antes el id interno de la instancia, API privada de Vue 2)
 export default {
   name: "VField",
   props: {
@@ -50,9 +50,10 @@ export default {
     // Error del servidor a mostrar aunque vee-validate no falle (p. ej. code_exist).
     forceError: { type: String, default: null }
   },
+  data() { return { autoId: `pxe-f-${(uid += 1)}` }; },
   computed: {
     id() {
-      return this.idFor || `pxe-f-${this._uid || (uid += 1)}`;
+      return this.idFor || this.autoId;
     }
   },
   methods: {

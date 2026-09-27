@@ -1,0 +1,128 @@
+name: Frontend safety net
+
+# Red de seguridad de la modernización del frontend (ver docs/architecture/FRONTEND_MODERNIZATION_SAFETY_NET.md).
+# SÓLO valida. No despliega, no usa SSH, no toca el VPS y no depende de producción.
+#
+#  - route-snapshot: BLOQUEANTE. Determinista, sin servidor ni base de datos (~1 min). Falla si cambia el mapa de rutas
+#    del SPA respecto a tests/e2e/routes/routes.snapshot.json.
+#  - e2e: REQUERIDO (sin continue-on-error: si falla, el workflow falla). Corre en workflow_dispatch, en cualquier
+#    pull_request y, mientras este archivo no esté en main, en push a las ramas de modernización listadas abajo.
+#    Levanta MySQL 8.4 como servicio, provisiona un tenant demo con los mecanismos del
+#    proyecto y ejecuta Playwright contra el servidor PHP embebido en modo de un solo proceso (sin PHP_CLI_SERVER_WORKERS): el modo multi-worker
+#    terminó con Segmentation fault en Actions. Ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE2.md.
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'resources/src/**'
+      - 'resources/static/**'
+      - 'tests/e2e/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/frontend-safety-net.yml'
+  push:
+    # La rama de estabilización se lista aquí porque GitHub solo permite lanzar workflow_dispatch de un workflow que ya
+    # existe en la rama por defecto. Mientras este archivo no esté en main, el job e2e corre con los push a las ramas de modernización listadas aquí.
+    # Cuando llegue a main se puede quitar esa rama y usar solo workflow_dispatch.
+    branches: [ main, fix/frontend-modernization-baseline, chore/frontend-modernization-cleanup, refactor/frontend-platform-services, refactor/vue2-compat-hardening, spike/vue3-compat-runtime, refactor/vue-router-4, refactor/vue3-own-code-cleanup, refactor/vue-meta-to-unhead, refactor/remove-vue-clickaway, refactor/bootstrap5-bootstrapvue-next-phase1, refactor/bootstrap5-bootstrapvue-next-phase2, refactor/bootstrap5-bootstrapvue-next-phase3, refactor/bootstrap5-bootstrapvue-next-phase4, refactor/bootstrap5-bootstrapvue-next-phase5a, refactor/bootstrap5-bootstrapvue-next-phase5b, refactor/bootstrap5-final-cutover, refactor/vee-validate-4, refactor/vue-i18n-11, refactor/vue3-legacy-dependency-audit ]
+  workflow_dispatch:
+
+jobs:
+  route-snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Route snapshot (generado desde el código fuente)
+        run: npm run test:e2e:routes
+      - name: Pruebas del frontend (servicios de plataforma, puente legacy, capa de validación y guardas de API obsoletas; node:test, sin navegador)
+        run: npm run test:frontend
+
+  e2e:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request' ||
+      github.ref == 'refs/heads/fix/frontend-modernization-baseline' ||
+      github.ref == 'refs/heads/chore/frontend-modernization-cleanup' ||
+      github.ref == 'refs/heads/refactor/frontend-platform-services' ||
+      github.ref == 'refs/heads/refactor/vue2-compat-hardening' ||
+      github.ref == 'refs/heads/spike/vue3-compat-runtime' ||
+      github.ref == 'refs/heads/refactor/vue-router-4' ||
+      github.ref == 'refs/heads/refactor/vue3-own-code-cleanup' ||
+      github.ref == 'refs/heads/refactor/vue-meta-to-unhead' ||
+      github.ref == 'refs/heads/refactor/remove-vue-clickaway' ||
+      github.ref == 'refs/heads/refactor/bootstrap5-bootstrapvue-next-phase1' ||
+      github.ref == 'refs/heads/refactor/bootstrap5-bootstrapvue-next-phase2' ||
+      github.ref == 'refs/heads/refactor/bootstrap5-bootstrapvue-next-phase3' ||
+      github.ref == 'refs/heads/refactor/bootstrap5-bootstrapvue-next-phase4' ||
+      github.ref == 'refs/heads/refactor/bootstrap5-bootstrapvue-next-phase5a' ||
+      github.ref == 'refs/heads/refactor/bootstrap5-bootstrapvue-next-phase5b' ||
+      github.ref == 'refs/heads/refactor/bootstrap5-final-cutover' ||
+      github.ref == 'refs/heads/refactor/vee-validate-4' ||
+      github.ref == 'refs/heads/refactor/vue-i18n-11' ||
+      github.ref == 'refs/heads/refactor/vue3-legacy-dependency-audit'
+    runs-on: ubuntu-latest
+    # El fallo de memoria de esta rama (ver VEE_VALIDATE_4_MIGRATION.md §6: `/app/products/store-classic` se
+    # quedaba sin responder bajo navegación secuencial intensiva) está resuelto — causa raíz y fix documentados
+    # ahí. Restaurado a 45 min: la suite completa local tarda ~31 min sin el fallo.
+    timeout-minutes: 45
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ${{ github.run_id }}-e2e-only
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      E2E_SKIP_DOCKER: '1'
+      E2E_DB_PORT: '3307'
+      E2E_PORT: '8000'
+      NODE_OPTIONS: --max-old-space-size=8192
+    steps:
+      - uses: actions/checkout@v5
+      - uses: shivammathur/setup-php@v2
+        with:
+          # PHP 8.4 SOLO para el job e2e: con 8.2.33 y 8.3.33 (runner de GitHub) el servidor PHP moría con SIGSEGV en `zend_objects_store_del`
+          # (~50 % de los arranques en frío en el flujo de login; reproducido con tests/e2e/scripts/login-stress.sh, 5/10 y 5/10 vs 0/10 en 8.4.25;
+          # ni `zend.enable_gc=0` ni quitar extensiones de terceros lo evitan). Ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE2.md.
+          php-version: '8.4'
+          extensions: mbstring, xml, curl, gd, zip, pdo_mysql, bcmath, intl, fileinfo
+          coverage: none
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Build de desarrollo (los E2E prueban el SPA compilado desde este árbol)
+        run: npx mix
+      - name: Navegador de Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Secretos efímeros del entorno E2E
+        run: |
+          echo "E2E_DB_PASSWORD=${{ github.run_id }}-e2e-only" >> "$GITHUB_ENV"
+          echo "E2E_ADMIN_PASSWORD=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
+          echo "E2E_RESTRICTED_PASSWORD=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
+      - name: Provisionar tenant demo aislado
+        run: bash tests/e2e/scripts/setup.sh
+      - name: Versión de PHP del servidor E2E
+        run: php -v | head -1
+      - name: Ejecutar E2E
+        run: npm run test:e2e
+      - name: Reporte de Playwright
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: e2e-report
+          path: |
+            tests/e2e/.artifacts/report
+            tests/e2e/.artifacts/test-results
+          retention-days: 7

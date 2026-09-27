@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Payroll')" :folder="$t('hrm')"/>
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
     <b-card class="wrapper" v-if="!isLoading">
       <vue-good-table
         mode="remote"
@@ -25,10 +25,10 @@
       }"
         styleClass="table-hover tableOne vgt-table"
       >
-        <div slot="selected-row-actions">
+        <template #selected-row-actions><div>
           <button class="btn btn-danger btn-sm" @click="delete_by_selected()">{{$t('Del')}}</button>
-        </div>
-        <div slot="table-actions" class="mt-2 mb-3">
+        </div></template>
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button
             @click="Function_New_Payroll()"
             class="btn-rounded"
@@ -37,9 +37,9 @@
             <lucide-icon name="plus" />
             {{$t('Add')}}
           </b-button>
-        </div>
+        </div></template>
 
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field == 'actions'">
             <a @click="Payroll_Details(props.row)" class="cursor-pointer" title="View" v-b-tooltip.hover>
               <lucide-icon class="text-25 text-info" name="eye" />
@@ -73,14 +73,14 @@
       </vue-good-table>
     </b-card>
 
-    <validation-observer ref="Create_Payroll">
+    <px-validation-observer ref="Create_Payroll">
       <b-modal hide-footer size="md" id="Modal_New_Payroll" :title="editmode?$t('Edit'):$t('Add')">
         <b-form @submit.prevent="Submit_Payroll">
           <b-row>
             
               <!-- date -->
               <b-col md="12">
-                <validation-provider
+                <px-validation-provider
                   name="date"
                   :rules="{ required: true}"
                   v-slot="validationContext"
@@ -91,13 +91,13 @@
                         </Datepicker>
                         <b-form-invalid-feedback id="date-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                      </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
               <!-- Employee -->
               <b-col md="12">
-                <validation-provider name="Employee" :rules="{ required: true}">
-                  <b-form-group slot-scope="{ valid, errors }" :label="$t('Employee') + ' ' + '*'">
+                <px-validation-provider name="Employee" :rules="{ required: true}">
+                  <template #default="{ valid, errors }"><b-form-group :label="$t('Employee') + ' ' + '*'">
                     <v-select
                       :class="{'is-invalid': !!errors.length}"
                       :state="errors[0] ? false : (valid ? true : null)"
@@ -110,14 +110,14 @@
                       :options="employees.map(employees => ({label: employees.username, value: employees.id}))"
                     />
                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
+                  </b-form-group></template>
+                </px-validation-provider>
               </b-col>
 
               <!-- Account -->
               <b-col md="12">
-                <validation-provider name="Account">
-                  <b-form-group slot-scope="{ valid, errors }" :label="$t('Account')">
+                <px-validation-provider name="Account">
+                  <template #default="{ valid, errors }"><b-form-group :label="$t('Account')">
                     <v-select
                       :class="{'is-invalid': !!errors.length}"
                       :state="errors[0] ? false : (valid ? true : null)"
@@ -128,13 +128,13 @@
                       :options="accounts.map(accounts => ({label: accounts.account_name, value: accounts.id}))"
                     />
                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
+                  </b-form-group></template>
+                </px-validation-provider>
               </b-col>
 
               <!-- Paying Amount  -->
               <b-col md="12">
-                <validation-provider
+                <px-validation-provider
                   name="Amount"
                   :rules="{ required: true , regex: /^\d*\.?\d*$/}"
                   v-slot="validationContext"
@@ -151,13 +151,13 @@
                     ></b-form-input>
                     <b-form-invalid-feedback id="Amount-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                   </b-form-group>
-                </validation-provider>
+                </px-validation-provider>
               </b-col>
 
                <!-- Payment choice -->
               <b-col md="12">
-                <validation-provider name="Payment choice" :rules="{ required: true}">
-                  <b-form-group slot-scope="{ valid, errors }" :label="$t('Paymentchoice') + ' ' + '*'">
+                <px-validation-provider name="Payment choice" :rules="{ required: true}">
+                  <template #default="{ valid, errors }"><b-form-group :label="$t('Paymentchoice') + ' ' + '*'">
                     <v-select
                       :class="{'is-invalid': !!errors.length}"
                       :state="errors[0] ? false : (valid ? true : null)"
@@ -167,8 +167,8 @@
                       :options="payment_methods.map(payment_methods => ({label: payment_methods.name, value: payment_methods.id}))"
                     ></v-select>
                     <b-form-invalid-feedback>{{ errors[0] }}</b-form-invalid-feedback>
-                  </b-form-group>
-                </validation-provider>
+                  </b-form-group></template>
+                </px-validation-provider>
               </b-col>
 
               <!-- Receiver Account Number -->
@@ -239,7 +239,7 @@
                       </tr>
                       <tr v-for="(file, index) in pendingFiles" :key="'pending_' + index">
                         <td>
-                          <lucide-icon class="mr-1" name="file" />
+                          <lucide-icon class="me-1" name="file" />
                           {{file.name}}
                         </td>
                         <td>{{formatFileSize(file.size)}}</td>
@@ -257,7 +257,7 @@
                       </tr>
                       <tr v-for="document in documents" :key="document.id">
                         <td>
-                          <lucide-icon class="mr-1" name="file" />
+                          <lucide-icon class="me-1" name="file" />
                           {{document.name}}
                         </td>
                         <td>{{formatFileSize(document.size)}}</td>
@@ -289,7 +289,7 @@
               </b-col>
 
             <b-col md="12" class="mt-3">
-                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="me-2 font-weight-bold" name="check" /> {{$t('submit')}}</b-button>
+                <b-button variant="primary" type="submit"  :disabled="SubmitProcessing"><lucide-icon class="fw-bold" name="check" /> {{$t('submit')}}</b-button>
                   <div v-once class="typo__p" v-if="SubmitProcessing">
                     <div class="spinner sm spinner-primary mt-3"></div>
                   </div>
@@ -298,7 +298,7 @@
           </b-row>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
 
     <!-- Modal Payroll Details -->
     <b-modal ok-only size="md" id="Payroll_Details" :title="$t('Payroll') + ' ' + $t('Details')">
@@ -355,7 +355,7 @@
                   <div v-else>
                     <div v-for="document in documents" :key="document.id" class="mb-1">
                       <a class="cursor-pointer text-info" @click="Download_Document(document)">
-                        <lucide-icon class="mr-1" name="file" />
+                        <lucide-icon class="me-1" name="file" />
                         {{document.name}}
                       </a>
                     </div>
@@ -387,7 +387,7 @@
             <tr v-for="document in documents" :key="document.id">
               <td>
                 <a class="cursor-pointer" @click="Download_Document(document)">
-                  <lucide-icon class="mr-1" name="file" />
+                  <lucide-icon class="me-1" name="file" />
                   {{document.name}}
                 </a>
               </td>
@@ -422,14 +422,16 @@
 </template>
 
 <script>
+import { modals, notifications } from "@/platform";
+import { vBTooltip, BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BFormFile } from "@/platform/bootstrap";
 import NProgress from "nprogress";
-import Datepicker from 'vuejs-datepicker';
+import Datepicker from '@/components/Datepicker.vue';
 
-export default {
+export default { directives: { 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Payroll"
   },
-   components: {
+   components: { BFormFile, BForm, BFormGroup, BFormInvalidFeedback, BFormInput, BButton, BCard, BCol, BRow, BModal,
     Datepicker
   },
   data() {
@@ -477,65 +479,65 @@ export default {
         {
           label: this.$t("date"),
           field: "date",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Reference"),
           field: "Ref",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Employee"),
           field: "employee_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Account"),
           field: "account_name",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Amount"),
           field: "amount",
           type: "decimal",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("ModePaiement"),
           field: "payment_method",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("PaymentStatus"),
           field: "payment_status",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Documents"),
           field: "documents",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         },
         {
           label: this.$t("Action"),
           field: "actions",
-          tdClass: "text-left",
-          thClass: "text-left",
+          tdClass: "text-start",
+          thClass: "text-start",
           sortable: false
         }
       ];
@@ -626,7 +628,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true
@@ -637,7 +639,7 @@ export default {
     Function_New_Payroll() {
         this.reset_Form();
         this.editmode = false;
-        this.$bvModal.show("Modal_New_Payroll");
+        modals.show("Modal_New_Payroll");
     },
 
     //------------------------------ Show Modal (Update Payroll) -------------------------------\\
@@ -647,7 +649,7 @@ export default {
         this.payroll = payroll;
         this.currentPayrollId = payroll.id;
         this.Get_Documents(payroll.id);
-        this.$bvModal.show("Modal_New_Payroll");
+        modals.show("Modal_New_Payroll");
     },
 
     //------------------------------ Show Modal (Payroll Details) -------------------------------\\
@@ -660,7 +662,7 @@ export default {
         this.Get_Documents(payroll.id).then(() => {
           setTimeout(() => {
             NProgress.done();
-            this.$bvModal.show("Payroll_Details");
+            modals.show("Payroll_Details");
           }, 500);
         });
     },
@@ -674,7 +676,7 @@ export default {
         this.Get_Documents(payroll.id).then(() => {
           setTimeout(() => {
             NProgress.done();
-            this.$bvModal.show("Payroll_Documents");
+            modals.show("Payroll_Documents");
           }, 500);
         });
     },
@@ -1028,7 +1030,7 @@ export default {
     Fire.$on("Event_Payroll", () => {
       setTimeout(() => {
         this.Get_Payrolls(this.serverParams.page);
-        this.$bvModal.hide("Modal_New_Payroll");
+        modals.hide("Modal_New_Payroll");
       }, 500);
     });
 

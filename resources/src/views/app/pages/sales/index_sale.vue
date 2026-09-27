@@ -87,7 +87,7 @@
           :rows="sales"
           row-key="id"
           selectable
-          :selected.sync="selectedIds"
+          :selected="selectedIds" @update:selected="selectedIds = $event"
           :sort-key="serverParams.sort.field"
           :sort-dir="serverParams.sort.type"
           has-row-actions
@@ -466,8 +466,8 @@
                 </tr>
               </thead>
               <tbody>
-                <template v-for="payment_pos in payments">
-                  <tr :key="'pay-' + payment_pos.id">
+                <template v-for="payment_pos in payments" :key="'pay-' + payment_pos.id">
+                  <tr>
                     <td style="text-align: left;" colspan="1">
                       {{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}
                     </td>
@@ -487,7 +487,7 @@
               </tbody>
             </table>
 
-            <div id="legalcopy" class="ml-2">
+            <div id="legalcopy" class="ms-2">
               <p v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;margin:0;">
                 {{$t('sale_note')}}: {{invoice_pos.sale.notes}}
               </p>
@@ -577,8 +577,8 @@
                 </tr>
               </thead>
               <tbody>
-                <template v-for="detail_invoice in invoice_pos.details">
-                  <tr :key="'sl2-item-' + detail_invoice.id">
+                <template v-for="detail_invoice in invoice_pos.details" :key="'sl2-item-' + detail_invoice.id">
+                  <tr>
                     <td>
                       {{detail_invoice.name}}
                       <br v-show="detail_invoice.is_imei && detail_invoice.imei_number !==null">
@@ -688,8 +688,8 @@
                 </tr>
               </thead>
               <tbody>
-                <template v-for="payment_pos in payments">
-                  <tr :key="'pay2-' + payment_pos.id">
+                <template v-for="payment_pos in payments" :key="'pay2-' + payment_pos.id">
+                  <tr>
                     <td style="text-align: left;" colspan="1">
                       {{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}
                     </td>
@@ -709,7 +709,7 @@
               </tbody>
             </table>
 
-            <div id="legalcopy" class="ml-2">
+            <div id="legalcopy" class="ms-2">
               <p v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;margin:0;">
                 {{$t('sale_note')}}: {{invoice_pos.sale.notes}}
               </p>
@@ -895,8 +895,8 @@
                 </tr>
               </thead>
               <tbody>
-                <template v-for="payment_pos in payments">
-                  <tr :key="'pay3-' + payment_pos.id">
+                <template v-for="payment_pos in payments" :key="'pay3-' + payment_pos.id">
+                  <tr>
                     <td style="text-align: left;" colspan="1">
                       {{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}
                     </td>
@@ -916,7 +916,7 @@
               </tbody>
             </table>
 
-            <div id="legalcopy" class="ml-2">
+            <div id="legalcopy" class="ms-2">
               <p v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;margin:0;">
                 {{$t('sale_note')}}: {{invoice_pos.sale.notes}}
               </p>
@@ -1107,8 +1107,8 @@
                 </tr>
               </thead>
               <tbody>
-                <template v-for="payment_pos in payments">
-                  <tr :key="'pay4-' + payment_pos.id">
+                <template v-for="payment_pos in payments" :key="'pay4-' + payment_pos.id">
+                  <tr>
                     <td style="text-align:left;" colspan="1">{{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}</td>
                     <td style="text-align:center;" colspan="2">{{ formatPriceDisplay(payment_pos.montant ,2) }}</td>
                     <td style="text-align:right;" colspan="1">{{ formatPriceDisplay(payment_pos.change ,2) }}</td>
@@ -1122,7 +1122,7 @@
               </tbody>
             </table>
 
-            <div id="legalcopy" class="ml-2">
+            <div id="legalcopy" class="ms-2">
               <div v-if="invoice_pos.sale && invoice_pos.sale.notes" style="font-size:9px;font-style:italic;padding-bottom:4px;white-space:pre-line;">
                 {{$t('sale_note')}} / ملاحظة البيع: {{invoice_pos.sale.notes}}
               </div>
@@ -1260,8 +1260,8 @@
                 </tr>
               </thead>
               <tbody>
-                <template v-for="payment_pos in payments">
-                  <tr :key="'pay5-' + payment_pos.id">
+                <template v-for="payment_pos in payments" :key="'pay5-' + payment_pos.id">
+                  <tr>
                     <td>{{payment_pos.payment_method?payment_pos.payment_method.name:'---'}}</td>
                     <td>{{ formatPriceDisplay(payment_pos.montant, 2) }}</td>
                     <td>{{ formatPriceDisplay(payment_pos.change, 2) }}</td>
@@ -1350,7 +1350,7 @@
                 </tr>
                 <tr v-for="document in documents" :key="document.id">
                   <td>
-                    <lucide-icon class="mr-1" name="file" />
+                    <lucide-icon class="me-1" name="file" />
                     {{document.name}}
                   </td>
                   <td>{{formatFileSize(document.size)}}</td>
@@ -1384,12 +1384,13 @@
 </template>
 
 <script>
+import { BButton, BCol, BRow, BForm, BFormGroup, BFormFile } from "@/platform/bootstrap";
+import { notifications, events } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import vueEasyPrint from "vue-easy-print";
-import VueBarcode from "vue-barcode";
+import VueBarcode from "@/components/Barcode.vue";
 import Util from "../../../../utils";
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
@@ -1411,8 +1412,7 @@ import PxTextarea from "@/components/px-next/PxTextarea.vue";
 import PxModal from "@/components/px-next/PxModal.vue";
 import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 export default {
-  components: {
-    vueEasyPrint,
+  components: { BFormFile, BForm, BFormGroup, BButton, BCol, BRow,
     barcode: VueBarcode,
     PxEmptyState, PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxMenu,
     PxKebab, PxBadge, PxField, PxInput, PxTextarea, PxModal, "vs-px": VsPx
@@ -1522,10 +1522,12 @@ export default {
     };
   },
    mounted() {
-    this.$root.$on("bv::dropdown::show", bvEvent => {
+    // Antes `this.$root.$on(...)` (API de eventos de instancia de Vue 2, sin equivalente en Vue 3): ahora por el
+    // bus de plataforma (mismo nombre de evento, emitido por platform/bootstrap/nav.js).
+    events.$on("bv::dropdown::show", bvEvent => {
       this.showDropdown = true;
     });
-    this.$root.$on("bv::dropdown::hide", bvEvent => {
+    events.$on("bv::dropdown::hide", bvEvent => {
       this.showDropdown = false;
     });
   },
@@ -1926,7 +1928,7 @@ export default {
     },
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

@@ -2,13 +2,13 @@
   <div class="main-content">
     <breadcumb :page="$t('Stock_Aging_Report')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <b-card class="wrapper print-table-only" v-if="!isLoading">
       <!-- Filters -->
       <div class="d-flex flex-wrap align-items-center mb-3">
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2">{{$t('Dimension')}}:</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2">{{$t('Dimension')}}:</label>
           <b-form-select
             v-model="dimension"
             :options="dimensionOptions"
@@ -18,8 +18,8 @@
           />
         </div>
 
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2">{{$t('warehouse')}}:</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2">{{$t('warehouse')}}:</label>
           <b-form-select
             v-model="warehouse_id"
             :options="warehouseOptions"
@@ -29,8 +29,8 @@
           />
         </div>
 
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2">{{$t('Buckets')}}:</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2">{{$t('Buckets')}}:</label>
           <b-form-input
             v-model="bucketsInput"
             size="sm"
@@ -43,8 +43,8 @@
           </small>
         </div>
 
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2">{{$t('Brand')}}:</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2">{{$t('Brand')}}:</label>
           <b-form-select
             v-model="brand_id"
             :options="brandOptions"
@@ -54,8 +54,8 @@
           />
         </div>
 
-        <div class="mr-3 mb-2">
-          <label class="mb-0 mr-2">{{$t('Category')}}:</label>
+        <div class="me-3 mb-2">
+          <label class="mb-0 me-2">{{$t('Category')}}:</label>
           <b-form-select
             v-model="category_id"
             :options="categoryOptions"
@@ -83,12 +83,12 @@
         :pagination-options="{ enabled: true, mode: 'records', nextLabel: 'next', prevLabel: 'prev' }"
         styleClass="tableOne table-hover vgt-table mt-3"
       >
-        <div slot="table-actions" class="mt-2 mb-3">
+        <template #table-actions><div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
-        </div>
-        <template slot="table-row" slot-scope="props">
+        </div></template>
+        <template #table-row="props">
           <span v-if="props.column.field === 'last_inbound_at'">
             {{ props.row.last_inbound_at || '—' }}
           </span>
@@ -108,10 +108,11 @@
 </template>
 
 <script>
+import { BBadge, BButton, BCard, BFormSelect, BFormInput } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
 
-export default {
+export default { components: { BFormSelect, BFormInput, BBadge, BButton, BCard },
   metaInfo: { title: "Stock Aging Report" },
   data() {
     return {
@@ -151,17 +152,17 @@ export default {
     ...mapGetters(["currentUser"]),
     columns() {
       const base = [
-        { label: this.$t("Code"), field: "code", sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Product"), field: "product_name", sortable: true, tdClass: "text-left", thClass: "text-left" },
+        { label: this.$t("Code"), field: "code", sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Product"), field: "product_name", sortable: true, tdClass: "text-start", thClass: "text-start" },
       ];
       if (this.dimension === "variant") {
-        base.push({ label: this.$t("Variant"), field: "variant_name", sortable: true, tdClass: "text-left", thClass: "text-left" });
+        base.push({ label: this.$t("Variant"), field: "variant_name", sortable: true, tdClass: "text-start", thClass: "text-start" });
       }
       base.push(
-        { label: this.$t("OnHand"), field: "on_hand", headerField: this.sumOnHand, sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("LastInbound"), field: "last_inbound_at", sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("AgeDays"), field: "age_days", type: "number", sortable: true, tdClass: "text-left", thClass: "text-left" },
-        { label: this.$t("Bucket"), field: "age_bucket", sortable: true, tdClass: "text-left", thClass: "text-left" },
+        { label: this.$t("OnHand"), field: "on_hand", headerField: this.sumOnHand, sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("LastInbound"), field: "last_inbound_at", sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("AgeDays"), field: "age_days", type: "number", sortable: true, tdClass: "text-start", thClass: "text-start" },
+        { label: this.$t("Bucket"), field: "age_bucket", sortable: true, tdClass: "text-start", thClass: "text-start" },
       );
       return base;
     },

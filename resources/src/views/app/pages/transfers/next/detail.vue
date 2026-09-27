@@ -129,8 +129,8 @@
                 </tr>
               </thead>
               <tbody>
-                <template v-for="(detail, idx) in details">
-                  <tr :key="'r-' + idx">
+                <template v-for="(detail, idx) in details" :key="'r-' + idx">
+                  <tr>
                     <td class="pxn-mono">{{ detail.code }}</td>
                     <td>
                       <span class="pxtrd-tbl__name">{{ detail.name }}</span>
@@ -244,6 +244,7 @@
 </template>
 
 <script>
+import { notifications } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
@@ -519,7 +520,7 @@ export default {
       setTimeout(() => { try { w.print(); w.close(); } catch (e) { /* noop */ } }, 400);
     },
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, { title, variant, solid: true });
+      notifications.notify(msg, { title, variant, solid: true });
     }
   }
 };

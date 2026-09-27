@@ -1956,7 +1956,7 @@ export default {
     });
   },
 
-  beforeDestroy() {
+  beforeUnmount() {
     // Clean up event listener
     Fire.$off("toggleVerticalSidebar");
     window.removeEventListener('resize', this.handleResize);

@@ -1,7 +1,7 @@
 <template>
   <div class="main-content prodex-ui supplier-edit-page">
     <div class="px-page">
-      <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+      <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
       <template v-else>
         <div class="px-page-header">
@@ -20,7 +20,7 @@
           </div>
         </div>
 
-        <validation-observer ref="Create_Provider" v-if="provider">
+        <px-validation-observer ref="Create_Provider" v-if="provider">
           <b-form @submit.prevent="Submit_Provider">
             <section class="px-section">
               <div class="px-section-header">
@@ -35,12 +35,12 @@
               <div class="px-section-body">
                 <b-row>
                   <b-col md="6" sm="12">
-                    <validation-provider name="Name Provider" :rules="{ required: true}" v-slot="validationContext">
+                    <px-validation-provider name="Name Provider" :rules="{ required: true}" v-slot="validationContext">
                       <b-form-group :label="$t('SupplierName') + ' *'">
                         <b-form-input :state="getValidationState(validationContext)" aria-describedby="name-feedback" label="name" v-model="provider.name" :placeholder="$t('SupplierName')"></b-form-input>
                         <b-form-invalid-feedback id="name-feedback">{{ validationContext.errors[0] }}</b-form-invalid-feedback>
                       </b-form-group>
-                    </validation-provider>
+                    </px-validation-provider>
                   </b-col>
                   <b-col md="6" sm="12">
                     <b-form-group :label="$t('Email')">
@@ -140,18 +140,20 @@
               </div>
             </div>
           </b-form>
-        </validation-observer>
+        </px-validation-observer>
       </template>
     </div>
   </div>
 </template>
 
 <script>
+import { BButton, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback } from "@/platform/bootstrap";
+import { notifications } from "@/platform";
 import NProgress from "nprogress";
 import CustomFieldsForm from "../../../../components/CustomFieldsForm.vue";
 
 export default {
-  components: {
+  components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BButton, BCol, BRow,
     CustomFieldsForm
   },
   metaInfo: {
@@ -279,7 +281,7 @@ export default {
 
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

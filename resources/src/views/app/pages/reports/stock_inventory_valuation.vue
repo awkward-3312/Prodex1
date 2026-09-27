@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Stock_Inventory_Valuation')" :folder="$t('Reports')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="mb-3 text-center">
       <date-range-picker 
@@ -39,7 +39,7 @@
       >
 
         <!-- Filters -->
-        <div slot="table-actions" class="mt-2 mb-3 quantity_alert_warehouse">
+        <template #table-actions><div class="mt-2 mb-3 quantity_alert_warehouse">
           <b-form-group :label="$t('warehouse')">
             <v-select
               @input="Selected_Warehouse"
@@ -54,17 +54,17 @@
           </b-form-group>
         </div>
 
-        <div slot="table-actions" class="mt-2 mb-3">
+        <div class="mt-2 mb-3">
           <b-button @click="printTableOnly()" size="sm" variant="outline-secondary ripple m-1">
             <lucide-icon name="printer" /> {{ $t("print") }}
           </b-button>
           <b-button @click="stock_report_PDF()" size="sm" variant="outline-success ripple m-1">
             <lucide-icon name="copy" /> PDF
           </b-button>
-        </div>
+        </div></template>
 
         <!-- Custom cell rendering -->
-        <template slot="table-row" slot-scope="props">
+        <template #table-row="props">
           <span v-if="props.column.field === 'selling_price'">
             {{ formatPrice(props.row.selling_price) }}
           </span>
@@ -100,11 +100,11 @@
 </template>
 
 <script>
+import { BButton, BCard, BFormGroup } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import DateRangePicker from 'vue2-daterange-picker'
-import 'vue2-daterange-picker/dist/vue2-daterange-picker.css'
+import DateRangePicker from '@/components/DateRangePicker.vue'
 import moment from 'moment'
 import { mapGetters } from "vuex";
 import {
@@ -115,7 +115,7 @@ import {
 
 export default {
   metaInfo: { title: "Stock Inventory Valuation Report" },
-  components: { DateRangePicker },
+  components: { BFormGroup, BButton, BCard, DateRangePicker },
 
   data() {
     return {
@@ -159,19 +159,19 @@ export default {
 
     columns() {
       return [
-        { label: this.$t("SKU"), field: "sku", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("product_name"), field: "product_name", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Variant"), field: "variant", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Category"), field: "category", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Warehouse"), field: "warehouse", tdClass: "text-left", thClass: "text-left", sortable: false },
-        { label: this.$t("Selling_Price_Unit"), field: "selling_price", headerField: this.sumSellingPrice, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Current_Quantity"), field: "current_quantity", headerField: this.sumCurrentQuantity, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Stock_Value_Cost"), field: "stock_value_cost", headerField: this.sumStockValueCost, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Stock_Value_Selling"), field: "stock_value_selling", headerField: this.sumStockValueSelling, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Potential_Profit"), field: "potential_profit", headerField: this.sumPotentialProfit, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Total_Units_Sold"), field: "total_units_sold", headerField: this.sumTotalUnitsSold, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Total_Units_Transferred"), field: "total_units_transferred", headerField: this.sumTotalUnitsTransferred, tdClass: "text-right", thClass: "text-right", sortable: false },
-        { label: this.$t("Total_Units_Adjusted"), field: "total_units_adjusted", headerField: this.sumTotalUnitsAdjusted, tdClass: "text-right", thClass: "text-right", sortable: false },
+        { label: this.$t("SKU"), field: "sku", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("product_name"), field: "product_name", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Variant"), field: "variant", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Category"), field: "category", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Warehouse"), field: "warehouse", tdClass: "text-start", thClass: "text-start", sortable: false },
+        { label: this.$t("Selling_Price_Unit"), field: "selling_price", headerField: this.sumSellingPrice, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Current_Quantity"), field: "current_quantity", headerField: this.sumCurrentQuantity, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Stock_Value_Cost"), field: "stock_value_cost", headerField: this.sumStockValueCost, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Stock_Value_Selling"), field: "stock_value_selling", headerField: this.sumStockValueSelling, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Potential_Profit"), field: "potential_profit", headerField: this.sumPotentialProfit, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Total_Units_Sold"), field: "total_units_sold", headerField: this.sumTotalUnitsSold, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Total_Units_Transferred"), field: "total_units_transferred", headerField: this.sumTotalUnitsTransferred, tdClass: "text-end", thClass: "text-end", sortable: false },
+        { label: this.$t("Total_Units_Adjusted"), field: "total_units_adjusted", headerField: this.sumTotalUnitsAdjusted, tdClass: "text-end", thClass: "text-end", sortable: false },
       ];
     },
 

@@ -2,7 +2,7 @@
   <div class="main-content">
     <breadcumb :page="$t('Checklist_Items')" :folder="$t('Service_Maintenance')" />
 
-    <div v-if="isLoading" class="loading_page spinner spinner-primary mr-3"></div>
+    <div v-if="isLoading" class="loading_page spinner spinner-primary me-3"></div>
 
     <div v-else class="page-wrapper">
       <b-card :title="$t('Checklist_Items')">
@@ -21,12 +21,12 @@
               :pagination-options="{ enabled: true, mode: 'records' }"
               styleClass="tableOne vgt-table mt-3"
             >
-              <template slot="table-row" slot-scope="props">
+              <template #table-row="props">
                 <span v-if="props.column.field === 'actions'">
                   <b-button
                     size="sm"
                     variant="outline-primary"
-                    class="mr-2"
+                    class="me-2"
                     @click.stop="editItem(props.row)"
                   >
                     <lucide-icon name="pencil" />
@@ -45,7 +45,7 @@
     </div>
 
     <!-- Modal for Create/Edit Item -->
-    <validation-observer ref="Create_Item">
+    <px-validation-observer ref="Create_Item">
       <b-modal
         hide-footer
         size="md"
@@ -56,7 +56,7 @@
         <b-form @submit.prevent="saveItem">
           <b-row>
             <b-col md="12">
-              <validation-provider
+              <px-validation-provider
                 name="Category"
                 :rules="{ required: true }"
                 v-slot="validationContext"
@@ -79,10 +79,10 @@
                     {{ validationContext.errors[0] }}
                   </b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
             <b-col md="12">
-              <validation-provider
+              <px-validation-provider
                 name="Item Name"
                 :rules="{ required: true }"
                 v-slot="validationContext"
@@ -98,11 +98,11 @@
                     {{ validationContext.errors[0] }}
                   </b-form-invalid-feedback>
                 </b-form-group>
-              </validation-provider>
+              </px-validation-provider>
             </b-col>
           </b-row>
-          <div class="text-right mt-3">
-            <b-button variant="secondary" @click="$bvModal.hide('modal_Item')" class="mr-2">
+          <div class="text-end mt-3">
+            <b-button variant="secondary" @click="$modals.hide('modal_Item')" class="me-2">
               {{ $t('Cancel') }}
             </b-button>
             <b-button type="submit" variant="primary" :disabled="SubmitProcessing">
@@ -116,12 +116,14 @@
           </div>
         </b-form>
       </b-modal>
-    </validation-observer>
+    </px-validation-observer>
   </div>
 </template>
 
 <script>
-export default {
+import { BModal, BButton, BCard, BCol, BRow, BForm, BFormGroup, BFormSelect, BFormSelectOption, BFormInvalidFeedback, BFormInput } from "@/platform/bootstrap";
+import { confirmDialog, modals, notifications } from "@/platform";
+export default { components: { BForm, BFormGroup, BFormSelect, BFormSelectOption, BFormInvalidFeedback, BFormInput, BButton, BCard, BCol, BRow, BModal },
   name: 'ServiceChecklists',
   data() {
     return {
@@ -177,7 +179,7 @@ export default {
     openModal() {
       this.editmode = false;
       this.itemForm = { id: null, category_id: null, name: '' };
-      this.$bvModal.show('modal_Item');
+      modals.show('modal_Item');
     },
     editItem(row) {
       this.editmode = true;
@@ -186,7 +188,7 @@ export default {
         category_id: row.category_id,
         name: row.name
       };
-      this.$bvModal.show('modal_Item');
+      modals.show('modal_Item');
     },
     resetModal() {
       this.editmode = false;
@@ -220,7 +222,7 @@ export default {
         }
         
         if (response.data && response.data.success) {
-          this.$bvModal.hide('modal_Item');
+          modals.hide('modal_Item');
           await this.loadItems();
           await this.loadCategories();
         } else {
@@ -235,8 +237,7 @@ export default {
       }
     },
     async removeItem(row) {
-      const ok = await this.$bvModal.msgBoxConfirm(this.$t('AreYouSure'), {
-        size: 'sm'
+      const ok = await confirmDialog(this.$t('AreYouSure'), { presentation: 'modal', size: 'sm'
       });
       if (!ok) return;
       
@@ -254,7 +255,7 @@ export default {
     
     //------ Toast
     makeToast(variant, msg, title) {
-      this.$root.$bvToast.toast(msg, {
+      notifications.notify(msg, {
         title: title,
         variant: variant,
         solid: true

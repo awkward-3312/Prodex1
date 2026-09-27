@@ -48,8 +48,9 @@ class GlobalNotificationCenterArchitectureTest extends TestCase
         $ui = file_get_contents(base_path('resources/static/prodex-erp-integrity-ui.js'));
 
         $this->assertStringContainsString('/api/notification-center', $ui);
-        $this->assertStringContainsString('resolveRouter', $ui);
-        $this->assertStringContainsString('router.push(action)', $ui);
+        $this->assertStringContainsString('window.__prodexBridge', $ui);
+        $this->assertStringContainsString('bridge.navigate(action)', $ui);
+        $this->assertStringNotContainsString('__vue__', $ui);
         $this->assertStringContainsString('#notif-dd .notification-item{display:none!important}', $ui);
         $this->assertStringNotContainsString('stockAlertCount', $ui);
     }

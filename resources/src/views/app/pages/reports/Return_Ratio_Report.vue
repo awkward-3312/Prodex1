@@ -107,10 +107,9 @@
 <script>
 import NProgress from "nprogress";
 import { mapGetters } from "vuex";
-import DateRangePicker from "vue2-daterange-picker";
-import "vue2-daterange-picker/dist/vue2-daterange-picker.css";
+import DateRangePicker from "@/components/DateRangePicker.vue";
 import moment from "moment";
-import VueApexCharts from "vue-apexcharts";
+import VueApexCharts from "vue3-apexcharts";
 import {
   formatPriceDisplay as formatPriceDisplayHelper,
   getPriceFormatSetting,
@@ -204,7 +203,7 @@ export default {
     }
   },
   mounted(){ this.updatePickerPlacement(); window.addEventListener('resize', this.updatePickerPlacement); },
-  beforeDestroy(){ window.removeEventListener('resize', this.updatePickerPlacement); },
+  beforeUnmount(){ window.removeEventListener('resize', this.updatePickerPlacement); },
   methods: {
     updatePickerPlacement(){ const isXs = window.matchMedia('(max-width: 576px)').matches; this.picker.opens = isXs ? 'center':'right'; this.picker.drops = 'auto'; },
     fmtDate(d){ return moment(d).format('YYYY-MM-DD'); },
