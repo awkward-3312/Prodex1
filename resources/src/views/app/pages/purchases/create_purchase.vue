@@ -1007,7 +1007,7 @@ export default {
 
     //----------------------------------------- Batch helpers (pharmacy) ------------\\
     add_batch(detail) {
-      if (!detail.batches) this.$set(detail, 'batches', []);
+      if (!detail.batches) (detail)['batches'] = [];
       detail.batches.push({
         batch_no: '',
         expiry_date: '',
@@ -1027,7 +1027,7 @@ export default {
         s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, '');
       }
       // store the string so mid-typing "0." isn't lost; total helpers already coerce via Number()
-      this.$set(batchRow, field, s);
+      (batchRow)[field] = s;
     },
     remove_batch(detail, idx) {
       if (!detail.batches) return;
@@ -1408,9 +1408,9 @@ export default {
         this.product.purchase_unit_operator_value = Number(response.data.purchase_unit_operator_value) || 1;
         this.product.is_imei = response.data.is_imei;
         this.product.imei_number = '';
-        this.$set(this.product, 'serial_numbers', []);
+        (this.product)['serial_numbers'] = [];
         this.product.is_batch_tracked = !!response.data.is_batch_tracked;
-        this.$set(this.product, 'batches', []);
+        (this.product)['batches'] = [];
         this.product.warehouse_location = response.data.warehouse_location
           ? (response.data.warehouse_location.name
               ? `${response.data.warehouse_location.code} - ${response.data.warehouse_location.name}`

@@ -507,7 +507,7 @@ export default {
           const b = batches[0];
           const base = this.baseQty(d);
           const batchQty = Number(b.qty);
-          if (Number.isFinite(base) && base > 0 && batchQty !== base) this.$set(b, "qty", base);
+          if (Number.isFinite(base) && base > 0 && batchQty !== base) (b)["qty"] = base;
         }
       }
     }
@@ -615,7 +615,7 @@ export default {
         // Asegura que el destino elegido esté en la lista aunque el routing haya cambiado.
         const grp = this.destinationGroups[String(ctx.from.id)] || [];
         if (!grp.some(d => String(d.id) === String(ctx.to.id))) {
-          this.$set(this.destinationGroups, String(ctx.from.id), grp.concat([{ id: ctx.to.id, name: ctx.to.name }]));
+          (this.destinationGroups)[String(ctx.from.id)] = grp.concat([{ id: ctx.to.id, name: ctx.to.name }]);
         }
 
         this.details = (data.details || []).map((d, i) => this.normalizeExistingLine(d, i));
@@ -668,8 +668,8 @@ export default {
           String(p.product_variant_id || 0) === String(d.product_variant_id || 0)
         );
         if (match) {
-          this.$set(d, "unit_operator", match.unit_operator || null);
-          this.$set(d, "unit_operator_value", match.unit_operator_value != null ? Number(match.unit_operator_value) : null);
+          (d)["unit_operator"] = match.unit_operator || null;
+          (d)["unit_operator_value"] = match.unit_operator_value != null ? Number(match.unit_operator_value) : null;
         }
       }
     },
@@ -846,12 +846,12 @@ export default {
     //------- lotes
     fetchBatchesForDetail(detail) {
       if (!detail || !detail.is_batch_tracked) return;
-      if (!("batches_loading" in detail)) this.$set(detail, "batches_loading", false);
-      if (!("available_batches" in detail)) this.$set(detail, "available_batches", []);
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!("batches_loading" in detail)) (detail)["batches_loading"] = false;
+      if (!("available_batches" in detail)) (detail)["available_batches"] = [];
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
       const locId = this.fromLocationId;
       const productId = detail.product_id || detail.id;
-      if (!locId || !productId) { this.$set(detail, "batches_loading", false); return; }
+      if (!locId || !productId) { (detail)["batches_loading"] = false; return; }
       const variantSeg = detail.product_variant_id != null && detail.product_variant_id !== "" ? detail.product_variant_id : 0;
 
       const existingQtyById = {};
@@ -861,7 +861,7 @@ export default {
         }
       }
 
-      this.$set(detail, "batches_loading", true);
+      (detail)["batches_loading"] = true;
       window.axios
         .get(`transfer-location/${locId}/batches/${productId}/${variantSeg}`, PXTL_META)
         .then(response => {
@@ -870,20 +870,20 @@ export default {
             ...ab,
             qty_available: (Number(ab.qty_available) || 0) + (existingQtyById[ab.id] || 0)
           }));
-          this.$set(detail, "available_batches", list);
+          (detail)["available_batches"] = list;
           if (Array.isArray(detail.batches)) {
             for (const b of detail.batches) {
               if (b && b.product_batch_id != null) {
                 const ab = list.find(x => x.id === b.product_batch_id);
-                this.$set(b, "qty_available", ab ? Number(ab.qty_available) || 0 : (existingQtyById[b.product_batch_id] || 0));
-                this.$set(b, "batch_no", ab ? ab.batch_no : (b.batch_no || ""));
-                this.$set(b, "expiry_date", ab ? ab.expiry_date : (b.expiry_date || null));
+                (b)["qty_available"] = ab ? Number(ab.qty_available) || 0 : (existingQtyById[b.product_batch_id] || 0);
+                (b)["batch_no"] = ab ? ab.batch_no : (b.batch_no || "");
+                (b)["expiry_date"] = ab ? ab.expiry_date : (b.expiry_date || null);
               }
             }
           }
         })
-        .catch(() => { this.$set(detail, "available_batches", []); })
-        .then(() => { this.$set(detail, "batches_loading", false); });
+        .catch(() => { (detail)["available_batches"] = []; })
+        .then(() => { (detail)["batches_loading"] = false; });
     },
 
     //------- cantidad (legacy create: clamp a stock)
@@ -894,18 +894,18 @@ export default {
         this.makeToast("warning", "Stock insuficiente en el origen.", "Aviso");
         q = Number(detail.stock);
       }
-      this.$set(detail, "quantity", q);
+      (detail)["quantity"] = q;
       this.recalc();
     },
     increment(detail) {
       const next = (Number(detail.quantity) || 0) + 1;
       if (next > Number(detail.stock)) { this.makeToast("warning", "Stock insuficiente en el origen.", "Aviso"); return; }
-      this.$set(detail, "quantity", next);
+      (detail)["quantity"] = next;
       this.recalc();
     },
     decrement(detail) {
       const next = (Number(detail.quantity) || 0) - 1;
-      if (next >= 1) { this.$set(detail, "quantity", next); this.recalc(); }
+      if (next >= 1) { (detail)["quantity"] = next; this.recalc(); }
     },
 
     //------- editar línea (modal)
@@ -944,8 +944,8 @@ export default {
       }
       // Cambiar de unidad recalcula la cantidad base requerida por los lotes.
       if (unit) {
-        this.$set(target, "unit_operator", unit.operator || null);
-        this.$set(target, "unit_operator_value", unit.operator_value != null ? Number(unit.operator_value) : null);
+        (target)["unit_operator"] = unit.operator || null;
+        (target)["unit_operator_value"] = unit.operator_value != null ? Number(unit.operator_value) : null;
       }
       if (Number(target.stock) < Number(target.quantity)) target.quantity = Number(target.stock);
       else target.quantity = target.quantity || 1;

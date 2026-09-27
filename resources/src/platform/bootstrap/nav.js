@@ -1,8 +1,9 @@
 // Wrappers de BootstrapVueNext de PRODEX, partidos por FAMILIA (fase 5B) para que cada entrypoint importe solo la que usa (login: `buttons` + `forms`).
 // `index.js` las reexporta todas (las vistas importan de `@/platform/bootstrap`); ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE5B.md.
 // Navegación: pestañas, desplegables y paginación.
-import { h, nextTick, getCurrentInstance, cloneVNode, Fragment } from 'vue';
+import { h, nextTick, cloneVNode, Fragment } from 'vue';
 import { pure, truthyAttr, toList } from './core.js';
+import { events } from '../events.js';
 import { BTabs as _BTabs, BTab as _BTab } from 'bootstrap-vue-next/components/BTabs';
 import { BDropdown as _BDropdown, BDropdownItem as _BDropdownItem, BDropdownDivider as _BDropdownDivider, BDropdownHeader as _BDropdownHeader, BDropdownForm as _BDropdownForm } from 'bootstrap-vue-next/components/BDropdown';
 import { BPagination as _BPagination } from 'bootstrap-vue-next/components/BPagination';
@@ -39,11 +40,10 @@ export const BDropdown = /*#__PURE__*/ pure({
   name: 'BDropdown',
   inheritAttrs: false,
   setup(_props, { attrs, slots }) {
-    // Eventos de raíz de BV2 (`this.$root.$on('bv::dropdown::show|hide')`): las listas con acciones por fila los usan para dar altura a la tabla
-    // mientras el menú está abierto (`showDropdown`). Se emiten con el mismo nombre.
-    const instance = getCurrentInstance();
-    const root = () => instance && instance.proxy && instance.proxy.$root;
-    const relay = (name) => (event) => { const r = root(); if (r && typeof r.$emit === 'function') r.$emit(name, event); };
+    // Antes emitidos en la raíz (`this.$root.$on('bv::dropdown::show|hide')`, API de eventos de instancia de Vue 2
+    // ya sin equivalente en Vue 3): las listas con acciones por fila los usan para dar altura a la tabla mientras
+    // el menú está abierto (`showDropdown`). Ahora van por el bus de plataforma (mismo nombre de evento).
+    const relay = (name) => (event) => events.$emit(name, event);
     return () => {
       const { right, dropup, id, class: cls, style, ...rest } = attrs;
       const end = truthyAttr(right) || right === true;

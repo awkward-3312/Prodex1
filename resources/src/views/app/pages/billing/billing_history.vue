@@ -131,7 +131,7 @@ export default {
       if (p >= 1 && p <= this.lastPage) this.fetchHistory(p);
     },
     async downloadInvoice(payment) {
-      this.$set(payment, '_downloading', true);
+      (payment)['_downloading'] = true;
       try {
         const response = await axios.get(`/api/billing/invoices/${payment.id}/download`, {
           responseType: 'blob',
@@ -148,17 +148,17 @@ export default {
       } catch (e) {
         this.makeToast("danger", this.$t('Download_failed') || 'Failed to download invoice.', "Error");
       }
-      this.$set(payment, '_downloading', false);
+      (payment)['_downloading'] = false;
     },
     async retryPayment(payment) {
-      this.$set(payment, '_retrying', true);
+      (payment)['_retrying'] = true;
       try {
         const { data } = await axios.post(`/api/billing/retry/${payment.id}`);
         this.$router.push(`/app/billing/checkout/${data.plan_id}?cycle=${data.billing_cycle}`);
       } catch (e) {
         this.makeToast("danger", e.response?.data?.message || "Cannot retry this payment.", "Error");
       }
-      this.$set(payment, '_retrying', false);
+      (payment)['_retrying'] = false;
     },
     formatDate(d) {
       if (!d) return "—";

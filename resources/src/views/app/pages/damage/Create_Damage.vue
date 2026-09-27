@@ -345,7 +345,7 @@ export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInp
           const lineQty = Number(d.quantity);
           const batchQty = Number(b.qty);
           if (Number.isFinite(lineQty) && lineQty > 0 && batchQty !== lineQty) {
-            this.$set(b, "qty", lineQty);
+            (b)["qty"] = lineQty;
           }
         }
       }
@@ -455,17 +455,17 @@ export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInp
     //----------------------------------------- Batch handling -------------------------\\
     fetch_batches_for_detail(detail) {
       if (!detail) return;
-      if (!("batches_loading" in detail)) this.$set(detail, "batches_loading", false);
-      if (!("available_batches" in detail)) this.$set(detail, "available_batches", []);
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!("batches_loading" in detail)) (detail)["batches_loading"] = false;
+      if (!("available_batches" in detail)) (detail)["available_batches"] = [];
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
       if (!detail.is_batch_tracked) {
-        this.$set(detail, "batches_loading", false);
+        (detail)["batches_loading"] = false;
         return;
       }
       const wid = this.damage && this.damage.warehouse_id;
       const productId = detail.product_id || detail.id;
       if (!wid || !productId) {
-        this.$set(detail, "batches_loading", false);
+        (detail)["batches_loading"] = false;
         return;
       }
       const variantSeg = (detail.product_variant_id != null && detail.product_variant_id !== "")
@@ -479,7 +479,7 @@ export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInp
           existingQtyById[b.product_batch_id] = (existingQtyById[b.product_batch_id] || 0) + (Number(b.qty) || 0);
         }
       }
-      this.$set(detail, "batches_loading", true);
+      (detail)["batches_loading"] = true;
       axios
         .get(`batches_for_damage/${productId}/${wid}/${variantSeg}`, { timeout: 15000 })
         .then(response => {
@@ -489,22 +489,22 @@ export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInp
                 qty_available: (Number(ab.qty_available) || 0) + (existingQtyById[ab.id] || 0),
               }))
             : [];
-          this.$set(detail, "available_batches", list);
+          (detail)["available_batches"] = list;
           if (Array.isArray(detail.batches)) {
             for (const b of detail.batches) {
               if (b && b.product_batch_id != null) {
                 const ab = list.find(x => x.id === b.product_batch_id);
-                this.$set(b, "qty_available", ab ? (Number(ab.qty_available) || 0) : (existingQtyById[b.product_batch_id] || 0));
+                (b)["qty_available"] = ab ? (Number(ab.qty_available) || 0) : (existingQtyById[b.product_batch_id] || 0);
               }
             }
           }
         })
-        .catch(() => { this.$set(detail, "available_batches", []); })
-        .then(() => { this.$set(detail, "batches_loading", false); });
+        .catch(() => { (detail)["available_batches"] = []; })
+        .then(() => { (detail)["batches_loading"] = false; });
     },
 
     add_batch_to_detail(detail) {
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
       detail.batches.push({
         product_batch_id: null,
         batch_no: "",
@@ -524,15 +524,15 @@ export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInp
       const row = detail.batches[idx];
       if (!row) return;
       const ab = list.find(x => x.id === batchId);
-      this.$set(row, "product_batch_id", ab ? ab.id : null);
-      this.$set(row, "batch_no", ab ? ab.batch_no : "");
-      this.$set(row, "expiry_date", ab ? ab.expiry_date : null);
-      this.$set(row, "qty_available", ab ? Number(ab.qty_available) || 0 : 0);
+      (row)["product_batch_id"] = ab ? ab.id : null;
+      (row)["batch_no"] = ab ? ab.batch_no : "";
+      (row)["expiry_date"] = ab ? ab.expiry_date : null;
+      (row)["qty_available"] = ab ? Number(ab.qty_available) || 0 : 0;
     },
 
     on_batch_qty_input(b, val) {
       const num = parseFloat(String(val).replace(",", "."));
-      this.$set(b, "qty", Number.isFinite(num) ? num : 0);
+      (b)["qty"] = Number.isFinite(num) ? num : 0;
     },
 
     batch_total_qty(detail) {
@@ -637,10 +637,10 @@ export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInp
         this.product.name = response.data.name;
         this.product.type = "sub"; // always subtract for damage
         this.product.unit = response.data.unit;
-        this.$set(this.product, "is_batch_tracked", !!response.data.is_batch_tracked);
-        this.$set(this.product, "batches", []);
-        this.$set(this.product, "available_batches", []);
-        this.$set(this.product, "batches_loading", false);
+        (this.product)["is_batch_tracked"] = !!response.data.is_batch_tracked;
+        (this.product)["batches"] = [];
+        (this.product)["available_batches"] = [];
+        (this.product)["batches_loading"] = false;
         this.add_product();
       });
     },

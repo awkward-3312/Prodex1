@@ -2119,7 +2119,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
             if (!arr.map(String).includes(String(nid))) {
               arr.push(nid);
             }
-            this.$set(this.product, "assigned_category_ids", arr);
+            (this.product)["assigned_category_ids"] = arr;
             this.syncLegacyCategoryFields();
           } else {
             await this.refreshCategories();
@@ -2133,7 +2133,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
               if (!arr.map(String).includes(String(match.id))) {
                 arr.push(match.id);
               }
-              this.$set(this.product, "assigned_category_ids", arr);
+              (this.product)["assigned_category_ids"] = arr;
               this.syncLegacyCategoryFields();
             }
           }
@@ -2405,7 +2405,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
             this.warehouse_locations.push(newLoc);
 
             if (!this.locationsByWarehouse[wid]) {
-              this.$set(this.locationsByWarehouse, wid, []);
+              (this.locationsByWarehouse)[wid] = [];
             }
             this.locationsByWarehouse[wid].push({ id: newLoc.id, label });
 
@@ -2451,7 +2451,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
       this.productGalleryItems.splice(index, 1);
       this.touchProductGalleryOrder();
       if (!this.productGalleryItems.some(r => r.is_main) && this.productGalleryItems.length) {
-        this.$set(this.productGalleryItems[0], "is_main", true);
+        (this.productGalleryItems[0])["is_main"] = true;
       }
     },
 
@@ -2470,7 +2470,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
       });
       this.touchProductGalleryOrder();
       if (!this.productGalleryItems.some(r => r.is_main) && this.productGalleryItems.length) {
-        this.$set(this.productGalleryItems[0], "is_main", true);
+        (this.productGalleryItems[0])["is_main"] = true;
       }
       e.target.value = "";
     },
@@ -2547,8 +2547,8 @@ export default { directives: { 'b-tooltip': vBTooltip },
         : [];
       const firstCat = c.length ? c[0] : "";
       const firstSub = s.length ? s[0] : "";
-      this.$set(this.product, "category_id", firstCat === "" || firstCat == null ? "" : firstCat);
-      this.$set(this.product, "sub_category_id", firstSub === "" || firstSub == null ? "" : firstSub);
+      (this.product)["category_id"] = firstCat === "" || firstCat == null ? "" : firstCat;
+      (this.product)["sub_category_id"] = firstSub === "" || firstSub == null ? "" : firstSub;
     },
 
     pruneInvalidSubcategories() {
@@ -2562,7 +2562,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
         return sc && catSet.has(String(sc.category_id));
       });
       if (filtered.length !== subs.length) {
-        this.$set(this.product, "assigned_subcategory_ids", filtered);
+        (this.product)["assigned_subcategory_ids"] = filtered;
       }
     },
 
@@ -2701,8 +2701,8 @@ export default { directives: { 'b-tooltip': vBTooltip },
         event.target.value = "";
         return;
       }
-      this.$set(variant, "imageFile", file);
-      this.$set(variant, "imagePreview", URL.createObjectURL(file));
+      (variant)["imageFile"] = file;
+      (variant)["imagePreview"] = URL.createObjectURL(file);
     },
 
     //------ Toast
@@ -2752,10 +2752,10 @@ export default { directives: { 'b-tooltip': vBTooltip },
             // 2) initialize product.warehouses so each key exists reactively
             response.data.warehouses.forEach(wh => {
               // each wh has { id, name, qte, manage_stock }
-              this.$set(this.product.warehouses, wh.id, {
+              (this.product.warehouses)[wh.id] = {
                 qte:          wh.qte,
                 warehouse_location_id: null,
-              })
+              }
             })
 
           this.isLoading = false;
@@ -2962,13 +2962,13 @@ export default { directives: { 'b-tooltip': vBTooltip },
             (!this.product.assigned_category_ids || !this.product.assigned_category_ids.length) &&
             p.category_id
           ) {
-            this.$set(this.product, "assigned_category_ids", [p.category_id]);
+            (this.product)["assigned_category_ids"] = [p.category_id];
           }
           if (
             (!this.product.assigned_subcategory_ids || !this.product.assigned_subcategory_ids.length) &&
             p.sub_category_id
           ) {
-            this.$set(this.product, "assigned_subcategory_ids", [p.sub_category_id]);
+            (this.product)["assigned_subcategory_ids"] = [p.sub_category_id];
           }
           this.syncLegacyCategoryFields();
           this.product.TaxNet = p.TaxNet != null ? p.TaxNet : this.product.TaxNet;

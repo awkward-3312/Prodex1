@@ -724,7 +724,7 @@ export default { components: { BModal },
       // Avoid editing when zero due
       if (Number(this.paymentForm.amountDue) === 0) val = 0;
       const dec = this.priceDecimals;
-      this.$set ? this.$set(this.paymentLines[idx], 'amount', Number(val.toFixed ? val.toFixed(dec) : val)) : (this.paymentLines[idx].amount = val);
+      this.$set ? (this.paymentLines[idx])['amount'] = Number(val.toFixed ? val.toFixed(dec) : val) : (this.paymentLines[idx].amount = val);
     },
     async loadStripePayment(lineIndex) {
       try {

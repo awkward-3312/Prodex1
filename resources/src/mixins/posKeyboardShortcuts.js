@@ -398,14 +398,14 @@ export default {
         })
       }).then(result=>{
         if(result.isDenied){
-          this.$set(this,"sarFiscalSaleData",{});
+          (this)["sarFiscalSaleData"] = {};
           this.updateSarSaleButton();
           return;
         }
         if(result.value){
           const clean={};
           Object.keys(result.value).forEach(k=>{if(String(result.value[k]||"").trim()!=="")clean[k]=String(result.value[k]).trim();});
-          this.$set(this,"sarFiscalSaleData",clean);
+          (this)["sarFiscalSaleData"] = clean;
           this.updateSarSaleButton();
         }
       });
@@ -414,7 +414,7 @@ export default {
 
   mounted() {
     ensurePosAuxiliaryStyles();
-    if(this.sarFiscalSaleData===undefined)this.$set(this,"sarFiscalSaleData",{});
+    if(this.sarFiscalSaleData===undefined)(this)["sarFiscalSaleData"] = {};
 
     this._posShortcutsHandler=e=>{
       if(!posShortcutsEnabled())return;
@@ -461,7 +461,7 @@ export default {
           try{
             const url=response&&response.config?String(response.config.url||""):"";
             if(url.indexOf("pos/create_pos")!==-1&&response.data&&response.data.success===true){
-              this.$set(this,"sarFiscalSaleData",{});
+              (this)["sarFiscalSaleData"] = {};
               this.updateSarSaleButton();
             }
           }catch(e){}

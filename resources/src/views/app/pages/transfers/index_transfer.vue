@@ -237,6 +237,7 @@
 
 <script>
 import { BSidebar, vBToggle, BButton, BCol, BDropdown, BDropdownItem, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
+import { events } from "@/platform";
 import { mapActions, mapGetters } from "vuex";
 import { getPriceDecimals } from "../../../../utils/priceFormat";
 import NProgress from "nprogress";
@@ -277,10 +278,12 @@ export default { directives: { 'b-toggle': vBToggle }, components: { BFormGroup,
   },
 
   mounted() {
-    this.$root.$on("bv::dropdown::show", bvEvent => {
+    // Antes `this.$root.$on(...)` (API de eventos de instancia de Vue 2, sin equivalente en Vue 3): ahora por el
+    // bus de plataforma (mismo nombre de evento, emitido por platform/bootstrap/nav.js).
+    events.$on("bv::dropdown::show", bvEvent => {
       this.showDropdown = true;
     });
-    this.$root.$on("bv::dropdown::hide", bvEvent => {
+    events.$on("bv::dropdown::hide", bvEvent => {
       this.showDropdown = false;
     });
   },

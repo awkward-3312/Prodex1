@@ -906,7 +906,7 @@ export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInp
         };
       });
       if (!this.isEdit) {
-        this.checklistItems.forEach(it => { this.$set(this.checklistState, it.id, false); });
+        this.checklistItems.forEach(it => { (this.checklistState)[it.id] = false; });
       }
     },
     async loadJobIfNeeded() {
@@ -942,7 +942,7 @@ export default { components: { BForm, BFormGroup, BFormInvalidFeedback, BFormInp
       this.form.warranty_days = Number(job.warranty_days) || 30;
 
       (data.checklist || []).forEach(row => {
-        if (row.item_id) this.$set(this.checklistState, row.item_id, !!row.is_completed);
+        if (row.item_id) (this.checklistState)[row.item_id] = !!row.is_completed;
       });
 
       this.form.items = (data.items || []).map(it => ({

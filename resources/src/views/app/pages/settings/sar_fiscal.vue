@@ -428,7 +428,7 @@ export default {
     draftFor(card) { return this.drafts[card.branch_id] || { establishment_code: "", point_code: "", drawer_ids: [] }; },
     setDraft(card, key, value) {
       const d = this.drafts[card.branch_id] || { establishment_code: "", point_code: "", drawer_ids: [] };
-      this.$set(this.drafts, card.branch_id, Object.assign({}, d, { [key]: value }));
+      (this.drafts)[card.branch_id] = Object.assign({}, d, { [key]: value });
     },
     seedDrafts() {
       const next = {};
@@ -457,7 +457,7 @@ export default {
       const i = ids.indexOf(drawerId);
       if (checked && i === -1) ids.push(drawerId);
       if (!checked && i !== -1) ids.splice(i, 1);
-      this.$set(this.drafts, card.branch_id, Object.assign({}, d, { drawer_ids: ids }));
+      (this.drafts)[card.branch_id] = Object.assign({}, d, { drawer_ids: ids });
     },
     drawersDirty(card) {
       const a = this.draftFor(card).drawer_ids.slice().sort();

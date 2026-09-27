@@ -121,7 +121,7 @@ export default {
       return v.toFixed(this.decimals);
     },
     addRow() {
-      if (!Array.isArray(this.detail.batches)) this.$set(this.detail, "batches", []);
+      if (!Array.isArray(this.detail.batches)) (this.detail)["batches"] = [];
       this.detail.batches.push({
         product_batch_id: null,
         batch_no: "",
@@ -139,14 +139,14 @@ export default {
       const row = this.detail.batches[idx];
       if (!row) return;
       const ab = list.find(x => x.id === batchId);
-      this.$set(row, "product_batch_id", ab ? ab.id : null);
-      this.$set(row, "batch_no", ab ? ab.batch_no : "");
-      this.$set(row, "expiry_date", ab ? ab.expiry_date : null);
-      this.$set(row, "qty_available", ab ? Number(ab.qty_available) || 0 : 0);
+      (row)["product_batch_id"] = ab ? ab.id : null;
+      (row)["batch_no"] = ab ? ab.batch_no : "";
+      (row)["expiry_date"] = ab ? ab.expiry_date : null;
+      (row)["qty_available"] = ab ? Number(ab.qty_available) || 0 : 0;
     },
     qtyInput(b, val) {
       const num = parseFloat(String(val).replace(",", "."));
-      this.$set(b, "qty", Number.isFinite(num) ? num : 0);
+      (b)["qty"] = Number.isFinite(num) ? num : 0;
     },
     expiryClass(dateStr) {
       if (!dateStr) return "is-none";

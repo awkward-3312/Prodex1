@@ -472,13 +472,13 @@ export default {
     },
     onCell(row, key, val) {
       const num = parseFloat(String(val).replace(",", "."));
-      this.$set(row, key, Number.isFinite(num) ? num : "");
+      (row)[key] = Number.isFinite(num) ? num : "";
     },
     fillAllGood() {
       for (const r of this.rows) {
-        this.$set(r, "_good", Number(r.quantity_remaining) || 0);
-        this.$set(r, "_defective", "");
-        this.$set(r, "_missing", "");
+        (r)["_good"] = Number(r.quantity_remaining) || 0;
+        (r)["_defective"] = "";
+        (r)["_missing"] = "";
       }
     },
     tokenKey() { return TOKEN_PREFIX + this.transferId; },

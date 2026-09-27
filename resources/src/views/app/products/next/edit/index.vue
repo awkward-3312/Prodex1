@@ -1033,7 +1033,7 @@ export default {
       this.product_images.splice(index, 1);
       this.touchGalleryOrder();
       if (!this.product_images.some(r => r && r.is_main) && this.product_images.length) {
-        this.$set(this.product_images[0], "is_main", true);
+        (this.product_images[0])["is_main"] = true;
       }
     },
     onGalleryExtraSelected(e) {
@@ -1052,7 +1052,7 @@ export default {
       });
       this.touchGalleryOrder();
       if (!this.product_images.some(r => r && r.is_main) && this.product_images.length) {
-        this.$set(this.product_images[0], "is_main", true);
+        (this.product_images[0])["is_main"] = true;
       }
       e.target.value = "";
     },
@@ -1121,8 +1121,8 @@ export default {
       const s = Array.isArray(this.product.assigned_subcategory_ids) ? this.product.assigned_subcategory_ids : [];
       const firstCat = c.length ? c[0] : "";
       const firstSub = s.length ? s[0] : "";
-      this.$set(this.product, "category_id", firstCat === "" || firstCat == null ? "" : firstCat);
-      this.$set(this.product, "sub_category_id", firstSub === "" || firstSub == null ? "" : firstSub);
+      (this.product)["category_id"] = firstCat === "" || firstCat == null ? "" : firstCat;
+      (this.product)["sub_category_id"] = firstSub === "" || firstSub == null ? "" : firstSub;
     },
     pruneInvalidSubcategories() {
       const catSet = new Set((this.product.assigned_category_ids || []).map(id => String(id)));
@@ -1133,7 +1133,7 @@ export default {
         return sc && catSet.has(String(sc.category_id));
       });
       if (filtered.length !== subs.length) {
-        this.$set(this.product, "assigned_subcategory_ids", filtered);
+        (this.product)["assigned_subcategory_ids"] = filtered;
       }
     },
 
@@ -1184,9 +1184,9 @@ export default {
           if (newLoc && newLoc.id) {
             const wid = newLoc.warehouse_id;
             const label = newLoc.name ? `${newLoc.code} - ${newLoc.name}` : newLoc.code;
-            if (!this.locationsByWarehouse[wid]) this.$set(this.locationsByWarehouse, wid, []);
+            if (!this.locationsByWarehouse[wid]) (this.locationsByWarehouse)[wid] = [];
             this.locationsByWarehouse[wid].push({ id: newLoc.id, label, is_active: true });
-            this.$set(this.warehouse_location_map, wid, newLoc.id);
+            (this.warehouse_location_map)[wid] = newLoc.id;
           }
           this.quickLocOpen = false;
           this.makeToast("success", this.$t("Successfully_Created"), this.$t("Success"));
@@ -1269,8 +1269,8 @@ export default {
         event.target.value = "";
         return;
       }
-      this.$set(variant, "imageFile", file);
-      this.$set(variant, "imagePreview", URL.createObjectURL(file));
+      (variant)["imageFile"] = file;
+      (variant)["imagePreview"] = URL.createObjectURL(file);
     },
 
     GetElements() {
@@ -1312,27 +1312,27 @@ export default {
             existing[r.warehouse_id] = r.warehouse_location_id || null;
           });
           this.warehouses.forEach(wh => {
-            this.$set(this.warehouse_location_map, wh.id, existing[wh.id] || null);
+            (this.warehouse_location_map)[wh.id] = existing[wh.id] || null;
           });
           this.categories = response.data.categories;
           this.allSubcategories = response.data.all_subcategories || [];
           if (!Array.isArray(this.product.assigned_category_ids)) {
-            this.$set(this.product, "assigned_category_ids", []);
+            (this.product)["assigned_category_ids"] = [];
           }
           if (!Array.isArray(this.product.assigned_subcategory_ids)) {
-            this.$set(this.product, "assigned_subcategory_ids", []);
+            (this.product)["assigned_subcategory_ids"] = [];
           }
           if (
             (!this.product.assigned_category_ids || !this.product.assigned_category_ids.length) &&
             this.product.category_id
           ) {
-            this.$set(this.product, "assigned_category_ids", [this.product.category_id]);
+            (this.product)["assigned_category_ids"] = [this.product.category_id];
           }
           if (
             (!this.product.assigned_subcategory_ids || !this.product.assigned_subcategory_ids.length) &&
             this.product.sub_category_id
           ) {
-            this.$set(this.product, "assigned_subcategory_ids", [this.product.sub_category_id]);
+            (this.product)["assigned_subcategory_ids"] = [this.product.sub_category_id];
           }
           this.$nextTick(() => {
             this.pruneInvalidSubcategories();

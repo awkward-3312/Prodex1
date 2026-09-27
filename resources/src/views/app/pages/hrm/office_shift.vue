@@ -377,25 +377,25 @@ export default {
     applyBaseSchedule() {
       if (!this.baseSchedule.in || !this.baseSchedule.out || !this.selectedDays.length) return;
       this.selectedDays.forEach(dayKey => {
-        this.$set(this.office_shift, dayKey + '_in', this.baseSchedule.in);
-        this.$set(this.office_shift, dayKey + '_out', this.baseSchedule.out);
+        (this.office_shift)[dayKey + '_in'] = this.baseSchedule.in;
+        (this.office_shift)[dayKey + '_out'] = this.baseSchedule.out;
       });
     },
     markSelectedDaysOff() {
       this.selectedDays.forEach(dayKey => {
-        this.$set(this.office_shift, dayKey + '_in', "");
-        this.$set(this.office_shift, dayKey + '_out', "");
+        (this.office_shift)[dayKey + '_in'] = "";
+        (this.office_shift)[dayKey + '_out'] = "";
       });
     },
     isDayWorking(dayKey) { return !!(this.office_shift[dayKey + '_in'] || this.office_shift[dayKey + '_out']); },
     setDayWorking(dayKey, working) {
       if (!working) {
-        this.$set(this.office_shift, dayKey + '_in', "");
-        this.$set(this.office_shift, dayKey + '_out', "");
+        (this.office_shift)[dayKey + '_in'] = "";
+        (this.office_shift)[dayKey + '_out'] = "";
         return;
       }
-      if (!this.office_shift[dayKey + '_in'] && this.baseSchedule.in) this.$set(this.office_shift, dayKey + '_in', this.baseSchedule.in);
-      if (!this.office_shift[dayKey + '_out'] && this.baseSchedule.out) this.$set(this.office_shift, dayKey + '_out', this.baseSchedule.out);
+      if (!this.office_shift[dayKey + '_in'] && this.baseSchedule.in) (this.office_shift)[dayKey + '_in'] = this.baseSchedule.in;
+      if (!this.office_shift[dayKey + '_out'] && this.baseSchedule.out) (this.office_shift)[dayKey + '_out'] = this.baseSchedule.out;
     },
     hasIncompleteDay() {
       return this.days.some(day => {

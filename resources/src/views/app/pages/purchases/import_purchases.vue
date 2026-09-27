@@ -987,7 +987,7 @@ export default {
     //------------------------------ Batch handling -------------------------\\
     add_batch(row) {
       if (!Array.isArray(row.batches)) {
-        this.$set(row, "batches", []);
+        (row)["batches"] = [];
       }
       row.batches.push({
         batch_no: "",
@@ -1026,7 +1026,7 @@ export default {
       if (firstDot !== -1) {
         s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
       }
-      this.$set(batchRow, field, s);
+      (batchRow)[field] = s;
     },
 
     //------------------------------ Serial handling -------------------------\\

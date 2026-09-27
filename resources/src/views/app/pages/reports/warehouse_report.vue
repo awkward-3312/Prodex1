@@ -534,7 +534,6 @@ export default {
     apexchart: VueApexCharts,
     StatTile: {
       name: "StatTile",
-      compatConfig: { MODE: 3 },
       compilerOptions: { whitespace: 'condense' },
       props: { icon:String, label:String, sub:String, value:[String,Number], theme:{type:String,default:'blue'} },
       template: `<div :class="['stat-card', 'theme-' + theme, 'shadow-soft', 'rounded-xl']"><div class="stat-inner"><div class="stat-icon"><lucide-icon :name="icon" /></div><div class="stat-content"><div class="stat-label">{{ label }}</div><div v-if="sub" class="stat-sub text-muted">{{ sub }}</div><div class="stat-value">{{ value }}</div></div></div></div>`

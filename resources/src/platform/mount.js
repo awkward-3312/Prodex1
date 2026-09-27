@@ -1,6 +1,6 @@
-// Bootstrap real de Vue 3 (reemplaza `platform/compat/vue-router.js`, retirado). `@vue/compat` sigue activo
-// (MODE 2, ver `platform/vue-compat.js`) para los COMPONENTES que aún no se migraron, pero el ARRANQUE de cada
-// entrypoint ya no depende de su emulación de `new Vue()`: usa `createApp(...)` real.
+// Bootstrap real de Vue 3 puro (`vue`, ya no `@vue/compat`, retirado por completo — ver
+// docs/architecture/VUE3_PURE_RUNTIME.md). Reemplaza `platform/compat/vue-router.js` (también retirado, era la
+// emulación de `new Vue()`).
 //
 // Cada entrypoint recibe su PROPIA instancia de `app` (nunca comparten registro global): `app.component/
 // app.directive/app.mixin/app.use/app.config.globalProperties` sustituyen a `Vue.component/Vue.directive/

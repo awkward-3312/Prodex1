@@ -150,7 +150,7 @@
 
 <script>
 import { BModal, BAlert, BButton, BCol, BRow, BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BFormCheckbox } from "@/platform/bootstrap";
-import { modals, notifications, confirmDialog } from "@/platform";
+import { modals, notifications, confirmDialog, events } from "@/platform";
 import { mapGetters } from "vuex";
 import NProgress from "nprogress";
 
@@ -193,10 +193,12 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
   },
 
   mounted() {
-    this.$root.$on("bv::dropdown::show", () => {
+    // Antes `this.$root.$on(...)` (API de eventos de instancia de Vue 2, sin equivalente en Vue 3): ahora por el
+    // bus de plataforma (mismo nombre de evento, emitido por platform/bootstrap/nav.js).
+    events.$on("bv::dropdown::show", () => {
       this.showDropdown = true;
     });
-    this.$root.$on("bv::dropdown::hide", () => {
+    events.$on("bv::dropdown::hide", () => {
       this.showDropdown = false;
     });
   },

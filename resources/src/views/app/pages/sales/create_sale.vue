@@ -1915,7 +1915,7 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
       if (Array.isArray(this.details)) {
         for (const d of this.details) {
           if (d && d.is_batch_tracked) {
-            this.$set(d, "batches", []);
+            (d)["batches"] = [];
             this.fetch_batches_for_detail(d);
           }
         }
@@ -2070,48 +2070,48 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
       if (!detail) return;
       // Ensure all batch-related fields are reactive on the detail (some are added post-push via
       // direct assignment, which in Vue 2 is non-reactive — $set fixes that).
-      if (!("batches_loading" in detail)) this.$set(detail, "batches_loading", false);
-      if (!("available_batches" in detail)) this.$set(detail, "available_batches", []);
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!("batches_loading" in detail)) (detail)["batches_loading"] = false;
+      if (!("available_batches" in detail)) (detail)["available_batches"] = [];
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
 
       if (!detail.is_batch_tracked) {
-        this.$set(detail, "batches_loading", false);
+        (detail)["batches_loading"] = false;
         return;
       }
       const wid = this.sale && this.sale.warehouse_id;
       if (!wid || !detail.product_id) {
         // Can't fetch yet — make sure we're not stuck in loading.
-        this.$set(detail, "batches_loading", false);
+        (detail)["batches_loading"] = false;
         return;
       }
       const variantSeg = (detail.product_variant_id != null && detail.product_variant_id !== "")
         ? detail.product_variant_id
         : 0;
-      this.$set(detail, "batches_loading", true);
+      (detail)["batches_loading"] = true;
       axios
         .get(`batches_for_sale/${detail.product_id}/${wid}/${variantSeg}`, { timeout: 15000 })
         .then(response => {
           const list = (response && response.data && Array.isArray(response.data.batches))
             ? response.data.batches
             : [];
-          this.$set(detail, "available_batches", list);
-          if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+          (detail)["available_batches"] = list;
+          if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
           // Seed a first empty batch row if we have availability and the row is empty.
           if (detail.batches.length === 0 && list.length > 0) {
             this.add_batch_to_detail(detail);
           }
         })
         .catch(() => {
-          this.$set(detail, "available_batches", []);
+          (detail)["available_batches"] = [];
         })
         .then(() => {
           // finally-equivalent: always clear the loading flag, even if unexpected errors slip through.
-          this.$set(detail, "batches_loading", false);
+          (detail)["batches_loading"] = false;
         });
     },
 
     add_batch_to_detail(detail) {
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
       detail.batches.push({
         product_batch_id: null,
         batch_no: "",
@@ -2150,7 +2150,7 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
       if (firstDot !== -1) {
         s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
       }
-      this.$set(batchRow, "qty", s);
+      (batchRow)["qty"] = s;
     },
 
     batch_total_qty(detail) {
@@ -2789,7 +2789,7 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
         this.product.sale_unit_id = response.data.sale_unit_id;
         this.product.is_imei = response.data.is_imei;
         this.product.imei_number = '';
-        this.$set(this.product, "serial_numbers", []);
+        (this.product)["serial_numbers"] = [];
         this.product.warehouse_location = response.data.warehouse_location
           ? (response.data.warehouse_location.name
               ? `${response.data.warehouse_location.code} - ${response.data.warehouse_location.name}`
@@ -2801,10 +2801,10 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
         // Multi-Pack Selling: attach available packs and pre-select the default.
         const packs = response.data.packs || [];
         const defPack = packs.find(p => p.is_default) || null;
-        this.$set(this.product, "packs", packs);
-        this.$set(this.product, "product_pack_id", defPack ? defPack.id : null);
-        this.$set(this.product, "pack_multiplier", 1);
-        this.$set(this.product, "pack_name", defPack ? defPack.name : null);
+        (this.product)["packs"] = packs;
+        (this.product)["product_pack_id"] = defPack ? defPack.id : null;
+        (this.product)["pack_multiplier"] = 1;
+        (this.product)["pack_name"] = defPack ? defPack.name : null;
 
         // ensure min price respected
         if (this.product.Net_price < (this.product.min_price || 0)) {
@@ -2815,10 +2815,10 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
         // Reset batch data for this product; will be hydrated after push if batch-tracked.
         // Use $set so Vue 2 tracks these fields reactively even though this.product was
         // reassigned to a bare {} in SearchProduct (direct assignment afterwards is non-reactive).
-        this.$set(this.product, "is_batch_tracked", !!response.data.is_batch_tracked);
-        this.$set(this.product, "batches", []);
-        this.$set(this.product, "available_batches", []);
-        this.$set(this.product, "batches_loading", false);
+        (this.product)["is_batch_tracked"] = !!response.data.is_batch_tracked;
+        (this.product)["batches"] = [];
+        (this.product)["available_batches"] = [];
+        (this.product)["batches_loading"] = false;
 
         this.add_product();
         this.CalculTotal();

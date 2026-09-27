@@ -1331,9 +1331,9 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
           qty_available: 0, // will be filled in by fetch_batches_for_detail
           qty: Number(b.qty) || 0,
         }));
-        this.$set(d, "batches", normalized);
-        this.$set(d, "available_batches", []);
-        this.$set(d, "batches_loading", false);
+        (d)["batches"] = normalized;
+        (d)["available_batches"] = [];
+        (d)["batches_loading"] = false;
         this.fetch_batches_for_detail(d);
       }
     },
@@ -1345,7 +1345,7 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
       const variantSeg = (detail.product_variant_id != null && detail.product_variant_id !== "")
         ? detail.product_variant_id
         : 0;
-      this.$set(detail, "batches_loading", true);
+      (detail)["batches_loading"] = true;
       // Snapshot the prefilled batches before we rebuild availability.
       const existing = Array.isArray(detail.batches) ? detail.batches.slice() : [];
       const existingQtyById = {};
@@ -1389,7 +1389,7 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
               });
             }
           }
-          this.$set(detail, "available_batches", merged);
+          (detail)["available_batches"] = merged;
           // Rebuild each prefilled batch row with the fresh availability number.
           const rebuilt = existing.map(b => {
             const match = merged.find(m => m.id === b.product_batch_id);
@@ -1401,17 +1401,17 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
               qty: Number(b.qty) || 0,
             };
           });
-          this.$set(detail, "batches", rebuilt);
-          this.$set(detail, "batches_loading", false);
+          (detail)["batches"] = rebuilt;
+          (detail)["batches_loading"] = false;
         })
         .catch(() => {
-          this.$set(detail, "available_batches", []);
-          this.$set(detail, "batches_loading", false);
+          (detail)["available_batches"] = [];
+          (detail)["batches_loading"] = false;
         });
     },
 
     add_batch_to_detail(detail) {
-      if (!Array.isArray(detail.batches)) this.$set(detail, "batches", []);
+      if (!Array.isArray(detail.batches)) (detail)["batches"] = [];
       const used = this.batch_total_qty(detail);
       const remaining = Math.max(0, (Number(detail.quantity) || 0) - used);
       detail.batches.push({
@@ -1452,7 +1452,7 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
       if (firstDot !== -1) {
         s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
       }
-      this.$set(batchRow, "qty", s);
+      (batchRow)["qty"] = s;
     },
 
     batch_total_qty(detail) {
@@ -2018,7 +2018,7 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
         this.product.sale_unit_id = response.data.sale_unit_id;
         this.product.is_imei = response.data.is_imei;
         this.product.imei_number = '';
-        this.$set(this.product, 'serial_numbers', []);
+        (this.product)['serial_numbers'] = [];
         this.product.warehouse_location = response.data.warehouse_location
           ? (response.data.warehouse_location.name
               ? `${response.data.warehouse_location.code} - ${response.data.warehouse_location.name}`
@@ -2032,10 +2032,10 @@ export default { components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedba
         // Multi-Pack Selling: attach available packs and pre-select the default.
         const packs = response.data.packs || [];
         const defPack = packs.find(p => p.is_default) || null;
-        this.$set(this.product, "packs", packs);
-        this.$set(this.product, "product_pack_id", defPack ? defPack.id : null);
-        this.$set(this.product, "pack_multiplier", 1);
-        this.$set(this.product, "pack_name", defPack ? defPack.name : null);
+        (this.product)["packs"] = packs;
+        (this.product)["product_pack_id"] = defPack ? defPack.id : null;
+        (this.product)["pack_multiplier"] = 1;
+        (this.product)["pack_name"] = defPack ? defPack.name : null;
 
         // ensure min price respected on default
         if (this.product.Net_price < (this.product.min_price || 0)) {

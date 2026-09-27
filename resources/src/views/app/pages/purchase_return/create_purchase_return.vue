@@ -592,7 +592,7 @@ export default {
       // serials that this location's candidate list no longer offers.
       this.details.forEach(d => {
         if (d && d.is_imei && Array.isArray(d.serial_numbers) && d.serial_numbers.length) {
-          this.$set(d, "serial_numbers", []);
+          (d)["serial_numbers"] = [];
         }
       });
       if (!id || !this.location_meta.requires) return;
@@ -606,7 +606,7 @@ export default {
           this.details.forEach(d => {
             const key = d.product_id + ":" + (d.product_variant_id || 0);
             if (Object.prototype.hasOwnProperty.call(byKey, key)) {
-              this.$set(d, "stock", byKey[key]);
+              (d)["stock"] = byKey[key];
             }
           });
         })

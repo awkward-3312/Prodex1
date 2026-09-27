@@ -590,7 +590,6 @@ import {
 
 const StatTile = {
   name: "StatTile",
-  compatConfig: { MODE: 3 },
   compilerOptions: { whitespace: 'condense' },
   props: { 
     icon: String, 

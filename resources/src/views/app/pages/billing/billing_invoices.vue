@@ -133,7 +133,7 @@ export default {
     },
     capitalize(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ""; },
     async downloadPdf(inv) {
-      this.$set(inv, '_downloading', true);
+      (inv)['_downloading'] = true;
       try {
         const response = await axios.get("/api/billing/invoices/" + inv.id + "/download", {
           responseType: "blob",
@@ -158,7 +158,7 @@ export default {
         }
         this.makeToast("danger", msg, "Error");
       }
-      this.$set(inv, '_downloading', false);
+      (inv)['_downloading'] = false;
     },
   },
 };

@@ -34,7 +34,7 @@ export default {
     accumulate(data) {
       ['processed', 'created', 'updated', 'failed', 'skipped', 'imported'].forEach(key => {
         if (typeof data[key] === 'number') {
-          this.$set(this.counters, key, (this.counters[key] || 0) + data[key]);
+          (this.counters)[key] = (this.counters[key] || 0) + data[key];
         }
       });
       if (Array.isArray(data.errors) && data.errors.length) {
