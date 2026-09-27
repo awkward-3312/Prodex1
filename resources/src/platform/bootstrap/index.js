@@ -4,9 +4,8 @@
 // registran localmente (`components: { BButton }`). Cada familia vive en su módulo (fase 5B) y los entrypoints pequeños (login) importan
 // directamente el de la familia que usan (`@/platform/bootstrap/buttons`, `/forms`) para no depender del tree-shaking del barril.
 //
-// BootstrapVueNext es Vue 3 puro. Bajo @vue/compat MODE 2 hay que excluirlo de los comportamientos de Vue 2 (`v-model` value/input, class/style de
-// atributos, `$listeners`…): cada componente exportado (y los que usa por dentro) se marca `compatConfig: { MODE: 3 }` (core.js `pure`). Es
-// configuración del propio componente, no un parche de su lógica; desaparece al quitar compat.
+// BootstrapVueNext es Vue 3 puro: se ejecuta tal cual, sin runtime de compatibilidad de por medio (ver
+// core.js `pure`, que ya no marca nada — queda como identidad por compatibilidad de los puntos de uso).
 export * from './layout.js';
 export * from './buttons.js';
 export * from './primitives.js';

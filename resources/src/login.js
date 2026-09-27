@@ -1,4 +1,4 @@
-import './platform/vue-compat';
+import { defineAsyncComponent } from 'vue';
 import { mountWithRouter } from './platform/mount';
 import { head, installHead } from './platform/head';
 import store from "./store";
@@ -8,20 +8,21 @@ import { installValidation } from './platform/validation';
 // `app` real de Vue 3, con store (Vuex 4) y router ya instalados (ver platform/mount.js).
 const app = mountWithRouter({}, { router, store });
 
+// Vue 3 real: un componente global asíncrono se declara con `defineAsyncComponent(...)` explícito (antes,
+// vue-router 4 y `@vue/compat` reconocían automáticamente cualquier función `() => import(...)`; el registro
+// GLOBAL con `app.component(...)` no tiene esa detección automática).
 app.component(
   "large-sidebar",
-  // The `import` function returns a Promise.
-  () => import(/* webpackChunkName: "largeSidebar" */ "./containers/layouts/largeSidebar")
+  defineAsyncComponent(() => import(/* webpackChunkName: "largeSidebar" */ "./containers/layouts/largeSidebar"))
 );
 
 app.component(
   "customizer",
-  // The `import` function returns a Promise.
-  () => import(/* webpackChunkName: "customizer" */ "./components/common/customizer.vue")
+  defineAsyncComponent(() => import(/* webpackChunkName: "customizer" */ "./components/common/customizer.vue"))
 );
-app.component("vue-perfect-scrollbar", () =>
+app.component("vue-perfect-scrollbar", defineAsyncComponent(() =>
   import(/* webpackChunkName: "vue-perfect-scrollbar" */ "./components/VuePerfectScrollbar.vue")
-);
+));
 installHead(app);
 
 installValidation(app);
@@ -61,11 +62,7 @@ app.component('login-component', require('./views/app/sessions/signIn.vue').defa
 app.component('forgot-component', require('./views/app/sessions/forgot.vue').default);
 app.component('reset-component', require('./views/app/sessions/reset.vue').default);
 
-// `Vue.config.silent/productionTip/devtools`: ajustes globales de @vue/compat, no de esta `app` (ver main.js).
-import Vue from "vue";
-Vue.config.productionTip = true;
-Vue.config.silent = true;
-Vue.config.devtools = false;
+// `Vue.config.silent`/`productionTip`/`devtools` (Vue 2) no existen en Vue 3: no tienen equivalente real (ver main.js).
 
 import { loadI18n } from './plugins/i18n.loader';
 import { events, installVue2Platform } from './platform';

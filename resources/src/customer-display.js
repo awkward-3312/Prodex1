@@ -1,4 +1,4 @@
-import './platform/vue-compat';
+import { h } from 'vue';
 import { mountWithRouter } from './platform/mount';
 import CustomerDisplay from './views/app/pages/customer/CustomerDisplay.vue';
 
@@ -19,7 +19,7 @@ window.CD = createEventBus();
 
 loadI18n().then((i18n) => {
   // Sin router: `mountWithRouter` crea la `app` real de Vue 3 igual (createApp), solo se instala i18n sobre ella.
-  const app = mountWithRouter({ render: h => h(CustomerDisplay) });
+  const app = mountWithRouter({ render: () => h(CustomerDisplay) });
   app.use(i18n);
   app.mount('#customer-display');
 });

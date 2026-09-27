@@ -1,3 +1,4 @@
+import { defineAsyncComponent } from 'vue';
 import "./../assets/styles/sass/themes/lite-purple.scss";
 import sweetalert2Plugin from "./sweetalert2.js";
 import { makeHtmlToPaper } from '../platform/htmlToPaper';
@@ -136,7 +137,7 @@ function installReceiptPresentationEnhancer(Vue) {
 
       Object.keys(defaults).forEach(key => {
         if (this.pos_settings[key] === undefined || this.pos_settings[key] === null || this.pos_settings[key] === '') {
-          this.$set(this.pos_settings, key, defaults[key]);
+          (this.pos_settings)[key] = defaults[key];
         }
       });
 
@@ -432,12 +433,14 @@ export default {
   // `Vue.prototype.$x` (que no existe en `app`) pasa a `app.config.globalProperties.$x`.
   install(app) {
     app.use(sweetalert2Plugin);
-    app.component("large-sidebar", () => import(/* webpackChunkName: "largeSidebar" */ "../containers/layouts/largeSidebar"));
+    // Vue 3 real: el registro GLOBAL de un componente asíncrono necesita `defineAsyncComponent(...)` explícito
+    // (antes, `@vue/compat` reconocía automáticamente cualquier función `() => import(...)`).
+    app.component("large-sidebar", defineAsyncComponent(() => import(/* webpackChunkName: "largeSidebar" */ "../containers/layouts/largeSidebar")));
     // Milestone 3 — layout px-next persistente para /app/* (opt-in local).
-    app.component("px-shell-layout", () => import(/* webpackChunkName: "px-next-shell" */ "../containers/layouts/PxShellLayout.vue"));
-    app.component("customizer", () => import(/* webpackChunkName: "customizer" */ "../components/common/customizer.vue"));
-    app.component("vue-perfect-scrollbar", () => import(/* webpackChunkName: "vue-perfect-scrollbar" */ "../components/VuePerfectScrollbar.vue"));
-    app.component("vue-good-table", () => import(/* webpackChunkName: "vue-good-table" */ "../components/VueGoodTable.vue"));
+    app.component("px-shell-layout", defineAsyncComponent(() => import(/* webpackChunkName: "px-next-shell" */ "../containers/layouts/PxShellLayout.vue")));
+    app.component("customizer", defineAsyncComponent(() => import(/* webpackChunkName: "customizer" */ "../components/common/customizer.vue")));
+    app.component("vue-perfect-scrollbar", defineAsyncComponent(() => import(/* webpackChunkName: "vue-perfect-scrollbar" */ "../components/VuePerfectScrollbar.vue")));
+    app.component("vue-good-table", defineAsyncComponent(() => import(/* webpackChunkName: "vue-good-table" */ "../components/VueGoodTable.vue")));
     app.config.globalProperties.$htmlToPaper = makeHtmlToPaper(options);
     installReceiptPresentationEnhancer(app);
     installFriendlyNavigation(app);

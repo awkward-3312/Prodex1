@@ -1,4 +1,4 @@
-import './platform/vue-compat';
+import { h } from 'vue';
 import App from './portal/App.vue';
 import router from './portal/router';
 import { mountWithRouter } from './platform/mount';
@@ -30,9 +30,7 @@ axios.interceptors.response.use(
   }
 );
 
-// `Vue.config.productionTip`: ajuste global de @vue/compat, no de esta `app` (ver main.js).
-import Vue from 'vue';
-Vue.config.productionTip = false;
+// `Vue.config.productionTip` (Vue 2) no existe en Vue 3: sin equivalente real (ver main.js).
 installSpanishUiGuard();
 
-mountWithRouter({ render: (h) => h(App) }, { router }).mount('#portal-app');
+mountWithRouter({ render: () => h(App) }, { router }).mount('#portal-app');

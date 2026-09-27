@@ -1,11 +1,10 @@
 // Utilidades comunes de los wrappers de BootstrapVueNext (sin dependencias de componentes: cualquier familia puede importarlas).
 import { h } from 'vue';
 
-const VUE3 = { MODE: 3 };
-
-/** Marca un componente de BootstrapVueNext (Vue 3 puro) como `compatConfig: { MODE: 3 }` bajo @vue/compat. */
+// Vue 3 nativo (sin runtime de compatibilidad): los componentes de BootstrapVueNext ya se ejecutan tal cual son,
+// sin necesitar ninguna marca especial. `pure` queda como identidad — se mantiene el nombre y las ~56 llamadas
+// existentes (`pure(component)`, `wrapper(...)` de abajo) para no tocar cada punto de uso en esta familia.
 export function pure(component) {
-  if (component && !component.compatConfig) component.compatConfig = VUE3;
   return component;
 }
 

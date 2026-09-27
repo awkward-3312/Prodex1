@@ -1,4 +1,4 @@
-import './platform/vue-compat';
+import { h } from 'vue';
 import { mountWithRouter } from './platform/mount';
 import { head, installHead } from './platform/head';
 import { bootstrapPlugin } from './platform/bootstrap';
@@ -47,7 +47,8 @@ import { installValidation } from './platform/validation';
 // `app` real de Vue 3 (createApp), con el store (Vuex 4) y el router ya instalados. El resto del archivo registra
 // componentes/directivas/plugins propios sobre ESTA `app` (nunca sobre un `Vue` global) y monta al final, dentro
 // del `.then()` de `loadI18n()` (ver platform/mount.js).
-const app = mountWithRouter({ render: h => h(App) }, { router, store });
+// Vue 3 real: `render()` no recibe `h` como argumento (Vue 2), se importa como función normal (arriba).
+const app = mountWithRouter({ render: () => h(App) }, { router, store });
 
 installHead(app);
 installDirectives(app);
@@ -139,12 +140,8 @@ app.config.globalProperties.$uploadPath = window.__uploadPath || 'images';
 app.config.globalProperties.$imgUrl = function(subfolder, filename) { return '/' + this.$uploadPath + '/' + subfolder + '/' + filename; };
 import Breadcumb from "./components/breadcumb";
 app.component("breadcumb", Breadcumb);
-// `Vue.config.silent/productionTip/devtools` (no `app.config`): son ajustes globales de @vue/compat sobre el
-// `Vue` importado (no existen como opción por-app en Vue 3), independientes del bootstrap de esta `app`.
-import Vue from "vue";
-Vue.config.productionTip = true;
-Vue.config.silent = true;
-Vue.config.devtools = false;
+// `Vue.config.silent`/`productionTip`/`devtools` (Vue 2) no existen en Vue 3: no tienen equivalente real en
+// `app.config` (el control de devtools en producción ya lo hace `__VUE_PROD_DEVTOOLS__` en webpack.mix.js).
 import { loadI18n } from './plugins/i18n.loader';
 import { setupGlobalOfflineSync } from './utils/globalOfflineSync';
 import { events, installVue2Platform, installLegacyBridge } from './platform';
