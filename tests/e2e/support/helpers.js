@@ -93,10 +93,14 @@ async function scanSku(page, sku) {
  * predeterminado del tenant en el servidor y la cookie de sync-locale). `flag` es el código de la bandera del menú.
  */
 async function setLanguageViaPosMenu(page, flag, code) {
+  // language.js (Vuex) hace, en orden: commit SET_LANGUAGE -> await POST set-default/{code} -> await POST
+  // /sync-locale. No basta esperar la primera: el cambio de idioma real (lo que un reload legítimo necesita)
+  // no termina hasta que las DOS resuelven.
   await page.locator('#lang-dd__BV_toggle_').click();
-  const saved = page.waitForResponse((r) => r.url().includes(`/api/languages_setting/set-default/${code}`) && r.request().method() === 'POST');
+  const setDefault = page.waitForResponse((r) => r.url().includes(`/api/languages_setting/set-default/${code}`) && r.request().method() === 'POST');
+  const syncLocale = page.waitForResponse((r) => r.url().includes('/api/sync-locale') && r.request().method() === 'POST');
   await page.locator(`#lang-dd button:has(img[src$="/flags/${flag}.svg"])`).click();
-  await saved;
+  await Promise.all([setDefault, syncLocale]);
 }
 
 module.exports = {

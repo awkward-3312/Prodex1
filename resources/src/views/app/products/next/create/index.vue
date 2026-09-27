@@ -168,32 +168,33 @@
                 <draggable
                   v-else
                   v-model="productGalleryItems"
+                  item-key="_uid"
                   handle=".pxc-gal__handle"
                   class="pxc-gal"
                   @end="touchProductGalleryOrder"
                 >
-                  <div
-                    v-for="(row, idx) in productGalleryItems"
-                    :key="row._uid"
-                    class="pxc-gal__item"
-                    :class="{ 'is-main': row.is_main }"
-                  >
-                    <span class="pxc-gal__handle" title="Reordenar"><lucide-icon name="grip-vertical" :size="16" /></span>
-                    <button
-                      type="button"
-                      class="pxc-gal__thumb pxn-ring"
+                  <template #item="{ element: row, index: idx }">
+                    <div
+                      class="pxc-gal__item"
                       :class="{ 'is-main': row.is_main }"
-                      title="Marcar como principal"
-                      @click="setProductGalleryMain(row)"
                     >
-                      <img :src="row.url" alt="" />
-                    </button>
-                    <div class="pxc-gal__meta">
-                      <div class="pxc-gal__name">{{ row.image_path }}</div>
-                      <px-badge v-if="row.is_main" tone="success" icon="check">Imagen principal</px-badge>
+                      <span class="pxc-gal__handle" title="Reordenar"><lucide-icon name="grip-vertical" :size="16" /></span>
+                      <button
+                        type="button"
+                        class="pxc-gal__thumb pxn-ring"
+                        :class="{ 'is-main': row.is_main }"
+                        title="Marcar como principal"
+                        @click="setProductGalleryMain(row)"
+                      >
+                        <img :src="row.url" alt="" />
+                      </button>
+                      <div class="pxc-gal__meta">
+                        <div class="pxc-gal__name">{{ row.image_path }}</div>
+                        <px-badge v-if="row.is_main" tone="success" icon="check">Imagen principal</px-badge>
+                      </div>
+                      <px-button type="button" variant="danger" size="sm" icon-only icon="x" aria-label="Quitar" @click="removeProductGalleryRow(idx)" />
                     </div>
-                    <px-button type="button" variant="danger" size="sm" icon-only icon="x" aria-label="Quitar" @click="removeProductGalleryRow(idx)" />
-                  </div>
+                  </template>
                 </draggable>
               </px-card>
 

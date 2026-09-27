@@ -1013,6 +1013,7 @@
                           </div>
                           <draggable
                             v-model="dashboardSectionOrderList"
+                            item-key="id"
                             handle=".drag-handle"
                             :animation="220"
                             ghost-class="dashboard-widget-order-ghost"
@@ -1023,17 +1024,15 @@
                             tag="ul"
                             class="list-unstyled dashboard-widget-order-list"
                           >
-                            <li
-                              v-for="(item, index) in dashboardSectionOrderList"
-                              :key="item.id"
-                              class="dashboard-widget-order-item"
-                            >
-                              <span class="drag-handle" :title="$t('Drag_to_reorder') || 'Drag to reorder'">
-                                <lucide-icon name="grip-vertical" />
-                              </span>
-                              <span class="widget-order-number">{{ index + 1 }}</span>
-                              <span class="widget-order-label">{{ $t(item.labelKey) || item.labelKey }}</span>
-                            </li>
+                            <template #item="{ element, index }">
+                              <li class="dashboard-widget-order-item">
+                                <span class="drag-handle" :title="$t('Drag_to_reorder') || 'Drag to reorder'">
+                                  <lucide-icon name="grip-vertical" />
+                                </span>
+                                <span class="widget-order-number">{{ index + 1 }}</span>
+                                <span class="widget-order-label">{{ $t(element.labelKey) || element.labelKey }}</span>
+                              </li>
+                            </template>
                           </draggable>
                         </div>
                       </b-col>

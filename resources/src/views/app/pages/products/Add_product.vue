@@ -675,49 +675,50 @@
                   <draggable
                     v-else
                     v-model="productGalleryItems"
+                    item-key="_uid"
                     handle=".gallery-drag-handle"
                     class="product-gallery-draggable"
                     @end="touchProductGalleryOrder"
                   >
-                    <div
-                      v-for="(row, idx) in productGalleryItems"
-                      :key="row._uid"
-                      class="gallery-item-card d-flex align-items-center"
-                      :class="{ 'gallery-item-card--main': row.is_main }"
-                    >
-                      <span class="gallery-drag-handle flex-shrink-0" title="Reorder">
-                        <lucide-icon name="grip-vertical" />
-                      </span>
+                    <template #item="{ element: row, index: idx }">
                       <div
-                        class="position-relative flex-shrink-0 rounded overflow-hidden gallery-thumb-select"
-                        :class="{ 'gallery-thumb-main': row.is_main }"
-                        :title="$t('ClickImageToSetMain')"
-                        role="button"
-                        tabindex="0"
-                        @click="setProductGalleryMain(row)"
-                        @keyup.enter="setProductGalleryMain(row)"
+                        class="gallery-item-card d-flex align-items-center"
+                        :class="{ 'gallery-item-card--main': row.is_main }"
                       >
-                        <img
-                          :src="row.url"
-                          class="d-block gallery-item-thumb"
-                          alt=""
+                        <span class="gallery-drag-handle flex-shrink-0" title="Reorder">
+                          <lucide-icon name="grip-vertical" />
+                        </span>
+                        <div
+                          class="position-relative flex-shrink-0 rounded overflow-hidden gallery-thumb-select"
+                          :class="{ 'gallery-thumb-main': row.is_main }"
+                          :title="$t('ClickImageToSetMain')"
+                          role="button"
+                          tabindex="0"
+                          @click="setProductGalleryMain(row)"
+                          @keyup.enter="setProductGalleryMain(row)"
                         >
-                      </div>
-                      <div class="flex-grow-1 gallery-item-meta">
-                        <div class="small text-truncate font-weight-medium text-dark">{{ row.image_path }}</div>
-                        <div v-if="row.is_main" class="mt-1">
-                          <b-badge variant="success" class="gallery-main-badge">{{ $t('MainImage') }}</b-badge>
+                          <img
+                            :src="row.url"
+                            class="d-block gallery-item-thumb"
+                            alt=""
+                          >
                         </div>
+                        <div class="flex-grow-1 gallery-item-meta">
+                          <div class="small text-truncate font-weight-medium text-dark">{{ row.image_path }}</div>
+                          <div v-if="row.is_main" class="mt-1">
+                            <b-badge variant="success" class="gallery-main-badge">{{ $t('MainImage') }}</b-badge>
+                          </div>
+                        </div>
+                        <b-button
+                          size="sm"
+                          variant="outline-danger"
+                          class="flex-shrink-0 gallery-remove-btn"
+                          @click="removeProductGalleryRow(idx)"
+                        >
+                          <lucide-icon name="x" />
+                        </b-button>
                       </div>
-                      <b-button
-                        size="sm"
-                        variant="outline-danger"
-                        class="flex-shrink-0 gallery-remove-btn"
-                        @click="removeProductGalleryRow(idx)"
-                      >
-                        <lucide-icon name="x" />
-                      </b-button>
-                    </div>
+                    </template>
                   </draggable>
                 </b-card-body>
               </b-card>

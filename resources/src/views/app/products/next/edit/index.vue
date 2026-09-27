@@ -162,33 +162,34 @@
                 <draggable
                   v-else
                   v-model="product_images"
+                  :item-key="row => row._uid || ('id-' + row.id)"
                   handle=".pxe-gal__handle"
                   :disabled="hasPendingGalleryUploads"
                   class="pxe-gal"
                   @end="touchGalleryOrder"
                 >
-                  <div
-                    v-for="(row, idx) in product_images"
-                    :key="row._uid || ('id-' + row.id)"
-                    class="pxe-gal__item"
-                    :class="{ 'is-main': row.is_main }"
-                  >
-                    <span class="pxe-gal__handle" title="Reordenar"><lucide-icon name="grip-vertical" :size="16" /></span>
-                    <button
-                      type="button"
-                      class="pxe-gal__thumb pxn-ring"
+                  <template #item="{ element: row, index: idx }">
+                    <div
+                      class="pxe-gal__item"
                       :class="{ 'is-main': row.is_main }"
-                      :title="'Marcar como principal'"
-                      @click="setGalleryMain(row)"
                     >
-                      <img :src="row.url || (row.image_path ? $imgUrl('products', row.image_path) : '')" alt="" />
-                    </button>
-                    <div class="pxe-gal__meta">
-                      <div class="pxe-gal__name">{{ row.image_path }}</div>
-                      <px-badge v-if="row.is_main" tone="success" icon="check">Imagen principal</px-badge>
+                      <span class="pxe-gal__handle" title="Reordenar"><lucide-icon name="grip-vertical" :size="16" /></span>
+                      <button
+                        type="button"
+                        class="pxe-gal__thumb pxn-ring"
+                        :class="{ 'is-main': row.is_main }"
+                        :title="'Marcar como principal'"
+                        @click="setGalleryMain(row)"
+                      >
+                        <img :src="row.url || (row.image_path ? $imgUrl('products', row.image_path) : '')" alt="" />
+                      </button>
+                      <div class="pxe-gal__meta">
+                        <div class="pxe-gal__name">{{ row.image_path }}</div>
+                        <px-badge v-if="row.is_main" tone="success" icon="check">Imagen principal</px-badge>
+                      </div>
+                      <px-button type="button" variant="danger" size="sm" icon-only icon="x" aria-label="Quitar" @click="removeGalleryRow(idx)" />
                     </div>
-                    <px-button type="button" variant="danger" size="sm" icon-only icon="x" aria-label="Quitar" @click="removeGalleryRow(idx)" />
-                  </div>
+                  </template>
                 </draggable>
               </px-card>
 

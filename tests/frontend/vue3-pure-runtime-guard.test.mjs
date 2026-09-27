@@ -88,3 +88,17 @@ test('vuex sigue en la serie 4.x (createStore); new Vue(/Vue.use(/Vue.prototype 
   const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
   assert.match(allDeps.vuex, /^[\^~]?4\./);
 });
+
+// vuedraggable v4 (SortableJS-vue3) exige el slot #item explícito — a diferencia de v2/v3, ya NO renderiza
+// automáticamente los hijos declarados con v-for dentro de <draggable>. Sin #item: "draggable element must have
+// an item slot" en runtime (bloqueante, encontrado en producción vía CI: System_settings.vue).
+test('todo `<draggable>` propio declara el slot `#item` (vuedraggable v4 no renderiza v-for hijo sin él)', () => {
+  const offenders = [];
+  for (const f of ALL_FILES) {
+    if (!f.endsWith('.vue')) continue;
+    const code = codeOnly(fs.readFileSync(f, 'utf8'));
+    if (!/<draggable[\s>]/.test(code)) continue;
+    if (!/#item(?:=|>|\s)|v-slot:item(?:=|>|\s)/.test(code)) offenders.push(path.relative(SRC, f));
+  }
+  assert.deepEqual(offenders, []);
+});
