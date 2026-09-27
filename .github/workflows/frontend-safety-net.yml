@@ -5,8 +5,9 @@ name: Frontend safety net
 #
 #  - route-snapshot: BLOQUEANTE. Determinista, sin servidor ni base de datos (~1 min). Falla si cambia el mapa de rutas
 #    del SPA respecto a tests/e2e/routes/routes.snapshot.json.
-#  - e2e: REQUERIDO (sin continue-on-error: si falla, el workflow falla). Corre en workflow_dispatch y, mientras este archivo no esté en main,
-#    en push a las ramas de modernización listadas abajo. Levanta MySQL 8.4 como servicio, provisiona un tenant demo con los mecanismos del
+#  - e2e: REQUERIDO (sin continue-on-error: si falla, el workflow falla). Corre en workflow_dispatch, en cualquier
+#    pull_request y, mientras este archivo no esté en main, en push a las ramas de modernización listadas abajo.
+#    Levanta MySQL 8.4 como servicio, provisiona un tenant demo con los mecanismos del
 #    proyecto y ejecuta Playwright contra el servidor PHP embebido en modo de un solo proceso (sin PHP_CLI_SERVER_WORKERS): el modo multi-worker
 #    terminó con Segmentation fault en Actions. Ver docs/architecture/BOOTSTRAP5_BOOTSTRAPVUE_NEXT_PHASE2.md.
 
@@ -45,6 +46,7 @@ jobs:
   e2e:
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request' ||
       github.ref == 'refs/heads/fix/frontend-modernization-baseline' ||
       github.ref == 'refs/heads/chore/frontend-modernization-cleanup' ||
       github.ref == 'refs/heads/refactor/frontend-platform-services' ||
@@ -115,10 +117,6 @@ jobs:
         run: php -v | head -1
       - name: Ejecutar E2E
         run: npm run test:e2e
-      - name: Avisos de @vue/compat agrupados (resumen del job)
-        if: always()
-        continue-on-error: true
-        run: npm run --silent test:e2e:compat-warnings >> "$GITHUB_STEP_SUMMARY"
       - name: Reporte de Playwright
         if: always()
         uses: actions/upload-artifact@v6
@@ -127,5 +125,4 @@ jobs:
           path: |
             tests/e2e/.artifacts/report
             tests/e2e/.artifacts/test-results
-            tests/e2e/.artifacts/warnings
           retention-days: 7
