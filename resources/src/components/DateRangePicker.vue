@@ -44,10 +44,7 @@ import { es, enUS, ar } from 'date-fns/locale';
 export default {
   name: 'DateRangePicker',
   components: { VueDatePicker },
-  // El resto de la app sigue en MODE 2 (Vue 2): `v-model="x"` compila a `:value`/`@input` salvo que el propio
-  // componente declare MODE 3 — este SÍ usa la convención nativa de Vue 3 (`modelValue`/`update:modelValue`), igual
-  // que la ya establecida para BootstrapVueNext y los iconos de `@lucide/vue` (ver `platform/compat/bvn-mode.js`).
-  compatConfig: { MODE: 3 },
+  // v-model nativo de Vue 3: `modelValue`/`update:modelValue`.
   props: {
     modelValue: { type: Object, default: () => ({ startDate: null, endDate: null }) },
     localeData: { type: Object, default: () => ({}) },

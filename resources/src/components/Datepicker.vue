@@ -29,7 +29,6 @@ import { es, enUS, ar } from 'date-fns/locale';
 export default {
   name: 'Datepicker',
   components: { VueDatePicker },
-  compatConfig: { MODE: 3 },
   props: {
     modelValue: { type: [Date, String], default: null },
     format: { type: String, default: 'yyyy-MM-dd' },

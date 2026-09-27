@@ -26,7 +26,6 @@
 export default {
   name: "PxButton",
   // Vue 3: los listeners del padre llegan en $attrs y caen solos en el elemento raíz (antes v-on="$listeners").
-  compatConfig: { INSTANCE_LISTENERS: false },
   props: {
     variant: { type: String, default: "secondary" }, // primary | secondary | ghost | subtle | danger | link
     size: { type: String, default: "md" },           // sm | md | lg

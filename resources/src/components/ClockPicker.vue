@@ -20,7 +20,6 @@ import './vue-datepicker-icon-fix.css';
 export default {
   name: 'ClockPicker',
   components: { VueDatePicker },
-  compatConfig: { MODE: 3 },
   props: {
     modelValue: { type: String, default: null },
     placeholder: { type: String, default: undefined },

@@ -96,6 +96,9 @@
 import { BCol, BRow, BFormGroup, BFormInput, BFormTextarea, BFormCheckbox, BFormInvalidFeedback, BFormDatepicker } from "@/platform/bootstrap";
 export default { components: { BFormDatepicker, BFormGroup, BFormInput, BFormTextarea, BFormCheckbox, BFormInvalidFeedback, BCol, BRow },
   name: "CustomFieldsForm",
+  // Vue 3 real: los consumidores usan `v-model` propio, que compila a
+  // `update:modelValue` (no `input`). Se emiten ambos: el segundo es la API explícita.
+  emits: ["update:modelValue", "input"],
   props: {
     entityType: {
       type: String,
@@ -153,6 +156,7 @@ export default { components: { BFormDatepicker, BFormGroup, BFormInput, BFormTex
     fieldValues: {
       handler(newValues) {
         // Emit changes to parent
+        this.$emit('update:modelValue', newValues);
         this.$emit('input', newValues);
       },
       deep: true

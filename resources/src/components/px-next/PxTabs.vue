@@ -5,10 +5,10 @@
       :key="t.value"
       ref="tab"
       class="pxn-tabs__tab pxn-ring"
-      :class="{ 'is-active': t.value === value, 'is-disabled': t.disabled }"
+      :class="{ 'is-active': t.value === internalValue, 'is-disabled': t.disabled }"
       role="tab"
       type="button"
-      :aria-selected="t.value === value ? 'true' : 'false'"
+      :aria-selected="t.value === internalValue ? 'true' : 'false'"
       :disabled="t.disabled"
       @click="select(t)"
       @keydown="onKey($event)"
@@ -25,15 +25,28 @@
 // Keyboard: arrow keys move focus + selection, Home/End jump.
 export default {
   name: "PxTabs",
+  emits: ["update:modelValue", "input"],
   props: {
     tabs: { type: Array, required: true }, // [{ value, label, icon?, count?, disabled? }]
-    value: { type: [String, Number], required: true },
+    // Vue 3 real: `v-model` propio compila a `modelValue`/`update:modelValue`.
+    // `value`/`input` se conservan como API explícita para quien los use así directamente.
+    modelValue: { type: [String, Number], default: undefined },
+    value: { type: [String, Number], default: undefined },
     variant: { type: String, default: "line" } // line | pill
   },
+  computed: {
+    internalValue() {
+      return this.modelValue !== undefined ? this.modelValue : this.value;
+    }
+  },
   methods: {
-    select(t) { if (!t.disabled) this.$emit("input", t.value); },
+    emitValue(v) {
+      this.$emit("update:modelValue", v);
+      this.$emit("input", v);
+    },
+    select(t) { if (!t.disabled) this.emitValue(t.value); },
     onKey(e) {
-      const idx = this.tabs.findIndex(t => t.value === this.value);
+      const idx = this.tabs.findIndex(t => t.value === this.internalValue);
       let next = idx;
       if (e.key === "ArrowRight" || e.key === "ArrowDown") next = (idx + 1) % this.tabs.length;
       else if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = (idx - 1 + this.tabs.length) % this.tabs.length;
@@ -41,7 +54,7 @@ export default {
       else if (e.key === "End") next = this.tabs.length - 1;
       else return;
       e.preventDefault();
-      this.$emit("input", this.tabs[next].value);
+      this.emitValue(this.tabs[next].value);
       this.$nextTick(() => this.$refs.tab[next] && this.$refs.tab[next].focus());
     }
   }

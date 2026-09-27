@@ -10,10 +10,15 @@ import 'quill/dist/quill.snow.css';
 
 export default {
   name: 'RichTextEditor',
+  emits: ['update:modelValue', 'input'],
   props: {
+    modelValue: {
+      type: String,
+      default: undefined
+    },
     value: {
       type: String,
-      default: ''
+      default: undefined
     },
     editorId: {
       type: String,
@@ -46,8 +51,15 @@ export default {
       this.quill = null;
     }
   },
+  computed: {
+    // Vue 3 real: `v-model` propio compila a `modelValue`/`update:modelValue`.
+    // `value`/`input` se conservan como API explícita para quien los use así directamente.
+    internalValue() {
+      return this.modelValue !== undefined ? this.modelValue : this.value;
+    }
+  },
   watch: {
-    value(newVal) {
+    internalValue(newVal) {
       if (this.quill && !this.isUpdating) {
         const currentContent = this.quill.root.innerHTML;
         if (currentContent !== newVal) {
@@ -66,14 +78,15 @@ export default {
       });
 
       // Set initial content
-      if (this.value) {
-        this.quill.root.innerHTML = this.value;
+      if (this.internalValue) {
+        this.quill.root.innerHTML = this.internalValue;
       }
 
       // Listen for text changes
       this.quill.on('text-change', () => {
         this.isUpdating = true;
         const html = this.quill.root.innerHTML;
+        this.$emit('update:modelValue', html);
         this.$emit('input', html);
         this.$nextTick(() => {
           this.isUpdating = false;

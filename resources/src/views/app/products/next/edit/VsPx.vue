@@ -28,7 +28,6 @@
 export default {
   name: "VsPx",
   inheritAttrs: false,
-  compatConfig: { INSTANCE_LISTENERS: false },
   props: {
     invalid: { type: Boolean, default: false },
     disabled: { type: Boolean, default: false }

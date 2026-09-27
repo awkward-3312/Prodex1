@@ -707,7 +707,7 @@ export default {
     },
     toggleGroup(g) {
       const k = this.groupKey(g);
-      this.$set(this.collapsedGroups, k, !this.isGroupCollapsed(g));
+      (this.collapsedGroups)[k] = !this.isGroupCollapsed(g);
     },
 
     // ---- Profile chip -----------------------------------------------------

@@ -1,7 +1,7 @@
 <template>
   <transition name="pxn-modal">
     <div
-      v-if="value"
+      v-if="internalValue"
       class="pxn-modal__scrim"
       @mousedown.self="onScrim"
       @keydown.esc="close('esc')"
@@ -39,17 +39,24 @@
 let modalSeq = 0; // identificador propio (antes el id interno de la instancia, API privada de Vue 2)
 export default {
   name: "PxModal",
-  model: { prop: "value", event: "close" },
+  // v-model nativo de Vue 3: `modelValue`/`update:modelValue` (la opción `model:` de Vue 2 ya no existe/se
+  // ignora). `value`/`close` se conservan como alias/evento propios para las 2 vistas que usan la API explícita
+  // vieja (`:value="x" @close="x = $event === false ? false : $event"`, sin v-model).
+  emits: ["update:modelValue", "close"],
   props: {
-    value: { type: Boolean, default: false },
+    modelValue: { type: Boolean, default: undefined },
+    value: { type: Boolean, default: undefined },
     title: { type: String, default: "" },
     subtitle: { type: String, default: null },
     size: { type: String, default: "md" }, // sm | md | lg
     persistent: { type: Boolean, default: false }
   },
   data() { return { uid: `pxn-m-${(modalSeq += 1)}` }; },
+  computed: {
+    internalValue() { return this.modelValue !== undefined ? this.modelValue : !!this.value; }
+  },
   watch: {
-    value(open) {
+    internalValue(open) {
       if (open) {
         this._prevFocus = document.activeElement;
         document.addEventListener("keydown", this.trap, true);
@@ -64,6 +71,7 @@ export default {
   methods: {
     close(reason) {
       if (this.persistent && (reason === "esc" || reason === "scrim")) return;
+      this.$emit("update:modelValue", false);
       this.$emit("close", false);
     },
     onScrim() { this.close("scrim"); },

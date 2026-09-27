@@ -91,7 +91,6 @@ import PxCheck from "./PxCheck.vue";
 export default {
   name: "PxTable",
   components: { PxCheck },
-  model: { prop: "selected", event: "update:selected" },
   props: {
     columns: { type: Array, required: true }, // [{ key, label, align?, numeric?, sortable?, strong?, width?, format? }]
     rows: { type: Array, required: true },

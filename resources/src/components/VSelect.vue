@@ -1,5 +1,5 @@
 <template>
-  <div class="v-select" :class="stateClasses">
+  <div class="v-select" :class="[stateClasses, $attrs.class]" :style="$attrs.style">
     <div
       ref="toggle"
       class="vs__dropdown-toggle"
@@ -77,11 +77,14 @@
 <script>
 // Reemplaza el paquete `vue-select` (ver `platform/compat/vue-select.js`, retirado) por un componente Vue 3 nativo
 // de PRODEX que reproduce el contrato realmente usado en las 73 vistas que consumen `<v-select>` (auditado con
-// `/tmp/vselect_files.txt`): v-model (convención Vue 2 value/input — SIN `compatConfig: {MODE:3}`, así ninguna de
-// las 239 vistas con v-model necesita cambiar), :options, :reduce, :placeholder, :disabled, :multiple, :clearable,
+// `/tmp/vselect_files.txt`): v-model, :options, :reduce, :placeholder, :disabled, :multiple, :clearable,
 // :close-on-select, label (nombre de la clave del label en las opciones), append-to-body + :calculate-position
-// (reutiliza la MISMA directiva `vSelectAppendToBody` de `platform/directives/append-to-body.js`, ya escrita para
-// Vue 3 — no hace falta otra), y los slots #option/#selected-option/#no-options.
+// (reutiliza la MISMA directiva `vSelectAppendToBody` de `platform/directives/append-to-body.js`), y los slots
+// #option/#selected-option/#no-options.
+// v-model nativo de Vue 3: prop `modelValue` + evento `update:modelValue`. 9 vistas usan la API explícita vieja
+// (`:value="x" @input="v => x = v"`, sin v-model) en vez del azúcar — se preserva aparte: prop `value` como alias
+// (se usa solo si `modelValue` no llega) y evento `input` normal emitido junto a `update:modelValue` en cada
+// cambio. Ninguna de las dos formas es un mecanismo de compat de Vue 2: son props/eventos propios y corrientes.
 // Estado explícitamente NO usado en ninguna vista real (taggable, AJAX/loading, getOptionLabel): no se implementa.
 // Clases y variables CSS (`.vs__*`, `--vs-*`) idénticas a las del paquete retirado — mismo `dist/vue-select.css`
 // copiado en `vue-select.css` junto a este componente — para que las ~15 vistas con overrides `::v-deep(.vs__...)`
@@ -94,7 +97,8 @@ export default {
   directives: { appendToBody: vSelectAppendToBody },
   inheritAttrs: false,
   props: {
-    value: { default: null },
+    modelValue: { default: undefined },
+    value: { default: undefined },
     options: { type: Array, default: () => [] },
     reduce: { type: Function, default: (option) => option },
     label: { type: String, default: 'label' },
@@ -105,7 +109,7 @@ export default {
     closeOnSelect: { type: Boolean, default: true },
     appendToBody: { type: Boolean, default: false },
   },
-  emits: ['input', 'search'],
+  emits: ['update:modelValue', 'input', 'search'],
   data() {
     return { open: false, search: '', pointer: 0 };
   },
@@ -119,10 +123,12 @@ export default {
         'vs--searchable': true,
       };
     },
+    // `modelValue` (v-model nativo) manda; `value` es el alias de la API explícita vieja, solo si no llega el otro.
+    internalValue() { return this.modelValue !== undefined ? this.modelValue : this.value; },
     // El v-model puede traer el valor "reducido" (p. ej. un id) en vez del objeto opción completo: para mostrar
     // la etiqueta correcta hay que ubicar, dentro de `options`, cuál opción produce ese valor al pasar por `reduce`.
     selectedOptions() {
-      const values = this.multiple ? (Array.isArray(this.value) ? this.value : []) : (this.value == null ? [] : [this.value]);
+      const values = this.multiple ? (Array.isArray(this.internalValue) ? this.internalValue : []) : (this.internalValue == null ? [] : [this.internalValue]);
       return values.map((v) => this.findOptionFor(v));
     },
     showPlaceholder() {
@@ -163,12 +169,13 @@ export default {
       return this.selectedOptions.some((o) => this.reduce(o) === reduced);
     },
     emitValue(next) {
+      this.$emit('update:modelValue', next);
       this.$emit('input', next);
     },
     select(option) {
       const reduced = this.reduce(option);
       if (this.multiple) {
-        const current = Array.isArray(this.value) ? this.value : [];
+        const current = Array.isArray(this.internalValue) ? this.internalValue : [];
         this.emitValue(current.includes(reduced) ? current : [...current, reduced]);
         this.search = '';
         if (this.closeOnSelect) this.open = false;
@@ -181,7 +188,7 @@ export default {
     },
     deselect(option) {
       const reduced = this.reduce(option);
-      const current = Array.isArray(this.value) ? this.value : [];
+      const current = Array.isArray(this.internalValue) ? this.internalValue : [];
       this.emitValue(current.filter((v) => v !== reduced));
     },
     clearSelection() {
@@ -209,9 +216,9 @@ export default {
     onBackspace() {
       if (this.search) return;
       if (this.multiple) {
-        const current = Array.isArray(this.value) ? this.value : [];
+        const current = Array.isArray(this.internalValue) ? this.internalValue : [];
         if (current.length) this.emitValue(current.slice(0, -1));
-      } else if (this.clearable && this.value != null) {
+      } else if (this.clearable && this.internalValue != null) {
         this.emitValue(null);
       }
     },

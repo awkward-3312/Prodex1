@@ -112,8 +112,10 @@
 let serialFieldSeq = 0; // identificador propio (antes `_uid`, API privada de Vue 2)
 export default {
   name: "SerialNumbersField",
+  emits: ["update:modelValue", "input"],
   props: {
-    value: { type: Array, default: () => [] },
+    modelValue: { type: Array, default: undefined },
+    value: { type: Array, default: undefined },
     mode: { type: String, default: "entry" }, // 'entry' | 'select'
     requiredCount: { type: [Number, String], default: 0 },
     productId: { type: [Number, String], default: null },
@@ -137,8 +139,13 @@ export default {
     };
   },
   computed: {
+    // Vue 3 real: `v-model` propio de un consumidor compila a `modelValue`/`update:modelValue`.
+    // `value`/`input` se conservan como API explícita para quien los use así directamente.
+    internalValue() {
+      return this.modelValue !== undefined ? this.modelValue : this.value;
+    },
     serials() {
-      return Array.isArray(this.value) ? this.value : [];
+      return Array.isArray(this.internalValue) ? this.internalValue : [];
     },
     requiredCountInt() {
       return Math.round(Number(this.requiredCount) || 0);
@@ -182,6 +189,7 @@ export default {
       return this.serials.some(s => s.toLowerCase() === key);
     },
     emit(list) {
+      this.$emit("update:modelValue", list);
       this.$emit("input", list);
     },
     // ENTRY mode add

@@ -1,5 +1,5 @@
 <template>
-  <px-modal :value="value" title="Filtros" subtitle="Acotan el listado del servidor" size="sm" @close="$emit('input', false)">
+  <px-modal :model-value="internalValue" title="Filtros" subtitle="Acotan el listado del servidor" size="sm" @close="emitValue(false)">
     <form class="pxpf" @submit.prevent="apply">
       <px-field label="Código">
         <template #default="{ id }">
@@ -59,8 +59,12 @@ const EMPTY = { code: "", name: "", category: "", brand: "", warehouse: "", stat
 export default {
   name: "ProductFilterPanel",
   components: { PxModal, PxField, PxInput, PxSelect, PxButton },
+  emits: ["update:modelValue", "input", "apply"],
   props: {
-    value: { type: Boolean, default: false },
+    // Vue 3 real: `v-model` propio compila a `modelValue`/`update:modelValue`.
+    // `value`/`input` se conservan como API explícita para quien los use así directamente.
+    modelValue: { type: Boolean, default: undefined },
+    value: { type: Boolean, default: undefined },
     filters: { type: Object, default: () => ({ ...EMPTY }) },
     categories: { type: Array, default: () => [] },
     brands: { type: Array, default: () => [] },
@@ -70,6 +74,9 @@ export default {
     return { draft: { ...EMPTY, ...this.filters } };
   },
   computed: {
+    internalValue() {
+      return this.modelValue !== undefined ? this.modelValue : this.value;
+    },
     categoryOptions() {
       return [{ value: "", label: "Todas las categorías" }, ...this.categories];
     },
@@ -91,19 +98,23 @@ export default {
     }
   },
   watch: {
-    value(open) {
+    internalValue(open) {
       if (open) this.draft = { ...EMPTY, ...this.filters };
     }
   },
   methods: {
+    emitValue(v) {
+      this.$emit("update:modelValue", v);
+      this.$emit("input", v);
+    },
     apply() {
       this.$emit("apply", { ...this.draft });
-      this.$emit("input", false);
+      this.emitValue(false);
     },
     clear() {
       this.draft = { ...EMPTY };
       this.$emit("apply", { ...EMPTY });
-      this.$emit("input", false);
+      this.emitValue(false);
     }
   }
 };

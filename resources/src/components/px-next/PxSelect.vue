@@ -74,8 +74,10 @@ export default {
       unmounted(el) { document.removeEventListener("click", el.__pxnOutside); }
     }
   },
+  emits: ["update:modelValue", "input"],
   props: {
-    value: { type: [String, Number], default: "" },
+    modelValue: { type: [String, Number], default: undefined },
+    value: { type: [String, Number], default: undefined },
     options: { type: Array, default: () => [] },
     id: { type: String, default: null },
     placeholder: { type: String, default: null },
@@ -88,11 +90,16 @@ export default {
     return { open: false, dropUp: false, activeIndex: -1, uid: `pxn-sel-${seq}`, typeahead: "", typeaheadTimer: null };
   },
   computed: {
+    // Vue 3 real: `v-model` propio compila a `modelValue`/`update:modelValue`.
+    // `value`/`input` se conservan como API explícita para quien los use así directamente.
+    internalValue() {
+      return this.modelValue !== undefined ? this.modelValue : this.value;
+    },
     normalized() {
       return this.options.map(o => (o && typeof o === "object" ? { value: o.value, label: String(o.label) } : { value: o, label: String(o) }));
     },
     selected() {
-      return this.normalized.find(o => String(o.value) === String(this.value)) || null;
+      return this.normalized.find(o => String(o.value) === String(this.internalValue)) || null;
     },
     listId() { return `${this.uid}-list`; }
   },
@@ -105,13 +112,13 @@ export default {
   },
   methods: {
     optionId(i) { return `${this.uid}-opt-${i}`; },
-    isSelected(opt) { return String(opt.value) === String(this.value); },
+    isSelected(opt) { return String(opt.value) === String(this.internalValue); },
 
     toggle() { this.open ? this.close() : this.openPanel(); },
     openPanel() {
       if (this.disabled || this.open) return;
       this.open = true;
-      const sel = this.normalized.findIndex(o => String(o.value) === String(this.value));
+      const sel = this.normalized.findIndex(o => String(o.value) === String(this.internalValue));
       this.activeIndex = sel >= 0 ? sel : (this.normalized.length ? 0 : -1);
       this.$nextTick(() => {
         this.position();
@@ -195,7 +202,10 @@ export default {
     },
 
     pick(opt) {
-      if (String(opt.value) !== String(this.value)) this.$emit("input", opt.value);
+      if (String(opt.value) !== String(this.internalValue)) {
+        this.$emit("update:modelValue", opt.value);
+        this.$emit("input", opt.value);
+      }
       this.closeAndFocus();
     },
 
@@ -259,7 +269,10 @@ export default {
       const match = this.normalized.findIndex(o => o.label.toLowerCase().startsWith(this.typeahead));
       if (match >= 0) {
         if (this.open) { this.activeIndex = match; this.scrollActiveIntoView(); }
-        else { this.$emit("input", this.normalized[match].value); }
+        else {
+          this.$emit("update:modelValue", this.normalized[match].value);
+          this.$emit("input", this.normalized[match].value);
+        }
       }
     }
   }

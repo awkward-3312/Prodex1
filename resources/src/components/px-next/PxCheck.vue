@@ -1,5 +1,5 @@
 <template>
-  <label v-bind="plainAttrs()" class="pxn-check" :class="[`pxn-check--${type}`, { 'is-disabled': disabled }]">
+  <label v-bind="plainAttrs()" class="pxn-check" :class="[`pxn-check--${type}`, { 'is-disabled': disabled }, $attrs.class]" :style="$attrs.style">
     <input
       v-bind="listeners()"
       class="pxn-check__native pxn-ring"
@@ -26,9 +26,10 @@ import { forwardListeners, forwardPlainAttrs } from "@/utils/forwardListeners";
 export default {
   name: "PxCheck",
   inheritAttrs: false,
-  compatConfig: { INSTANCE_LISTENERS: false },
-  emits: ["change"],
-  model: { prop: "modelValue", event: "change" },
+  // `v-model` nativo de Vue 3 siempre usa `modelValue`/`update:modelValue` (la opción `model:` de Vue 2 para
+  // remapear el evento ya no existe/se ignora); se emite `update:modelValue` además de `change` (evento propio,
+  // varios consumidores lo escuchan directo sin v-model).
+  emits: ["update:modelValue", "change"],
   props: {
     type: { type: String, default: "checkbox" }, // checkbox | radio | switch
     modelValue: { type: [Boolean, String, Number, Array], default: false },
@@ -47,16 +48,18 @@ export default {
     listeners() { return forwardListeners(this.$attrs); },
     plainAttrs() { return forwardPlainAttrs(this.$attrs); },
     onChange(e) {
+      let next;
       if (Array.isArray(this.modelValue)) {
-        const next = this.modelValue.slice();
+        next = this.modelValue.slice();
         const i = next.indexOf(this.nativeValue);
         e.target.checked ? (i === -1 && next.push(this.nativeValue)) : (i > -1 && next.splice(i, 1));
-        this.$emit("change", next);
       } else if (this.type === "radio") {
-        this.$emit("change", this.nativeValue);
+        next = this.nativeValue;
       } else {
-        this.$emit("change", e.target.checked);
+        next = e.target.checked;
       }
+      this.$emit("update:modelValue", next);
+      this.$emit("change", next);
     }
   }
 };

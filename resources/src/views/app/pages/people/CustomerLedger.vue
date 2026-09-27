@@ -245,22 +245,27 @@ const ListToolbar = {
   compilerOptions: { whitespace: 'condense' },
   props: {
     placeholder: String,
-    value: String, // v-model: search
+    modelValue: String, // v-model nativo: search
+    value: String, // alias de la API explícita vieja (sin v-model), por si algún consumidor la usa
     limit: Number,
     perPageOptions: { type: Array, default: () => ([10,25,50,100].map(v=>({value:v, text:String(v)}))) }
   },
-  model: { prop: 'value', event: 'input' },
+  emits: ['update:modelValue', 'input', 'search', 'reset', 'update:limit'],
+  computed: {
+    internalValue() { return this.modelValue !== undefined ? this.modelValue : this.value; }
+  },
   methods: {
+    emitValue(v) { this.$emit('update:modelValue', v); this.$emit('input', v); },
     emitSearch(){ this.$emit('search') },
-    emitReset(){ this.$emit('input', ''); this.$emit('search'); this.$emit('reset') }
+    emitReset(){ this.emitValue(''); this.$emit('search'); this.$emit('reset') }
   },
   template: `<div class="toolbar">
-    <b-form-input class="me-2" :value="value" :placeholder="placeholder" @input="v => $emit('input', v)" @keyup="e => { if (e.key === 'Enter') emitSearch() }" />
+    <b-form-input class="me-2" :model-value="internalValue" :placeholder="placeholder" @update:model-value="emitValue" @keyup="e => { if (e.key === 'Enter') emitSearch() }" />
     <b-button class="me-2 mt-2" size="sm" variant="primary" @click="emitSearch">{{ $t('Search') }}</b-button>
     <b-button class="me-2 mt-2" size="sm" variant="outline-secondary" @click="emitReset">{{ $t('Reset') }}</b-button>
     <div class="ms-auto d-flex align-items-center">
       <span class="me-2 small text-muted">{{ $t('Per_page') }}</span>
-      <b-form-select class="w-auto" :value="limit" :options="perPageOptions" size="sm" @input="v => $emit('update:limit', v)" />
+      <b-form-select class="w-auto" :model-value="limit" :options="perPageOptions" size="sm" @update:model-value="v => $emit('update:limit', v)" />
     </div>
   </div>`
 }
@@ -268,7 +273,6 @@ const ListToolbar = {
 // --- Simple pager wrapper ---
 const Pager = {
   name: 'Pager',
-  compatConfig: { MODE: 3 },
   compilerOptions: { whitespace: 'condense' },
   props: { page:Number, limit:Number, totalRows:Number },
   methods:{ onInput(){ this.$emit('change') } },
