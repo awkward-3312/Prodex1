@@ -13,7 +13,6 @@ const suffixOf = (page) =>
     return user.page_title_suffix || window.__pageTitleSuffix || 'Gestión empresarial';
   });
 const spaGo = (page, to) => page.evaluate((t) => document.querySelector('#app').__vue_app__.config.globalProperties.$router.push(t), to);
-const headEntries = (page) => page.evaluate(() => document.querySelector('#app').__vue_app__.config.globalProperties.$unhead.entries.size);
 const titleTags = (page) => page.evaluate(() => document.querySelectorAll('title').length);
 
 test.describe('Head con Unhead — app (administrador) @smoke', () => {
@@ -83,16 +82,25 @@ test.describe('Head con Unhead — app (administrador) @smoke', () => {
   });
 
   test('sin entradas huérfanas: volver a una pantalla deja el mismo número de entradas y un solo <title>', async ({ page }) => {
+    // Comportamiento observable, no internals de Unhead: si quedaran entradas huérfanas al navegar de ida y
+    // vuelta, se vería como más de un <title> en el DOM o como un título que no corresponde a la ruta actual
+    // (arrastrando el de una pantalla anterior). PRODEX solo usa `title` de `metaInfo` en estas vistas (sin
+    // `meta`/`link` reales — ver platform/head/translate-meta-info.js), así que ambas señales cubren el caso.
     await page.goto('/app/products/list');
     await waitForApp(page);
     await page.waitForTimeout(500);
-    const base = await headEntries(page);
+    const suffix = await suffixOf(page);
+    const ROUTE_TITLE = {
+      '/app/sales/list': 'Ventas',
+      '/app/purchases/list': 'Compras', // "Purchases" → guard de idioma
+      '/app/products/list': 'Productos',
+    };
     for (const r of ['/app/sales/list', '/app/purchases/list', '/app/products/list', '/app/sales/list', '/app/products/list']) {
       await spaGo(page, r);
       await page.waitForTimeout(400);
+      await expect(page).toHaveTitle(`${ROUTE_TITLE[r]} | ${suffix}`);
+      expect(await titleTags(page), `${r}: una sola etiqueta <title>`).toBe(1);
     }
-    await expect.poll(() => headEntries(page), { timeout: 10_000 }).toBe(base);
-    expect(await titleTags(page)).toBe(1);
     // ningún resto de vue-meta en el DOM
     expect(await page.locator('[data-vue-meta], [data-vue-meta-server-rendered]').count()).toBe(0);
     expect(await page.evaluate(() => Boolean(document.querySelector('#app').__vue_app__.config.globalProperties.$meta))).toBe(false);

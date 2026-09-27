@@ -64,6 +64,7 @@
 </template>
 
 <script>
+import { defineAsyncComponent } from 'vue';
 import moment from 'moment';
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
@@ -75,15 +76,17 @@ export default {
   metaInfo: { title: 'WooCommerce Settings' },
   components: {
     PxPageHeader, PxCard, PxModal, PxButton, PxBadge,
-    SettingsTab: () => import(/* webpackChunkName: "woo-settings-tab" */ './woocommerce/SettingsTab.vue'),
-    ProductsTab: () => import(/* webpackChunkName: "woo-products-tab" */ './woocommerce/ProductsTab.vue'),
-    StockTab: () => import(/* webpackChunkName: "woo-stock-tab" */ './woocommerce/StockTab.vue'),
-    CategoriesTab: () => import(/* webpackChunkName: "woo-categories-tab" */ './woocommerce/CategoriesTab.vue'),
-    BrandsTab: () => import(/* webpackChunkName: "woo-brands-tab" */ './woocommerce/BrandsTab.vue'),
-    CustomersTab: () => import(/* webpackChunkName: "woo-customers-tab" */ './woocommerce/CustomersTab.vue'),
-    OrdersTab: () => import(/* webpackChunkName: "woo-orders-tab" */ './woocommerce/OrdersTab.vue'),
-    LogsTab: () => import(/* webpackChunkName: "woo-logs-tab" */ './woocommerce/LogsTab.vue'),
-    GuideTab: () => import(/* webpackChunkName: "woo-guide-tab" */ './woocommerce/GuideTab.vue'),
+    // Vue 3 real: a diferencia de Vue 2/@vue/compat y de las rutas de vue-router 4, el registro LOCAL de
+    // componentes (`components:{...}`) no detecta una función simple como cargador async — hay que envolverla.
+    SettingsTab: defineAsyncComponent(() => import(/* webpackChunkName: "woo-settings-tab" */ './woocommerce/SettingsTab.vue')),
+    ProductsTab: defineAsyncComponent(() => import(/* webpackChunkName: "woo-products-tab" */ './woocommerce/ProductsTab.vue')),
+    StockTab: defineAsyncComponent(() => import(/* webpackChunkName: "woo-stock-tab" */ './woocommerce/StockTab.vue')),
+    CategoriesTab: defineAsyncComponent(() => import(/* webpackChunkName: "woo-categories-tab" */ './woocommerce/CategoriesTab.vue')),
+    BrandsTab: defineAsyncComponent(() => import(/* webpackChunkName: "woo-brands-tab" */ './woocommerce/BrandsTab.vue')),
+    CustomersTab: defineAsyncComponent(() => import(/* webpackChunkName: "woo-customers-tab" */ './woocommerce/CustomersTab.vue')),
+    OrdersTab: defineAsyncComponent(() => import(/* webpackChunkName: "woo-orders-tab" */ './woocommerce/OrdersTab.vue')),
+    LogsTab: defineAsyncComponent(() => import(/* webpackChunkName: "woo-logs-tab" */ './woocommerce/LogsTab.vue')),
+    GuideTab: defineAsyncComponent(() => import(/* webpackChunkName: "woo-guide-tab" */ './woocommerce/GuideTab.vue')),
   },
   data() {
     return {
