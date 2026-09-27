@@ -1,28 +1,30 @@
 import './platform/vue-compat';
-import { mountWithRouter } from './platform/compat/vue-router';
+import { mountWithRouter } from './platform/mount';
 import { head, installHead } from './platform/head';
 import store from "./store";
-import Vue from "vue";
 import router, { setupRouterGuards } from "./router";
 import { installValidation } from './platform/validation';
 
-Vue.component(
+// `app` real de Vue 3, con store (Vuex 4) y router ya instalados (ver platform/mount.js).
+const app = mountWithRouter({}, { router, store });
+
+app.component(
   "large-sidebar",
   // The `import` function returns a Promise.
   () => import(/* webpackChunkName: "largeSidebar" */ "./containers/layouts/largeSidebar")
 );
 
-Vue.component(
+app.component(
   "customizer",
   // The `import` function returns a Promise.
   () => import(/* webpackChunkName: "customizer" */ "./components/common/customizer.vue")
 );
-Vue.component("vue-perfect-scrollbar", () =>
+app.component("vue-perfect-scrollbar", () =>
   import(/* webpackChunkName: "vue-perfect-scrollbar" */ "./components/VuePerfectScrollbar.vue")
 );
-installHead(Vue);
+installHead(app);
 
-installValidation(Vue);
+installValidation(app);
 
 window.axios = require('axios');
 window.axios.defaults.baseURL = '';
@@ -55,10 +57,12 @@ axios.interceptors.response.use((response) => {
 // Adaptador temporal: `window.Fire` ya no es una instancia de Vue sino el bus de plataforma.
 window.Fire = events;
 
-Vue.component('login-component', require('./views/app/sessions/signIn.vue').default);
-Vue.component('forgot-component', require('./views/app/sessions/forgot.vue').default);
-Vue.component('reset-component', require('./views/app/sessions/reset.vue').default);
+app.component('login-component', require('./views/app/sessions/signIn.vue').default);
+app.component('forgot-component', require('./views/app/sessions/forgot.vue').default);
+app.component('reset-component', require('./views/app/sessions/reset.vue').default);
 
+// `Vue.config.silent/productionTip/devtools`: ajustes globales de @vue/compat, no de esta `app` (ver main.js).
+import Vue from "vue";
 Vue.config.productionTip = true;
 Vue.config.silent = true;
 Vue.config.devtools = false;
@@ -73,7 +77,8 @@ loadI18n().then(i18n => {
 
   try { store.dispatch('config/initPrimaryColor'); } catch (e) {}
 
-  const app = mountWithRouter({ store }, router, '#login', [head, bootstrapPlugin, i18n]);
-  installVue2Platform(app);
+  app.use(bootstrapPlugin);
+  app.use(i18n);
+  const vm = app.mount('#login');
+  installVue2Platform(vm);
 });
-

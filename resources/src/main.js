@@ -1,13 +1,10 @@
 import './platform/vue-compat';
-import { mountWithRouter } from './platform/compat/vue-router';
+import { mountWithRouter } from './platform/mount';
 import { head, installHead } from './platform/head';
 import { bootstrapPlugin } from './platform/bootstrap';
 import { installDirectives } from './platform/directives';
 import store from "./store";
 
-import Vue from "vue";
-installHead(Vue);
-installDirectives(Vue);
 import router, { setupRouterGuards } from "./router";
 
 // New organization/operations routes are registered here to avoid destabilizing
@@ -46,9 +43,17 @@ import { installPosOperationalLocationBridge } from './utils/posOperationalLocat
 import { installNavigationPerformance } from './utils/navigationPerformance';
 window.auth = new Auth();
 import { installValidation } from './platform/validation';
-installValidation(Vue);
 
-Vue.component('qrcode-scanner', {
+// `app` real de Vue 3 (createApp), con el store (Vuex 4) y el router ya instalados. El resto del archivo registra
+// componentes/directivas/plugins propios sobre ESTA `app` (nunca sobre un `Vue` global) y monta al final, dentro
+// del `.then()` de `loadI18n()` (ver platform/mount.js).
+const app = mountWithRouter({ render: h => h(App) }, { router, store });
+
+installHead(app);
+installDirectives(app);
+installValidation(app);
+
+app.component('qrcode-scanner', {
   props: { qrbox: { type: Number, default: 250 }, fps: { type: Number, default: 10 } },
   data() { return { isFirstScan: true, html5QrcodeScanner: null }; },
   template: `<div id="reader"></div>`,
@@ -62,18 +67,18 @@ Vue.component('qrcode-scanner', {
 });
 
 import StockyKit from "./plugins/stocky.kit";
-Vue.use(StockyKit);
+app.use(StockyKit);
 import FriendlyNavigation from "./plugins/friendlyNavigation";
-Vue.use(FriendlyNavigation);
+app.use(FriendlyNavigation);
 
 import ExcelExport from "./components/ExcelExport.vue";
-Vue.component('vue-excel-xlsx', ExcelExport);
+app.component('vue-excel-xlsx', ExcelExport);
 import LucideIcon from "./components/LucideIcon.vue";
-Vue.component('lucide-icon', LucideIcon);
+app.component('lucide-icon', LucideIcon);
 import PxSkeleton from "./components/PxSkeleton.vue";
-Vue.component('px-skeleton', PxSkeleton);
+app.component('px-skeleton', PxSkeleton);
 import SerialNumbersField from "./components/SerialNumbersField.vue";
-Vue.component('serial-numbers-field', SerialNumbersField);
+app.component('serial-numbers-field', SerialNumbersField);
 
 window.axios = require('axios');
 window.axios.defaults.baseURL = '/api/';
@@ -119,21 +124,24 @@ axios.interceptors.response.use(response => { decrementPending(response && respo
     || /(^|\/)ping(\/|$)/i.test(requestUrl);
   const isNavigationalLoad = method === 'get' && !skipErrorRedirect && !isTransferLogisticsCapabilityRequest && !isOrganizationCapabilityRequest && !isBackgroundCapabilityRequest;
   if (status === 404 && isNavigationalLoad) router.push({ name: 'NotFound' });
-  if (status === 403) { if (data && data.status === 'limit_reached') { Vue.prototype.$limitReachedMessage = data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.'; window.Fire.$emit('show-limit-reached', data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.'); } else if (isNavigationalLoad) router.push({ name: 'not_authorize' }); }
+  if (status === 403) { if (data && data.status === 'limit_reached') { app.config.globalProperties.$limitReachedMessage = data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.'; window.Fire.$emit('show-limit-reached', data.message || 'Has alcanzado el límite de tu plan. Actualiza tu plan para continuar.'); } else if (isNavigationalLoad) router.push({ name: 'not_authorize' }); }
   return Promise.reject(data || translateLegacyApiMessage(error.message));
 });
 
 installSarInvoiceBridge(window.axios);
 installPosOperationalLocationBridge(window.axios);
 import vSelect from './components/VSelect.vue';
-Vue.component('v-select', vSelect);
+app.component('v-select', vSelect);
 // Bus de eventos global: `window.Fire` es un adaptador temporal de compatibilidad sobre el bus de plataforma (ya no es una
 // instancia de Vue). El código nuevo importa `events` desde "@/platform".
 window.Fire = events;
-Vue.prototype.$uploadPath = window.__uploadPath || 'images';
-Vue.prototype.$imgUrl = function(subfolder, filename) { return '/' + this.$uploadPath + '/' + subfolder + '/' + filename; };
+app.config.globalProperties.$uploadPath = window.__uploadPath || 'images';
+app.config.globalProperties.$imgUrl = function(subfolder, filename) { return '/' + this.$uploadPath + '/' + subfolder + '/' + filename; };
 import Breadcumb from "./components/breadcumb";
-Vue.component("breadcumb", Breadcumb);
+app.component("breadcumb", Breadcumb);
+// `Vue.config.silent/productionTip/devtools` (no `app.config`): son ajustes globales de @vue/compat sobre el
+// `Vue` importado (no existen como opción por-app en Vue 3), independientes del bootstrap de esta `app`.
+import Vue from "vue";
 Vue.config.productionTip = true;
 Vue.config.silent = true;
 Vue.config.devtools = false;
@@ -146,9 +154,11 @@ loadI18n().then(i18n => {
   setupRouterGuards(i18n);
   installNavigationPerformance(window.axios, router);
   try { setupGlobalOfflineSync(); } catch (e) {}
-  const app = mountWithRouter({ store, render: h => h(App) }, router, '#app', [head, bootstrapPlugin, i18n]);
+  app.use(bootstrapPlugin);
+  app.use(i18n);
+  const vm = app.mount('#app');
   // Conecta notificaciones, confirmaciones y modales por id (servicios de plataforma) con BootstrapVue/SweetAlert2.
-  installVue2Platform(app);
+  installVue2Platform(vm);
   // Puente explícito para los scripts sueltos prodex-*.js (sustituye a leer la instancia interna de Vue del DOM).
   installLegacyBridge({
     navigate: (path) => router.push(path),

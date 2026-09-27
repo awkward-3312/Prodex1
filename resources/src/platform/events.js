@@ -2,7 +2,7 @@
  * Bus de eventos de PRODEX, independiente de Vue.
  *
  * Reproduce la semántica de los métodos de evento de Vue 2 que usa el producto (`$on`, `$once`, `$off`, `$emit`) para que
- * `window.Fire` (hasta hoy un `new Vue()`) pueda ser este objeto sin tocar a sus ~330 consumidores:
+ * `window.Fire` (originalmente una instancia raíz de Vue 2) pueda ser este objeto sin tocar a sus ~330 consumidores:
  *  - `$on(evento | [eventos], fn)` registra en orden; el mismo `fn` puede registrarse varias veces.
  *  - `$once` se auto-elimina ANTES de ejecutar el listener; `$off(evento, fn)` también acepta el `fn` original de un `$once`.
  *  - `$off()` quita todo; `$off(evento)` quita todos los de ese evento; `$off(evento, fn)` quita UNA instancia (la última

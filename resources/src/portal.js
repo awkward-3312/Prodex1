@@ -1,8 +1,7 @@
 import './platform/vue-compat';
-import Vue from 'vue';
 import App from './portal/App.vue';
 import router from './portal/router';
-import { mountWithRouter } from './platform/compat/vue-router';
+import { mountWithRouter } from './platform/mount';
 import { installSpanishUiGuard } from './utils/spanishUiGuard';
 
 window.axios = require('axios');
@@ -31,7 +30,9 @@ axios.interceptors.response.use(
   }
 );
 
+// `Vue.config.productionTip`: ajuste global de @vue/compat, no de esta `app` (ver main.js).
+import Vue from 'vue';
 Vue.config.productionTip = false;
 installSpanishUiGuard();
 
-mountWithRouter({ render: (h) => h(App) }, router, '#portal-app');
+mountWithRouter({ render: (h) => h(App) }, { router }).mount('#portal-app');

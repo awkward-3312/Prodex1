@@ -38,12 +38,14 @@ test('vue-i18n: los entrypoints instalan i18n con app.use (plugin), no como opci
     const src = read(f);
     assert.doesNotMatch(src, /new Vue\(\{\s*i18n[,:]/, `${f}: \`i18n\` no debe pasarse como opción raíz de \`new Vue({...})\` (patrón de la 8)`);
   });
+  // Fase vuex4-createapp: `mountWithRouter` ya no acepta un array de plugins — devuelve la `app` real de
+  // `createApp(...)` sin montar, y cada entrypoint hace `app.use(i18n)` explícito antes de `app.mount(...)`.
   const main = read('resources/src/main.js');
-  assert.match(main, /mountWithRouter\([\s\S]*?\[[^\]]*\bi18n\b[^\]]*\]\)/, 'main.js: i18n va en el array de plugins de mountWithRouter');
+  assert.match(main, /app\.use\(i18n\)/, 'main.js: instala i18n con app.use antes de montar');
   const login = read('resources/src/login.js');
-  assert.match(login, /mountWithRouter\([\s\S]*?\[[^\]]*\bi18n\b[^\]]*\]\)/, 'login.js: i18n va en el array de plugins de mountWithRouter');
+  assert.match(login, /app\.use\(i18n\)/, 'login.js: instala i18n con app.use antes de montar');
   const cd = read('resources/src/customer-display.js');
-  assert.match(cd, /\.appContext\.app\.use\(i18n\)/, 'customer-display.js: instala i18n explícitamente sobre la app real (no usa mountWithRouter)');
+  assert.match(cd, /app\.use\(i18n\)/, 'customer-display.js: instala i18n con app.use antes de montar');
 });
 
 test('vue-i18n: el bundle de producción no referencia el paquete "vue-i18n@8"', () => {

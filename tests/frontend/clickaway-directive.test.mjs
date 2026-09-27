@@ -170,7 +170,7 @@ test('vue-clickaway eliminado: sin dependencia, sin import, sin mixin y la direc
   assert.equal(fs.existsSync(path.join(SRC, '../../node_modules/vue-clickaway')), false);
   const offenders = walk(SRC).filter((f) => /vue-clickaway|mixin as clickaway/.test(fs.readFileSync(f, 'utf8'))).map((f) => path.relative(SRC, f));
   assert.deepEqual(offenders, []);
-  assert.match(fs.readFileSync(path.join(SRC, 'main.js'), 'utf8'), /installDirectives\(Vue\)/);
+  assert.match(fs.readFileSync(path.join(SRC, 'main.js'), 'utf8'), /installDirectives\(app\)/);
 });
 
 test('la directiva no usa internals de Vue 2 (Vue.util, $children, hooks bind/inserted/unbind)', () => {

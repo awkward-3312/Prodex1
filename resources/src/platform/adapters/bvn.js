@@ -68,7 +68,7 @@ async function dispose(event) {
 }
 
 /**
- * @param {import('vue').ComponentPublicInstance} rootVm instancia raíz (bajo @vue/compat `new Vue()` devuelve el vm; `rootVm.$.appContext` es el contexto de la app)
+ * @param {import('vue').ComponentPublicInstance} rootVm instancia raíz que devuelve `app.mount(...)`; `rootVm.$.appContext` es el contexto de la app
  */
 export function installBootstrapVueNextPlatform(rootVm) {
   const appContext = rootVm.$.appContext;

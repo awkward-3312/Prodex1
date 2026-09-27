@@ -8,10 +8,10 @@ import { installSpanishApiFeedbackGuard } from '../utils/spanishApiFeedbackGuard
 import { installSpanishSettingsRequestGuard } from '../utils/spanishSettingsRequestGuard';
 
 // vue-i18n 9+ ya no se instala con el patrón `Vue.use` + constructor de clase de la 8 (componentes de Vue 2):
-// se crea con `createI18n({...})` y se instala en la app real de Vue 3 con `app.use(i18n)` (ver
-// `mountWithRouter` en `platform/compat/vue-router.js`, que ya acepta plugins de app además del router). `legacy:
-// true` mantiene el mixin global que expone `$t`/`$tc`/`$te`/`$d`/`$n`/`$i18n` en cada instancia — el mismo
-// contrato observable que la 8, sin tocar los ~13.300 `$t(...)` existentes en las vistas.
+// se crea con `createI18n({...})` y se instala con `app.use(i18n)` sobre la `app` real que crea
+// `mountWithRouter` (`platform/mount.js`). `legacy: true` mantiene el mixin global que expone
+// `$t`/`$tc`/`$te`/`$d`/`$n`/`$i18n` en cada instancia — el mismo contrato observable que la 8, sin tocar los
+// ~13.300 `$t(...)` existentes en las vistas.
 
 function permanentlyDisableLegacyDomTranslators() {
   if (typeof window === 'undefined') return;

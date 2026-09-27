@@ -1,5 +1,5 @@
 import './platform/vue-compat';
-import Vue from 'vue';
+import { mountWithRouter } from './platform/mount';
 import CustomerDisplay from './views/app/pages/customer/CustomerDisplay.vue';
 
 // Lightweight boot: avoid pulling the entire app store/router
@@ -18,12 +18,8 @@ import { createEventBus } from './platform/events.js';
 window.CD = createEventBus();
 
 loadI18n().then((i18n) => {
-  // Sin `mountWithRouter` (esta pantalla no usa router): vue-i18n 11 se instala con `app.use(i18n)` sobre la app
-  // real de Vue 3 que hay detrás de la instancia de compat (`root.$.appContext.app`), igual que en `mountWithRouter`
-  // (ver `platform/compat/vue-router.js`) — pasar `i18n` como opción raíz de `new Vue({...})` ya no lo instala.
-  const root = new Vue({ render: h => h(CustomerDisplay) });
-  root.$.appContext.app.use(i18n);
-  root.$mount('#customer-display');
+  // Sin router: `mountWithRouter` crea la `app` real de Vue 3 igual (createApp), solo se instala i18n sobre ella.
+  const app = mountWithRouter({ render: h => h(CustomerDisplay) });
+  app.use(i18n);
+  app.mount('#customer-display');
 });
-
-

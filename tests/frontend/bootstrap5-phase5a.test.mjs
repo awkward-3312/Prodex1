@@ -72,7 +72,7 @@ test('vue-good-table (paquete) eliminado: <vue-good-table> es un componente Vue 
   const kit = fs.readFileSync(path.join(SRC, 'plugins/stocky.kit.js'), 'utf8');
   assert.doesNotMatch(kit, /VueGoodTablePlugin/);
   assert.doesNotMatch(kit, /from ["']vue-good-table["']/);
-  assert.match(kit, /Vue\.component\("vue-good-table",[\s\S]*?components\/VueGoodTable\.vue["']\)\)/);
+  assert.match(kit, /app\.component\("vue-good-table",[\s\S]*?components\/VueGoodTable\.vue["']\)\)/);
   assert.ok(fs.existsSync(path.join(SRC, 'components/VueGoodTable.vue')));
   const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, 'package.json'), 'utf8'));
   assert.ok(!pkg.dependencies || !pkg.dependencies['vue-good-table']);

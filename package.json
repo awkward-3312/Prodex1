@@ -70,7 +70,7 @@
         "vue-sweetalert2": "^5.0.11",
         "vue3-apexcharts": "^1.11.1",
         "vuedraggable": "^4.1.0",
-        "vuex": "^3.6.2",
+        "vuex": "^4.1.0",
         "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
     },
     "devDependencies": {

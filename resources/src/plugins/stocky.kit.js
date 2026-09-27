@@ -1,5 +1,5 @@
 import "./../assets/styles/sass/themes/lite-purple.scss";
-import "./sweetalert2.js";
+import sweetalert2Plugin from "./sweetalert2.js";
 import { makeHtmlToPaper } from '../platform/htmlToPaper';
 
 const options = {
@@ -427,15 +427,19 @@ function installFriendlyNavigation(Vue) {
 }
 
 export default {
-  install(Vue) {
-    Vue.component("large-sidebar", () => import(/* webpackChunkName: "largeSidebar" */ "../containers/layouts/largeSidebar"));
+  // `app` es la instancia real de Vue 3 (antes `Vue` global bajo compat): `app.component`/`app.mixin` tienen la
+  // misma firma que sus equivalentes de Vue 2, así que las funciones de más abajo no cambiaron; solo
+  // `Vue.prototype.$x` (que no existe en `app`) pasa a `app.config.globalProperties.$x`.
+  install(app) {
+    app.use(sweetalert2Plugin);
+    app.component("large-sidebar", () => import(/* webpackChunkName: "largeSidebar" */ "../containers/layouts/largeSidebar"));
     // Milestone 3 — layout px-next persistente para /app/* (opt-in local).
-    Vue.component("px-shell-layout", () => import(/* webpackChunkName: "px-next-shell" */ "../containers/layouts/PxShellLayout.vue"));
-    Vue.component("customizer", () => import(/* webpackChunkName: "customizer" */ "../components/common/customizer.vue"));
-    Vue.component("vue-perfect-scrollbar", () => import(/* webpackChunkName: "vue-perfect-scrollbar" */ "../components/VuePerfectScrollbar.vue"));
-    Vue.component("vue-good-table", () => import(/* webpackChunkName: "vue-good-table" */ "../components/VueGoodTable.vue"));
-    Vue.prototype.$htmlToPaper = makeHtmlToPaper(options);
-    installReceiptPresentationEnhancer(Vue);
-    installFriendlyNavigation(Vue);
+    app.component("px-shell-layout", () => import(/* webpackChunkName: "px-next-shell" */ "../containers/layouts/PxShellLayout.vue"));
+    app.component("customizer", () => import(/* webpackChunkName: "customizer" */ "../components/common/customizer.vue"));
+    app.component("vue-perfect-scrollbar", () => import(/* webpackChunkName: "vue-perfect-scrollbar" */ "../components/VuePerfectScrollbar.vue"));
+    app.component("vue-good-table", () => import(/* webpackChunkName: "vue-good-table" */ "../components/VueGoodTable.vue"));
+    app.config.globalProperties.$htmlToPaper = makeHtmlToPaper(options);
+    installReceiptPresentationEnhancer(app);
+    installFriendlyNavigation(app);
   }
 };

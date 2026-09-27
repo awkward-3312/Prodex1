@@ -62,8 +62,8 @@ class ShellDefaultLayoutArchitectureTest extends TestCase
 
         // El layout legacy sigue registrado como componente global.
         $kit = $this->repo('resources/src/plugins/stocky.kit.js');
-        $this->assertStringContainsString('Vue.component("large-sidebar"', $kit);
-        $this->assertStringContainsString('Vue.component("px-shell-layout"', $kit);
+        $this->assertStringContainsString('app.component("large-sidebar"', $kit);
+        $this->assertStringContainsString('app.component("px-shell-layout"', $kit);
 
         // Y sigue siendo la salida cuando getPxShellLayout es false.
         $host = $this->repo('resources/src/views/app/index.vue');
