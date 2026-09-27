@@ -76,8 +76,8 @@ export default {
   metaInfo: { title: 'WooCommerce Settings' },
   components: {
     PxPageHeader, PxCard, PxModal, PxButton, PxBadge,
-    // Vue 3 real: a diferencia de Vue 2/@vue/compat y de las rutas de vue-router 4, el registro LOCAL de
-    // componentes (`components:{...}`) no detecta una función simple como cargador async — hay que envolverla.
+    // Vue 3 real: a diferencia de Vue 2/@vue/compat y de las rutas de vue-router 4, el registro local de
+    // componentes de esta opción no detecta una función simple como cargador async — hay que envolverla.
     SettingsTab: defineAsyncComponent(() => import(/* webpackChunkName: "woo-settings-tab" */ './woocommerce/SettingsTab.vue')),
     ProductsTab: defineAsyncComponent(() => import(/* webpackChunkName: "woo-products-tab" */ './woocommerce/ProductsTab.vue')),
     StockTab: defineAsyncComponent(() => import(/* webpackChunkName: "woo-stock-tab" */ './woocommerce/StockTab.vue')),

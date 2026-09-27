@@ -70,8 +70,8 @@ export default {
   metaInfo: { title: 'Shopify Settings' },
   components: {
     PxPageHeader, PxCard, PxBadge, VsPx,
-    // Vue 3 real: a diferencia de Vue 2/@vue/compat y de las rutas de vue-router 4, el registro LOCAL de
-    // componentes (`components:{...}`) no detecta una función simple como cargador async — hay que envolverla.
+    // Vue 3 real: a diferencia de Vue 2/@vue/compat y de las rutas de vue-router 4, el registro local de
+    // componentes de esta opción no detecta una función simple como cargador async — hay que envolverla.
     StoresTab: defineAsyncComponent(() => import(/* webpackChunkName: "shopify-stores-tab" */ './shopify/StoresTab.vue')),
     ProductsTab: defineAsyncComponent(() => import(/* webpackChunkName: "shopify-products-tab" */ './shopify/ProductsTab.vue')),
     InventoryTab: defineAsyncComponent(() => import(/* webpackChunkName: "shopify-inventory-tab" */ './shopify/InventoryTab.vue')),
