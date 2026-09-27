@@ -17,11 +17,14 @@ use App\Http\Controllers\TransferWorkflowController;
 use App\Models\User;
 use App\Models\RecruitApplication;
 use App\Models\RecruitInterview;
+use App\Models\Sale;
 use App\Services\UserOperationalAssignmentService;
 use App\Services\TenantLimitsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Builds/backfills a realistic demo dataset inside the CURRENTLY INITIALIZED
@@ -784,7 +787,30 @@ class DemoTenantSeeder
     /** Tenant owner (role_id=1) — the same authority level normal UI usage runs as. Required to invoke real controllers outside HTTP. */
     private function demoActingUser(): ?User
     {
-        return User::where('role_id', 1)->whereNull('deleted_at')->first();
+        return User::where('role_id', 1)->whereNull('deleted_at')->orderBy('id')->first();
+    }
+
+    private function demoPosActingUser(): ?User
+    {
+        $candidates = User::whereNull('deleted_at')
+            ->orderByRaw('CASE WHEN role_id = 1 THEN 0 ELSE 1 END')
+            ->orderBy('id')
+            ->get();
+
+        return $this->selectDemoPosActingUserFromCandidates($candidates);
+    }
+
+    private function selectDemoPosActingUserFromCandidates(iterable $candidates, ?callable $canOperatePos = null): ?User
+    {
+        $canOperatePos ??= fn (User $candidate): bool => Gate::forUser($candidate)->allows('Sales_pos', Sale::class);
+
+        foreach ($candidates as $candidate) {
+            if ($canOperatePos($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -1275,23 +1301,28 @@ class DemoTenantSeeder
         $failed = 0;
         $errors = [];
 
-        $user = $this->demoActingUser();
+        $user = $this->demoPosActingUser();
         if (! $user) {
             return ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0, 'errors' => []];
         }
 
-        $drawer = DB::table('cash_drawers')->where('is_active', 1)->whereNull('deleted_at')->orderBy('id')->first();
-        if (! $drawer) {
-            return ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0, 'errors' => ['Ventas: no existe ninguna caja física activa — CreatePOS() la exige incondicionalmente.']];
+        $assignmentService = app(UserOperationalAssignmentService::class);
+        $operationalContext = $assignmentService->effectiveAssignment($user);
+        $drawer = $operationalContext['cash_drawer'];
+        $warehouseId = (int) ($operationalContext['warehouse_id'] ?? 0);
+        if (! $drawer || ! $warehouseId) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0, 'errors' => ['Ventas: el usuario DEMO no tiene una asignación operativa activa de warehouse/caja válida para CreatePOS().']];
         }
-        $warehouseId = (int) $drawer->warehouse_id;
+
+        $paymentMethodId = $this->activePaymentMethodId();
+        if (! $paymentMethodId) {
+            return ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0, 'errors' => ['Ventas: el tenant no tiene un método de pago activo válido para CreatePOS().']];
+        }
 
         $clientIds = array_values($this->demoClientIds());
         if (! $clientIds) {
             return ['created' => 0, 'existing' => 0, 'skipped' => 10, 'failed' => 0, 'errors' => ['Ventas: ningún cliente DEMO existe todavía — ejecuta seedClients() primero.']];
         }
-
-        $assignmentService = app(UserOperationalAssignmentService::class);
 
         for ($n = 1; $n <= 10; $n++) {
             $marker = self::SALE_UUID_PREFIX.sprintf('%02d', $n).str_repeat('0', 36 - strlen(self::SALE_UUID_PREFIX) - 2);
@@ -1355,9 +1386,9 @@ class DemoTenantSeeder
             // PaymentSale when applied_amount > 0 — so this is still the true
             // unpaid path (due=GrandTotal, payment_statut='unpaid', 0 PaymentSale rows).
             $payments = match ($paymentKind) {
-                'paid' => [['payment_method_id' => 2, 'amount' => $grandTotal]],
-                'partial' => [['payment_method_id' => 2, 'amount' => round($grandTotal * 0.5, 2)]],
-                'unpaid' => [['payment_method_id' => 2, 'amount' => 0]],
+                'paid' => [['payment_method_id' => $paymentMethodId, 'amount' => $grandTotal]],
+                'partial' => [['payment_method_id' => $paymentMethodId, 'amount' => round($grandTotal * 0.5, 2)]],
+                'unpaid' => [['payment_method_id' => $paymentMethodId, 'amount' => 0]],
             };
 
             $clientId = $clientIds[($n - 1) % count($clientIds)];
@@ -1381,12 +1412,19 @@ class DemoTenantSeeder
 
             try {
                 $request = $this->makeControllerRequest($payload, $user);
-                app(PosController::class)->CreatePOS($request, $assignmentService);
+                $response = app(PosController::class)->CreatePOS($request, $assignmentService);
+                $responseError = $this->posResponseError($response);
+                if ($responseError !== null) {
+                    $failed++;
+                    $errors[] = "Venta {$marker}: {$responseError}";
+
+                    continue;
+                }
 
                 $saleId = DB::table('sales')->where('sale_uuid', $marker)->whereNull('deleted_at')->value('id');
                 if (! $saleId) {
                     $failed++;
-                    $errors[] = "Venta {$marker}: CreatePOS() no lanzó excepción pero no se encontró el registro por su sale_uuid.";
+                    $errors[] = "Venta {$marker}: ".$this->posSalePersistenceError($marker);
 
                     continue;
                 }
@@ -1403,6 +1441,62 @@ class DemoTenantSeeder
         }
 
         return ['created' => $created, 'existing' => $existing, 'skipped' => 0, 'failed' => $failed, 'errors' => $errors];
+    }
+
+    private function activePaymentMethodId(): ?int
+    {
+        $methods = DB::table('payment_methods')
+            ->whereNull('deleted_at');
+
+        if (Schema::hasColumn('payment_methods', 'is_active')) {
+            $methods->where('is_active', 1);
+        }
+
+        $methods = $methods->orderBy('id')->get(['id', 'name']);
+
+        return $this->selectActivePaymentMethodId($methods);
+    }
+
+    private function selectActivePaymentMethodId(iterable $methods): ?int
+    {
+        $fallback = null;
+        foreach ($methods as $method) {
+            $id = (int) ($method->id ?? 0);
+            if (! $id) {
+                continue;
+            }
+
+            $fallback ??= $id;
+            if (mb_strtolower(trim((string) ($method->name ?? ''))) === 'cash') {
+                return $id;
+            }
+        }
+
+        return $fallback;
+    }
+
+    private function posResponseError($response): ?string
+    {
+        if (! is_object($response) || ! method_exists($response, 'getStatusCode')) {
+            return null;
+        }
+
+        $status = (int) $response->getStatusCode();
+        $body = method_exists($response, 'getData') ? $response->getData(true) : [];
+        $success = is_array($body) ? ($body['success'] ?? null) : null;
+        if ($status < 400 && $success !== false) {
+            return null;
+        }
+
+        $message = is_array($body) ? ($body['message'] ?? $body['code'] ?? 'respuesta de error sin mensaje') : 'respuesta de error sin cuerpo JSON';
+        $message = preg_replace('/\s+/', ' ', (string) $message);
+
+        return "CreatePOS() respondió HTTP {$status}: ".mb_strimwidth($message, 0, 500, '…');
+    }
+
+    private function posSalePersistenceError(string $marker): string
+    {
+        return "CreatePOS() respondió sin error HTTP, pero no persistió una venta con el sale_uuid esperado ({$marker}).";
     }
 
     /**

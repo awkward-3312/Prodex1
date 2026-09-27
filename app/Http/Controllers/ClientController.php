@@ -169,115 +169,24 @@ class ClientController extends BaseController
         $this->normalizeClientFiscalInput($request, $taxConfig);
         $this->validateClientFiscalInput($request, $taxConfig);
 
-        $this->validate($request, [
-            'name' => 'required',
-            'firstname' => ['nullable', 'string', 'max:255'],
-            'lastname' => ['nullable', 'string', 'max:255'],
-            'email' => [
-                'nullable', 'email', 'max:255',
-                // Ensure email is unique in clients table (exclude soft-deleted)
-                Rule::unique('clients', 'email')->whereNull('deleted_at'),
-                // Ensure email is unique in ecommerce_clients table (exclude soft-deleted)
-                Rule::unique('ecommerce_clients', 'email')->whereNull('deleted_at'),
-            ],
-        ]);
-
-        if ($request['is_royalty_eligible'] == '1' || $request['is_royalty_eligible'] == 'true') {
-            $is_royalty_eligible = 1;
-        } else {
-            $is_royalty_eligible = 0;
-        }
-
-        $client = Client::create([
-            'firstname' => $request['firstname'],
-            'lastname' => $request['lastname'],
-            'name' => $request['name'],
-            'code' => $this->getNumberOrder(),
-            'adresse' => $request['adresse'],
-            'phone' => $request['phone'],
-            'email' => $request['email'],
-            'country' => $request['country'],
-            'city' => $request['city'],
-            'state' => $request['state'],
-            'zip' => $request['zip'],
-            'tax_number' => $request['tax_number'],
-            'is_royalty_eligible' => $is_royalty_eligible,
-            'opening_balance' => $request['opening_balance'] ?? 0,
-            'credit_limit' => $request['credit_limit'] ?? 0,
-        ]);
+        $maintenance = app(\App\Services\ClientMaintenanceService::class);
+        $maintenance->validateCreate($request);
+        $client = $maintenance->create($request);
 
         return response()->json($client);
     }
 
     protected function resolveTenantTaxConfig(): array
     {
-        $setting = Setting::where('deleted_at', '=', null)->first();
-        $tenantCountry = null;
-
-        try {
-            $tenantCountry = function_exists('tenant') && tenant() ? (tenant()->country_code ?? null) : null;
-        } catch (\Throwable $e) {
-            $tenantCountry = null;
-        }
-
-        return TenantTaxConfigResolver::resolve($setting, $tenantCountry);
+        return app(\App\Services\ClientMaintenanceService::class)->resolveTenantTaxConfig();
     }
-
     protected function normalizeClientFiscalInput(Request $request, array $taxConfig): void
     {
-        $countryCode = strtoupper((string) ($taxConfig['country_code'] ?? ''));
-
-        if ($countryCode !== 'HN') {
-            return;
-        }
-
-        $taxNumber = preg_replace('/\D+/', '', (string) $request->input('tax_number', ''));
-        $name = trim((string) $request->input('name', ''));
-
-        $request->merge([
-            'tax_number' => $taxNumber,
-            'name' => $taxNumber === '' && $name === '' ? 'Cliente Final' : $name,
-            'country' => $request->filled('country') ? $request->input('country') : 'Honduras',
-        ]);
+        app(\App\Services\ClientMaintenanceService::class)->normalizeClientFiscalInput($request, $taxConfig);
     }
-
     protected function validateClientFiscalInput(Request $request, array $taxConfig): void
     {
-        $countryCode = strtoupper((string) ($taxConfig['country_code'] ?? ''));
-
-        if ($countryCode !== 'HN') {
-            return;
-        }
-
-        $taxNumber = (string) $request->input('tax_number', '');
-        if ($taxNumber === '') {
-            return;
-        }
-
-        Validator::make($request->all(), [
-            'tax_number' => [
-                'required',
-                'digits:14',
-                function ($attribute, $value, $fail) {
-                    if (preg_match('/^(\d)\1{13}$/', (string) $value)) {
-                        $fail('El RTN no es válido.');
-                    }
-                },
-            ],
-            'name' => [
-                'required',
-                'string',
-                'max:255',
-                function ($attribute, $value, $fail) {
-                    if (mb_strtolower(trim((string) $value), 'UTF-8') === 'cliente final') {
-                        $fail('Ingrese el nombre o razón social asociado al RTN.');
-                    }
-                },
-            ],
-        ], [
-            'tax_number.digits' => 'El RTN debe contener 14 dígitos.',
-            'name.required' => 'Ingrese el nombre o razón social asociado al RTN.',
-        ])->validate();
+        app(\App\Services\ClientMaintenanceService::class)->validateClientFiscalInput($request, $taxConfig);
     }
 
     // ------------ function show -----------\\
@@ -306,48 +215,7 @@ class ClientController extends BaseController
         $this->normalizeClientFiscalInput($request, $taxConfig);
         $this->validateClientFiscalInput($request, $taxConfig);
 
-        // Get existing ecommerce_client id if it exists (for ignoring in validation)
-        $existingEcommerceClient = EcommerceClient::where('client_id', $id)
-            ->whereNull('deleted_at')
-            ->first();
-        $ecommerceClientId = $existingEcommerceClient ? $existingEcommerceClient->id : null;
-
-        // Validate input for both Client and EcommerceClient
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'firstname' => ['nullable', 'string', 'max:255'],
-            'lastname' => ['nullable', 'string', 'max:255'],
-            'adresse' => ['nullable', 'string', 'max:255'],
-            'phone' => ['nullable', 'string', 'max:50'],
-            'email' => [
-                'nullable', 'email', 'max:255',
-                // Ensure email is unique in clients table (ignore current client, exclude soft-deleted)
-                Rule::unique('clients', 'email')
-                    ->ignore($id)
-                    ->whereNull('deleted_at'),
-                // Ensure email is unique in ecommerce_clients table (ignore current ecommerce_client if exists, exclude soft-deleted)
-                Rule::unique('ecommerce_clients', 'email')
-                    ->ignore($ecommerceClientId)
-                    ->whereNull('deleted_at'),
-            ],
-            'country' => ['nullable', 'string', 'max:100'],
-            'city' => ['nullable', 'string', 'max:100'],
-            'state' => ['nullable', 'string', 'max:100'],
-            'zip' => ['nullable', 'string', 'max:20'],
-            'tax_number' => ['nullable', 'string', 'max:100'],
-            'credit_limit' => ['nullable', 'numeric', 'min:0'],
-
-            // EcommerceClient-specific (optional)
-            'username' => [
-                'nullable', 'string', 'max:100',
-                Rule::unique('ecommerce_clients', 'username')->ignore($id, 'client_id'),
-            ],
-            'status' => ['nullable', Rule::in(['active', 'inactive'])],
-            'password' => ['nullable', 'string', 'min:6'],
-
-            // flags
-            'is_royalty_eligible' => ['nullable'],
-        ]);
+        app(\App\Services\ClientMaintenanceService::class)->validateUpdate($request, $id);
 
         // Normalize boolean flag from various inputs: '1', 'true', true, etc.
         $isRoyaltyEligible = filter_var($request->input('is_royalty_eligible'), FILTER_VALIDATE_BOOLEAN) ? 1 : 0;
@@ -448,15 +316,7 @@ class ClientController extends BaseController
 
     public function getNumberOrder()
     {
-        $last = DB::table('clients')->latest('id')->first();
-
-        if ($last) {
-            $code = $last->code + 1;
-        } else {
-            $code = 1;
-        }
-
-        return $code;
+        return app(\App\Services\ClientMaintenanceService::class)->nextCode();
     }
 
     public function getOpeningBalancePaymentNumberOrder()

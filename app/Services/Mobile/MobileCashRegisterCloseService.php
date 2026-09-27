@@ -16,6 +16,7 @@ class MobileCashRegisterCloseService
 
     public function close(User $user, array $payload): array
     {
+        $breakdown = $payload['counted_denominations'] ?? [];
         $uuid = strtolower($payload['operation_uuid']);
         unset($payload['operation_uuid']);
         $payload['register_id'] = (int) $payload['register_id'];
@@ -34,7 +35,7 @@ class MobileCashRegisterCloseService
         $fingerprint = hash('sha256', json_encode(['type' => 'close', 'user_id' => $user->id, 'payload' => $payload]));
 
         try {
-            return DB::transaction(function () use ($user, $uuid, $payload, $fingerprint) {
+            return DB::transaction(function () use ($user, $uuid, $payload, $fingerprint, $breakdown) {
                 if ($saved = $this->existing($user, $uuid, $fingerprint)) return $this->result($saved, true);
                 $register = CashRegister::whereKey($payload['register_id'])->lockForUpdate()->first();
                 // A simultaneous close may have committed while we waited for the register lock.
@@ -42,6 +43,14 @@ class MobileCashRegisterCloseService
                 if (! $register) throw new MobilePosPreflightException('register_not_found', 404);
                 $this->sessions->assertContext($user, $register);
                 if ($register->status !== 'open') throw new MobilePosPreflightException('register_already_closed', 409);
+
+                $denominationTotal = app(\App\Services\CashDenominationReconciler::class)->total($breakdown, $this->engine->cashDenominations());
+                if ($denominationTotal !== $payload['counted_cash']) {
+                    throw new MobilePosPreflightException('denomination_total_mismatch', 422, [
+                        'counted_cash' => $payload['counted_cash'],
+                        'denomination_total' => $denominationTotal,
+                    ], 'El desglose por denominaciones debe coincidir con el efectivo contado.');
+                }
 
                 $this->engine->applyClosing($register, $payload, $user);
                 // Do not catch uniqueness errors within the transaction: the close must roll back too.

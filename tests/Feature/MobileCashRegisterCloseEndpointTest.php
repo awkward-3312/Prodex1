@@ -24,6 +24,12 @@ class MobileCashRegisterCloseEndpointTest extends TestCase
         Route::middleware('auth:api')->post($this->url, MobileCashRegisterCloseController::class);
     }
 
+    private function breakdown(array $overrides = []): array
+    {
+        $config = app(PosCashRegisterController::class)->cashDenominations();
+        return array_replace(array_fill_keys(array_map('strval', array_merge($config['bills'], $config['coins'])), 0), $overrides);
+    }
+
     private function setupClose(): array
     {
         $user = $this->user([], ['Pos_view', 'cash_register_report']);
@@ -31,7 +37,7 @@ class MobileCashRegisterCloseEndpointTest extends TestCase
         $location = $this->location($branch->id);
         $this->assignOperationalContext($user, $branch->id, $location->id);
         $register = $this->cashRegister(['user_id' => $user->id, 'branch_id' => $branch->id, 'inventory_location_id' => $location->id, 'opening_balance' => 100, 'opened_at' => now()->subHour()]);
-        $payload = ['operation_uuid' => Str::uuid()->toString(), 'register_id' => $register->id, 'counted_cash' => '1025.00'];
+        $payload = ['operation_uuid' => Str::uuid()->toString(), 'register_id' => $register->id, 'counted_cash' => '1025.00', 'counted_denominations' => $this->breakdown(['500' => 2, '5' => 5])];
         return [$user, $register, $payload];
     }
 
@@ -52,7 +58,7 @@ class MobileCashRegisterCloseEndpointTest extends TestCase
             $this->sale(['user_id' => $user->id, 'branch_id' => $model->branch_id, 'inventory_location_id' => $model->inventory_location_id, 'GrandTotal' => 920]);
             $this->paymentSale(DB::table('sales')->max('id'), $this->paymentMethod($method)->id, 920);
         }
-        $payload += ['card_terminal_total' => '900.00', 'card_batch_number' => 'batch-1', 'card_reference' => 'reference', 'card_notes' => 'terminal', 'transfers_verified' => true, 'transfer_notes' => 'verificadas', 'cash_withdrawn_at_close' => '1000.00', 'next_opening_float' => '25.00', 'counted_denominations' => ['500' => 2, '5' => 5], 'notes' => 'Cierre revisado'];
+        $payload += ['card_terminal_total' => '900.00', 'card_batch_number' => 'batch-1', 'card_reference' => 'reference', 'card_notes' => 'terminal', 'transfers_verified' => true, 'transfer_notes' => 'verificadas', 'cash_withdrawn_at_close' => '1000.00', 'next_opening_float' => '25.00', 'notes' => 'Cierre revisado'];
         $first = $this->actingAs($user, 'api')->postJson($this->url, $payload)->assertOk()->assertJsonPath('idempotent', false);
         $row = CashRegister::find($register->id);
         $this->assertSame('closed', $row->status);
@@ -143,7 +149,7 @@ class MobileCashRegisterCloseEndpointTest extends TestCase
         [$user, $register, $payload] = $this->setupClose();
         Route::middleware('auth:api')->post('/api/close-native-test', [PosCashRegisterController::class, 'closeRegister']);
         Route::middleware('auth:api')->get('/api/close-history-test', [\App\Http\Controllers\Mobile\MobileCashRegisterHistoryController::class, 'history']);
-        $this->actingAs($user, 'api')->postJson('/api/close-native-test', $payload)->assertOk();
+        $this->actingAs($user, 'api')->postJson('/api/close-native-test', array_diff_key($payload, ['counted_denominations' => true]))->assertOk();
         $web = CashRegister::find($register->id);
         $this->assertSame('closed', $web->status);
         $this->assertNotNull($web->branch_name_snapshot);
@@ -179,6 +185,98 @@ class MobileCashRegisterCloseEndpointTest extends TestCase
         $this->assignOperationalContext($user, $branch->id, $location->id);
         $retry = $this->postJson($this->url, $payload)->assertOk()->assertJsonPath('idempotent', true);
         $this->assertSame($first->json('summary'), $retry->json('summary'));
+    }
+
+    public static function invalidBreakdowns(): array
+    {
+        return [['absent'], ['missing'], ['unknown'], ['negative'], ['fractional'], ['large'], ['empty'], ['duplicate'], ['exponent']];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidBreakdowns')]
+    public function test_invalid_breakdown_rejects_without_mutation(string $case): void
+    {
+        [$user, $register, $payload] = $this->setupClose();
+        if ($case === 'absent') unset($payload['counted_denominations']);
+        if ($case === 'missing') unset($payload['counted_denominations']['200']);
+        if ($case === 'unknown') $payload['counted_denominations']['3'] = 0;
+        if ($case === 'negative') $payload['counted_denominations']['200'] = -1;
+        if ($case === 'fractional') $payload['counted_denominations']['200'] = 0.5;
+        if ($case === 'large') $payload['counted_denominations']['200'] = 1000001;
+        if ($case === 'empty') $payload['counted_denominations'] = [];
+        if ($case === 'duplicate') $payload['counted_denominations']['0.50'] = 0;
+        if ($case === 'exponent') $payload['counted_denominations']['2e2'] = 0;
+        $before = (array) DB::table('cash_registers')->where('id', $register->id)->first();
+        $this->actingAs($user, 'api')->postJson($this->url, $payload)->assertStatus(422)->assertJsonPath('error.code', 'validation_error');
+        $this->assertSame($before, (array) DB::table('cash_registers')->where('id', $register->id)->first());
+        $this->assertSame(0, DB::table('cash_register_operations')->count());
+    }
+
+    public static function counts(): array
+    {
+        return [['1000.00', 0, 422], ['1050.00', 10, 422], ['1025.00', 5, 200]];
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('counts')]
+    public function test_exact_denomination_reconciliation(string $total, int $fives, int $status): void
+    {
+        [$user, $register, $payload] = $this->setupClose();
+        $payload['counted_denominations']['5'] = $fives;
+        $before = (array) DB::table('cash_registers')->where('id', $register->id)->first();
+        $response = $this->actingAs($user, 'api')->postJson($this->url, $payload)->assertStatus($status);
+        if ($status === 422) {
+            $response->assertJsonPath('error.code', 'denomination_total_mismatch')
+                ->assertJsonPath('error.details.counted_cash', '1025.00')
+                ->assertJsonPath('error.details.denomination_total', $total);
+            $this->assertSame($before, (array) DB::table('cash_registers')->where('id', $register->id)->first());
+            $this->assertSame(0, DB::table('cash_register_operations')->count());
+        } else {
+            $this->assertEquals($payload['counted_denominations'], CashRegister::find($register->id)->closing_snapshot['counted_denominations']);
+        }
+    }
+
+    public static function physicalDifferences(): array { return [['1000.00', 0, -20, 'short'], ['1050.00', 10, 30, 'over'], ['1020.00', 4, 0, 'balanced']]; }
+    #[\PHPUnit\Framework\Attributes\DataProvider('physicalDifferences')]
+    public function test_cash_difference_is_independent_of_reconciliation(string $counted, int $fives, int $difference, string $status): void
+    {
+        [$user, $register, $payload] = $this->setupClose();
+        DB::table('cash_registers')->where('id', $register->id)->update(['opening_balance' => 1020]);
+        $payload['counted_cash'] = $counted;
+        $payload['counted_denominations']['5'] = $fives;
+        $this->actingAs($user, 'api')->postJson($this->url, $payload)->assertOk();
+        $row = CashRegister::find($register->id);
+        $this->assertEquals($difference, $row->cash_difference);
+        $this->assertSame($status, $row->closing_status);
+    }
+
+    public function test_zero_count_and_decimal_coins_are_exact(): void
+    {
+        [$user, , $payload] = $this->setupClose();
+        $payload['counted_cash'] = '0.00';
+        $payload['counted_denominations'] = $this->breakdown();
+        $this->actingAs($user, 'api')->postJson($this->url, $payload)->assertOk();
+        $reconciler = app(\App\Services\CashDenominationReconciler::class);
+        $this->assertSame('0.65', $reconciler->total($this->breakdown(['0.2' => 3, '0.05' => 1]), app(PosCashRegisterController::class)->cashDenominations()));
+    }
+
+    public function test_changed_denomination_payload_conflicts_before_reconciliation(): void
+    {
+        [$user, , $payload] = $this->setupClose();
+        $this->actingAs($user, 'api')->postJson($this->url, $payload)->assertOk();
+        $payload['counted_denominations']['5'] = 4;
+        $this->postJson($this->url, $payload)->assertStatus(409)->assertJsonPath('error.code', 'idempotency_conflict');
+        $this->assertSame(1, DB::table('cash_register_operations')->count());
+    }
+
+    public function test_authoritative_configuration_is_reused_and_does_not_change_saved_retry(): void
+    {
+        [$user, , $payload] = $this->setupClose();
+        $first = $this->actingAs($user, 'api')->postJson($this->url, $payload)->assertOk();
+        DB::table('settings')->update(['country_code' => 'US']);
+        $this->postJson($this->url, $payload)->assertOk()->assertJsonPath('idempotent', true);
+        $config = app(PosCashRegisterController::class)->cashDenominations();
+        $map = $this->breakdown(['100' => 10]);
+        $this->assertSame('1000.00', app(\App\Services\CashDenominationReconciler::class)->total($map, $config));
+        $this->assertEquals($payload['counted_denominations'], $first->json('summary.counted_denominations'));
     }
 
     public function test_ledger_failure_rolls_back_close(): void

@@ -487,7 +487,7 @@ class CashRegisterController extends BaseController
         return $minutes.' min';
     }
 
-    protected function cashDenominations(): array
+    public function cashDenominations(): array
     {
         $setting = Setting::first();
         $country = strtoupper((string) ($setting->country_code ?? (function_exists('tenant') && tenant() ? tenant()->country_code : 'HN')));
