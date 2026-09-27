@@ -2,34 +2,12 @@ const path = require('path');
 const { test, expect } = require('../support/fixtures');
 const { env, waitForApp } = require('../support/helpers');
 
-// CUSTOM_DIR desactivado (`configureCompat({ CUSTOM_DIR: false })`): ningún consumidor de hooks de directivas de Vue 2. Si un componente de una
-// librería usara `bind/inserted/componentUpdated/unbind`, @vue/compat lo avisaría (CUSTOM_DIR) o, peor, dejaría de ejecutarlo. Se recorre una
-// muestra amplia de pantallas (tooltips, sidebars, vue-select con append-to-body, BV2 textarea/datepicker, tablas) contando esos avisos.
-
-const ROUTES = [
-  '/app/products/list-classic', '/app/adjustments/list-classic', '/app/tasks/list', '/app/projects/list', '/app/hrm/employees/list',
-  '/app/People/Customers', '/app/whatsapp/settings', '/app/products/Brands', '/app/products/SubCategories', '/app/service/jobs/create',
-  '/app/realestate/properties/create', '/app/settings/System_settings', '/app/reports/sales_report', '/app/products/store', '/app/meeting/calendar',
-];
-
+// El mecanismo de aviso CUSTOM_DIR era de @vue/compat (fase vue3-pure-runtime: retirado por completo, ver
+// docs/architecture/VUE3_PURE_RUNTIME.md) — sin él no hay nada que atribuirle, así que la comprobación de avisos
+// se retiró (habría pasado siempre, sin probar nada real). Queda la comprobación funcional real: el datepicker
+// de BootstrapVue 2 (directiva interna con hooks de Vue 3) sigue montando y abriendo su calendario.
 test.describe('CUSTOM_DIR eliminado', () => {
   test.use({ storageState: path.join(env.authDir, 'admin.json') });
-
-  test('ninguna pantalla de la muestra emite avisos CUSTOM_DIR ni errores', async ({ page }) => {
-    await page.goto('/app/dashboard');
-    await waitForApp(page);
-    await page.evaluate(() => {
-      window.__cd = [];
-      document.querySelector('#app').__vue_app__.config.warnHandler = (msg, proxy, trace) => {
-        if (/CUSTOM_DIR/.test(msg)) window.__cd.push({ msg: msg.slice(0, 160), trace: String(trace).split('\n').slice(0, 3).join(' | ') });
-      };
-    });
-    for (const route of ROUTES) {
-      await page.evaluate((t) => document.querySelector('#app').__vue_app__.config.globalProperties.$router.push(t), route);
-      await page.waitForTimeout(1800);
-    }
-    expect(await page.evaluate(() => window.__cd)).toEqual([]);
-  });
 
   test('BV2 datepicker (directiva interna v-b-hover con hooks de Vue 3): monta y abre el calendario', async ({ page }) => {
     await page.goto('/app/settings/System_settings');

@@ -72,10 +72,8 @@ test('vue-meta eliminado: ni dependencia, ni import, ni Vue.use(Meta), ni $meta,
   assert.deepEqual(offenders, []);
 });
 
-test('INSTANCE_CHILDREN eliminado y ningún código propio lee $children', () => {
-  const compat = fs.readFileSync(path.join(SRC, 'platform/vue-compat.js'), 'utf8').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
-  assert.doesNotMatch(compat, /INSTANCE_CHILDREN/);
-  assert.match(compat, /CUSTOM_DIR:\s*false/);
+test('$children (API privada de Vue 2, sin equivalente en Vue 3) no aparece en código propio; sin @vue/compat de por medio', () => {
+  assert.ok(!fs.existsSync(path.join(SRC, 'platform/vue-compat.js')));
   const offenders = files.filter((f) => /\$children/.test(fs.readFileSync(f, 'utf8').split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n'))).map(rel);
   assert.deepEqual(offenders, []);
 });

@@ -41,12 +41,12 @@ test('package.json: ninguna de las dependencias Vue 2 eliminadas (vue-select, vu
   }
 });
 
-// Fase vuex4-createapp: vuex ya migró a la serie 4.x (`createStore`, `app.use(store)`). `@vue/compat` sigue
-// a propósito (se retira en la fase siguiente, "quitar @vue/compat").
-test('package.json: vuex está en la serie 4.x y @vue/compat sigue presente a propósito (fase siguiente: quitar @vue/compat)', () => {
+// Fase vue3-pure-runtime: vuex en la serie 4.x (`createStore`, `app.use(store)`) y `@vue/compat` retirado del
+// todo — PRODEX corre con `vue` real. Ver tests/frontend/vuex4-createapp-guard.test.mjs para la guarda completa.
+test('package.json: vuex está en la serie 4.x y @vue/compat ya NO está presente (fase vue3-pure-runtime)', () => {
   assert.ok(allDeps.vuex, 'vuex debe estar presente');
   assert.match(allDeps.vuex, /^[\^~]?4\./, 'vuex debe estar en la serie 4.x (Vuex 3 ya se migró)');
-  assert.ok(allDeps['@vue/compat'], '@vue/compat debe seguir presente (se retira en la fase siguiente)');
+  assert.ok(!allDeps['@vue/compat'], '@vue/compat debe estar eliminado');
 });
 
 test('node_modules: ninguno de los paquetes Vue 2 eliminados está instalado', () => {

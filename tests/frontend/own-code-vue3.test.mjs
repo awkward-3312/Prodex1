@@ -57,9 +57,11 @@ for (const [name, re] of RULES) {
   });
 }
 
-test('los Px* migrados declaran la config de compat que aplica Vue 3 a los listeners', () => {
+test('los Px* migrados no declaran `compatConfig`/`INSTANCE_LISTENERS` (sin @vue/compat, los listeners ya viajan en $attrs por defecto)', () => {
   for (const f of ['components/px-next/PxButton.vue', 'components/px-next/PxInput.vue', 'components/px-next/PxCheck.vue', 'components/px-next/PxTextarea.vue', 'views/app/products/next/edit/VsPx.vue']) {
-    assert.match(fs.readFileSync(path.join(SRC, f), 'utf8'), /INSTANCE_LISTENERS:\s*false/, f);
+    const src = fs.readFileSync(path.join(SRC, f), 'utf8');
+    assert.doesNotMatch(src, /compatConfig/, f);
+    assert.doesNotMatch(src, /INSTANCE_LISTENERS/, f);
   }
 });
 

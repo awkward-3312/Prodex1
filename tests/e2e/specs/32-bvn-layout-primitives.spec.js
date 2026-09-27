@@ -227,7 +227,9 @@ test.describe('Comportamiento idéntico en BV2 y BVN: una sola emisión @smoke',
       await mount(page, '<div><b-dropdown id="de" text="Acc"><b-dropdown-item>Uno</b-dropdown-item></b-dropdown></div>', {
         bvn,
         data: { shows: 0, hides: 0 },
-        created: 'function () { this.$root.$on("bv::dropdown::show", () => { this.shows++; }); this.$root.$on("bv::dropdown::hide", () => { this.hides++; }); }',
+        // Antes `this.$root.$on(...)` (API de eventos de instancia de Vue 2, sin equivalente en Vue 3): el emisor
+        // real (platform/bootstrap/nav.js) ahora usa el bus de plataforma (`window.Fire`), igual que los consumidores.
+        created: 'function () { window.Fire.$on("bv::dropdown::show", () => { this.shows++; }); window.Fire.$on("bv::dropdown::hide", () => { this.hides++; }); }',
       });
       const root = page.locator('.probe-root');
       await root.locator('.dropdown-toggle').click();

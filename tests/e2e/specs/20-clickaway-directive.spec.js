@@ -2,8 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { test, expect } = require('../support/fixtures');
 
-// Directiva propia `v-on-clickaway` (platform/directives/clickaway.js), con clicks y toques reales en Chromium y el build global de
-// @vue/compat. En PRODEX la directiva está registrada globalmente y ninguna pantalla la usa hoy (vue-clickaway solo se importaba
+// Directiva propia `v-on-clickaway` (platform/directives/clickaway.js), con clicks y toques reales en Chromium y el build global del
+// `vue` real de la app. En PRODEX la directiva está registrada globalmente y ninguna pantalla la usa hoy (vue-clickaway solo se importaba
 // como mixin sin `v-on-clickaway` en ninguna plantilla), así que los patrones de UI se reproducen aquí: dropdown con toggle y
 // panel `v-if`, overlay `v-show`, varias instancias, handler dinámico y montaje/desmontaje repetido.
 test.use({ storageState: { cookies: [], origins: [] }, hasTouch: true });
@@ -15,7 +15,7 @@ const DIRECTIVE_SOURCE = fs
 
 async function mount(page, template, options = {}) {
   await page.setContent('<!doctype html><html><body><div id="host"></div><div id="outside" style="margin:40px;padding:20px">fuera</div></body></html>');
-  await page.addScriptTag({ path: require.resolve('@vue/compat/dist/vue.global.js') });
+  await page.addScriptTag({ path: require.resolve('vue/dist/vue.global.js') });
   await page.evaluate(() => {
     // espía de listeners de click en <html>: cuántos hay vivos en cada momento
     const html = document.documentElement;
@@ -29,15 +29,14 @@ async function mount(page, template, options = {}) {
   await page.addScriptTag({ content: DIRECTIVE_SOURCE });
   await page.evaluate(
     ({ tpl, extra }) => {
-      window.Vue.config.productionTip = false;
-      window.Vue.directive('on-clickaway', window.__clickaway);
+      // Vue 3 real: sin `Vue.directive`/`new Vue({el})` globales (API de Vue 2) — `createApp(...)` propio, la
+      // directiva registrada EN él, y se monta explícitamente.
       window.__calls = { closeA: 0, closeB: 0, overlay: 0 };
       const el = document.createElement('div');
       document.getElementById('host').appendChild(el);
       // eslint-disable-next-line no-new-func
       const extraData = extra ? new Function(`return (${extra})`)() : {};
-      window.__vm = new window.Vue({
-        el,
+      const app = window.Vue.createApp({
         template: tpl,
         data: () => ({ a: false, b: false, overlay: false, show: true, dyn: false, ...extraData }),
         methods: {
@@ -47,6 +46,8 @@ async function mount(page, template, options = {}) {
           noop() {},
         },
       });
+      app.directive('on-clickaway', window.__clickaway);
+      window.__vm = app.mount(el);
     },
     { tpl: template, extra: options.data || null }
   );

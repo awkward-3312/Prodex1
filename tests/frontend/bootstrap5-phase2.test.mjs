@@ -18,20 +18,9 @@ function walk(dir, fn) {
   }
 }
 
-test('compat: BootstrapVueNext (SFC con __name B…) corre en MODE 3; BootstrapVue 2 y el código propio, en MODE 2', async () => {
-  const { compatModeFor, isBootstrapVueNext } = await import('../../resources/src/platform/compat/bvn-mode.js');
-  assert.equal(compatModeFor({ __name: 'BFormSelectPlain', setup() {} }), 3);
-  assert.equal(compatModeFor({ __name: 'BButton' }), 3);
-  assert.equal(compatModeFor({ name: 'BFormSelect', model: { prop: 'value', event: 'input' } }), 2, 'BootstrapVue 2 usa `name`');
-  assert.equal(compatModeFor({ name: 'PxSelect' }), 2);
-  assert.equal(compatModeFor({ __name: 'Calendar' }), 2);
-  assert.equal(compatModeFor({ __name: 'Breadcumb' }), 2, 'B + minúscula: SFC propio (Breadcumb), no BootstrapVueNext');
-  assert.equal(compatModeFor(null), 2);
-  assert.equal(compatModeFor(undefined), 2);
-  assert.equal(compatModeFor(function legacyCtor() {}), 2);
-  assert.equal(isBootstrapVueNext({ __name: 'BAr' }), true, 'la heurística es el prefijo B + mayúscula (documentada)');
-  const compat = read('platform/vue-compat.js');
-  assert.match(compat, /configureCompat\(\{\s*MODE:\s*compatModeFor,\s*CUSTOM_DIR:\s*false\s*\}\)/);
+test('sin @vue/compat: platform/vue-compat.js y platform/compat/bvn-mode.js (el "MODE por componente" que necesitaban) fueron retirados', () => {
+  assert.ok(!fs.existsSync(path.join(SRC, 'platform/vue-compat.js')));
+  assert.ok(!fs.existsSync(path.join(SRC, 'platform/compat/bvn-mode.js')));
 });
 
 test('vee-validate: detecta el campo con el contrato de Vue 3 (modelValue) y conserva el de Vue 2 (value)', async () => {

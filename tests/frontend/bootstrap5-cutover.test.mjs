@@ -99,7 +99,6 @@ test('wrappers: contrato de Bootstrap 5 (`d-block w-100`, `rounded-pill`, `form-
   const src = bootstrapSource();
   assert.match(src, /d-block w-100/);
   assert.match(src, /rounded-pill/);
-  assert.match(src, /compatConfig\s*[:=]\s*\{\s*MODE:\s*3/);
   assert.match(fs.readFileSync(path.join(SRC, 'platform/bootstrap/plugin.js'), 'utf8'), /createBootstrap\(/);
   const code = src.split('\n').filter((l) => !/^\s*(\/\/|\*)/.test(l)).join('\n');
   for (const old of ['btn-block', 'badge-pill', 'custom-select', 'custom-control', 'btn-group-toggle', 'no-gutters', 'input-group-prepend', 'input-group-append', 'thead-light', 'thead-dark']) {
@@ -167,14 +166,13 @@ test('Bootstrap JS nativo no se carga (BootstrapVueNext implementa modales, desp
   assert.equal(deps.jquery, undefined);
 });
 
-test('directivas propias con hooks de Vue 3 (mounted/unmounted) y CUSTOM_DIR retirado', () => {
+test('directivas propias con hooks de Vue 3 (mounted/unmounted); sin @vue/compat, CUSTOM_DIR ya no es una opción que exista', () => {
   const offenders = [];
   walk(SRC, (full) => {
     if (/\.(vue|js)$/.test(full) && /^\s+(bind|inserted|componentUpdated|unbind)\s*[(:]/m.test(read(full))) offenders.push(path.relative(SRC, full));
   });
   assert.deepEqual(offenders, []);
-  const compat = read(path.join(SRC, 'platform/vue-compat.js')).split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n');
-  assert.match(compat, /CUSTOM_DIR:\s*false/, 'CUSTOM_DIR desactivado explícitamente');
+  assert.ok(!fs.existsSync(path.join(SRC, 'platform/vue-compat.js')), 'platform/vue-compat.js fue retirado (fase vue3-pure-runtime)');
 });
 
 test('reglas RTL de Bootstrap 5: el archivo generado (postcss-rtlcss) está al día y cubre las utilidades y componentes usados', async () => {

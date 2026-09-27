@@ -28,6 +28,10 @@ test.describe('Traslados, ajustes y mermas: aviso de validación por toast @smok
   test('traslados: el escáner de códigos abre y cierra su modal por id sin dejar backdrop', async ({ page }) => {
     await page.goto('/app/transfers/store-classic');
     await waitForApp(page);
+    // `waitForApp` solo vigila el loading_wrap genérico de la SPA: el `<b-modal id="open_scan">` de esta pantalla vive detrás de un
+    // `v-if="!isLoading"` propio (su propio `axios.get('transfers/create')`), y hasta que ese `v-if` monta el componente no existe en el
+    // registro de BootstrapVueNext — `modals.show(id)` de un id aún no montado es, por diseño, un no-op silencioso (ver platform/modals.js).
+    await expect(page.locator('.loading_page')).toHaveCount(0);
     await page.evaluate(() => document.querySelector('#app').__vue_app__.config.globalProperties.$platform.modals.show('open_scan'));
     await expect(page.locator('.modal.show')).toContainText('Barcode Scanner');
     await page.waitForTimeout(600); // transición de entrada: el foco pasa al modal y ESC ya se atiende

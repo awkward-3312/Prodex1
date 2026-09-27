@@ -75,11 +75,14 @@ test('vuex está en la serie 4.x (no 3.x) y sigue siendo el único gestor de est
   assert.ok(!allDeps.pinia, 'no se migró a Pinia (fuera de alcance de esta fase)');
 });
 
-test('@vue/compat sigue presente a propósito (se retira en la fase siguiente, no en esta)', () => {
+// Fase vue3-pure-runtime: @vue/compat fue retirado del todo. Ver
+// tests/frontend/vuex4-createapp-guard.test.mjs (mismo nombre de archivo, guarda de esta fase) para la lista
+// completa de comprobaciones.
+test('@vue/compat ya NO está presente (fase vue3-pure-runtime) y el alias de webpack apunta al `vue` real', () => {
   const pkg = JSON.parse(read('package.json'));
   const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
-  assert.ok(allDeps['@vue/compat']);
-  assert.match(read('webpack.mix.js'), /vue:\s*['"]@vue\/compat['"]/);
+  assert.ok(!allDeps['@vue/compat']);
+  assert.doesNotMatch(read('webpack.mix.js'), /@vue\/compat/);
 });
 
 test('platform/compat/vue-router.js (bootstrap `new Vue()` antiguo) fue retirado: platform/mount.js lo reemplaza con createApp real', () => {
