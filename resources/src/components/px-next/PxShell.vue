@@ -34,33 +34,37 @@
 
         <ul class="pxn-shell__modules">
           <li v-for="m in visibleRail" :key="m.key">
-            <router-link
-              :to="railTarget(m)"
-              class="pxn-shell__module pxn-ring"
-              :class="{ 'is-active': m.key === activeDomain }"
-              :title="m.label"
-              :aria-label="m.label"
-              :aria-current="m.key === activeDomain ? 'page' : null"
-            >
-              <lucide-icon :name="m.icon" :size="17" />
-              <span class="pxn-shell__module-label">{{ m.label }}</span>
+            <router-link :to="railTarget(m)" custom v-slot="{ href, navigate, isExactActive }">
+              <a
+                :href="href"
+                class="pxn-shell__module pxn-ring"
+                :class="{ 'is-active': m.key === activeDomain }"
+                :title="m.label"
+                :aria-label="m.label"
+                :aria-current="navCurrent(m.key === activeDomain, isExactActive)"
+                @click="navigate"
+              >
+                <lucide-icon :name="m.icon" :size="17" />
+                <span class="pxn-shell__module-label">{{ m.label }}</span>
+              </a>
             </router-link>
           </li>
         </ul>
 
         <div class="pxn-shell__rail-foot">
-          <router-link
-            v-for="m in visibleFoot"
-            :key="m.key"
-            :to="railTarget(m)"
-            class="pxn-shell__module pxn-ring"
-            :class="{ 'is-active': m.key === activeDomain }"
-            :title="m.label"
-            :aria-label="m.label"
-            :aria-current="m.key === activeDomain ? 'page' : null"
-          >
-            <lucide-icon :name="m.icon" :size="17" />
-            <span class="pxn-shell__module-label">{{ m.label }}</span>
+          <router-link v-for="m in visibleFoot" :key="m.key" :to="railTarget(m)" custom v-slot="{ href, navigate, isExactActive }">
+            <a
+              :href="href"
+              class="pxn-shell__module pxn-ring"
+              :class="{ 'is-active': m.key === activeDomain }"
+              :title="m.label"
+              :aria-label="m.label"
+              :aria-current="navCurrent(m.key === activeDomain, isExactActive)"
+              @click="navigate"
+            >
+              <lucide-icon :name="m.icon" :size="17" />
+              <span class="pxn-shell__module-label">{{ m.label }}</span>
+            </a>
           </router-link>
         </div>
       </nav>
@@ -82,6 +86,7 @@
             type="button"
             class="pxn-shell__panel-grouptitle pxn-shell__panel-grouptoggle"
             :aria-expanded="String(!isGroupCollapsed(g))"
+            :aria-controls="groupListId(g)"
             @click="toggleGroup(g)"
           >
             <span>{{ g.title }}</span>
@@ -94,20 +99,22 @@
           </button>
           <div v-else class="pxn-shell__panel-grouptitle">{{ g.title }}</div>
 
-          <ul v-show="!isGroupCollapsed(g)" class="pxn-shell__panel-list">
+          <ul :id="groupListId(g)" v-show="!isGroupCollapsed(g)" class="pxn-shell__panel-list">
             <li v-for="(it, i) in g.items" :key="i">
-              <router-link
-                :to="it.query ? { path: it.to, query: it.query } : (it.to || it.route)"
-                class="pxn-shell__panel-link"
-                :class="{ 'is-active': isActiveItem(it) }"
-                :aria-current="isActiveItem(it) ? 'page' : null"
-                @click.native="navDrawerOpen = false"
-              >
-                <lucide-icon :name="it.icon" :size="14" />
-                <span>{{ it.label }}</span>
-                <span v-if="it.route && !it.to" class="pxn-shell__panel-ext" aria-hidden="true">
-                  <lucide-icon name="arrow-up-right" :size="12" />
-                </span>
+              <router-link :to="it.query ? { path: it.to, query: it.query } : (it.to || it.route)" custom v-slot="{ href, navigate, isExactActive }">
+                <a
+                  :href="href"
+                  class="pxn-shell__panel-link"
+                  :class="{ 'is-active': isActiveItem(it) }"
+                  :aria-current="navCurrent(isActiveItem(it), isExactActive)"
+                  @click="onPanelNav($event, navigate)"
+                >
+                  <lucide-icon :name="it.icon" :size="14" />
+                  <span>{{ it.label }}</span>
+                  <span v-if="it.route && !it.to" class="pxn-shell__panel-ext" aria-hidden="true">
+                    <lucide-icon name="arrow-up-right" :size="12" />
+                  </span>
+                </a>
               </router-link>
             </li>
           </ul>
@@ -117,15 +124,17 @@
           <div class="pxn-shell__panel-grouptitle">Reportes del módulo</div>
           <ul class="pxn-shell__panel-list">
             <li v-for="(r, i) in inlineReports" :key="'r' + i">
-              <router-link
-                :to="r.route"
-                class="pxn-shell__panel-link"
-                :class="{ 'is-active': isActiveItem(r) }"
-                :aria-current="isActiveItem(r) ? 'page' : null"
-                @click.native="navDrawerOpen = false"
-              >
-                <lucide-icon :name="r.icon" :size="14" />
-                <span>{{ r.label }}</span>
+              <router-link :to="r.route" custom v-slot="{ href, navigate, isExactActive }">
+                <a
+                  :href="href"
+                  class="pxn-shell__panel-link"
+                  :class="{ 'is-active': isActiveItem(r) }"
+                  :aria-current="navCurrent(isActiveItem(r), isExactActive)"
+                  @click="onPanelNav($event, navigate)"
+                >
+                  <lucide-icon :name="r.icon" :size="14" />
+                  <span>{{ r.label }}</span>
+                </a>
               </router-link>
             </li>
           </ul>
@@ -614,6 +623,17 @@ export default {
       if (!this.hasAnyPerm(m.anyPerm)) return false;
       if (m.gated && !this.railEntryHasContent(m)) return false;
       return true;
+    },
+    // "page" solo en la ruta exacta; "true" cuando el ítem/módulo está activo por una ruta hija (sección actual).
+    navCurrent(active, exact) {
+      return active ? (exact ? "page" : "true") : null;
+    },
+    onPanelNav(e, navigate) {
+      navigate(e);
+      this.navDrawerOpen = false;
+    },
+    groupListId(g) {
+      return "pxn-shell-list-" + String(this.groupKey(g)).replace(/[^a-z0-9]+/gi, "-").toLowerCase();
     },
     // Destino REAL del riel para un dominio. `m.to` fijo (Panel, Ventas,
     // Inventario, Compras, Reportes hub) o, para dominios `resolveEntry`
@@ -1173,6 +1193,22 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
 }
 .pxn-shell__panel-caret.is-open { transform: rotate(180deg); }
 
+/* Estado activo del panel: superficie suave (is-active) + indicador lateral cyan que entra con scaleY (compositor). */
+.pxn-shell__panel-link { position: relative; }
+.pxn-shell__panel-link > svg { transition: color var(--pxn-dur-1) var(--pxn-ease); }
+.pxn-shell__panel-link.is-active > svg { color: var(--pxn-primary); }
+.pxn-shell__panel-link::before {
+  content: "";
+  position: absolute;
+  left: calc(var(--pxn-space-5) * -1); top: 7px; bottom: 7px;
+  width: 3px; border-radius: 0 3px 3px 0;
+  background: var(--pxn-primary);
+  transform: scaleY(0);
+  transition: transform 160ms var(--pxn-ease);
+  pointer-events: none;
+}
+.pxn-shell__panel-link.is-active::before { transform: scaleY(1); }
+
 /* columna principal */
 /* `min-height: 0` deja que la columna se ajuste a la fila del grid (100vh) para
    que `.pxn-shell__canvas` (flex:1, overflow:auto) tenga altura acotada y
@@ -1672,7 +1708,8 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
     border-right: 0;
     padding: var(--pxn-space-5) var(--pxn-space-4);
   }
-  .pxn-shell__panel-link { min-height: 40px; }
+  .pxn-shell__panel-link { min-height: 44px; }
+  .pxn-shell__panel-link::before { left: calc(var(--pxn-space-4) * -1); }
 }
 
 @media (max-width: 560px) {
@@ -1700,6 +1737,8 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
   .pxn-notif__item,
   .pxn-shell__panel-grouptoggle,
   .pxn-shell__panel-caret,
+  .pxn-shell__panel-link > svg,
+  .pxn-shell__panel-link::before,
   .pxn-issues { transition: none; }
 }
 </style>
