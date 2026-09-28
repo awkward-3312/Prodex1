@@ -228,24 +228,55 @@
     border-color: var(--px-border-strong);
     border-radius: var(--px-radius-md);
     box-shadow: none;
-    transition: border-color var(--px-transition-fast), box-shadow var(--px-transition-fast), background-color var(--px-transition-fast);
+    transition: border-color var(--px-dur-1) var(--px-ease), box-shadow var(--px-dur-1) var(--px-ease), background-color var(--px-dur-1) var(--px-ease);
   }
+
+  .form-control-sm,
+  .form-select-sm { min-height: var(--px-control-height-sm); border-radius: var(--px-radius-sm); font-size: 0.8125rem; }
+  .form-control-lg,
+  .form-select-lg { min-height: var(--px-control-height-lg); border-radius: var(--px-radius-lg); font-size: 0.9375rem; }
 
   .form-control::placeholder { color: var(--px-text-disabled); }
   .form-control:hover:not(:disabled):not([readonly]),
   .form-select:hover:not(:disabled) { border-color: #94a3b8; }
 
-  .form-control:focus,
-  .form-select:focus {
+  // Ring on :focus-visible only. Text inputs keep it on plain mouse focus too
+  // (the browser's own focus-visible heuristic already does this for typeable
+  // controls), a <select>/button-like control only rings for keyboard use.
+  .form-control:focus-visible,
+  .form-select:focus-visible {
     border-color: var(--px-primary) !important;
     box-shadow: 0 0 0 3px var(--px-primary-soft) !important;
   }
+  @supports (color: color-mix(in srgb, red, blue)) {
+    .form-control:focus-visible,
+    .form-select:focus-visible { box-shadow: 0 0 0 3px var(--px-focus-ring) !important; }
+  }
 
+  // Disabled: not usable — sunken fill + muted text. Readonly: still usable
+  // to read/copy — a quieter fill only, text stays legible. Kept distinct on
+  // purpose (px-next contract), the two used to look identical.
   .form-control:disabled,
-  .form-control[readonly],
-  .form-select:disabled { color: var(--px-text-muted); background: var(--px-surface-muted); }
+  .form-select:disabled { color: var(--px-text-disabled); background: var(--px-surface-sunken); cursor: not-allowed; }
+  .form-control[readonly] { background: var(--px-surface-muted); color: var(--px-text); }
 
   .invalid-feedback { margin-top: var(--px-space-1); color: var(--px-danger); font-size: 0.75rem; }
+
+  // Error/invalid — Bootstrap toggles `.is-invalid` on the control itself.
+  .form-control.is-invalid,
+  .form-select.is-invalid { border-color: var(--px-danger) !important; }
+  .form-control.is-invalid:focus-visible,
+  .form-select.is-invalid:focus-visible { box-shadow: 0 0 0 3px var(--px-danger-soft) !important; }
+
+  .input-group-text {
+    color: var(--px-text-secondary);
+    background: var(--px-surface-muted);
+    border-color: var(--px-border-strong);
+  }
+  // Keep the focused segment of a split input-group above its siblings, same
+  // as plain .form-control, so the ring isn't clipped by the next segment.
+  .input-group > .form-control:focus-visible,
+  .input-group > .form-select:focus-visible { z-index: 3; }
 
   .vs__dropdown-toggle {
     min-height: var(--px-control-height);
@@ -253,7 +284,7 @@
     background: var(--px-surface);
     border-color: var(--px-border-strong);
     border-radius: var(--px-radius-md);
-    transition: border-color var(--px-transition-fast), box-shadow var(--px-transition-fast);
+    transition: border-color var(--px-dur-1) var(--px-ease), box-shadow var(--px-dur-1) var(--px-ease);
   }
 
   .v-select:hover .vs__dropdown-toggle { border-color: #94a3b8; }
@@ -262,6 +293,11 @@
     border-color: var(--px-primary) !important;
     box-shadow: 0 0 0 3px var(--px-primary-soft) !important;
   }
+  @supports (color: color-mix(in srgb, red, blue)) {
+    .v-select.vs--open .vs__dropdown-toggle,
+    .vs__dropdown-toggle:focus-within { box-shadow: 0 0 0 3px var(--px-focus-ring) !important; }
+  }
+  .v-select.vs--disabled .vs__dropdown-toggle { background: var(--px-surface-sunken); cursor: not-allowed; }
 
   .vs__selected,
   .vs__search { color: var(--px-text); }
@@ -276,20 +312,34 @@
     border-radius: var(--px-radius-md);
     font-size: 0.875rem;
     font-weight: 600;
-    transition: background-color var(--px-transition-fast), border-color var(--px-transition-fast), color var(--px-transition-fast), box-shadow var(--px-transition-fast), transform var(--px-transition-fast);
+    transition: background-color var(--px-dur-1) var(--px-ease), border-color var(--px-dur-1) var(--px-ease), color var(--px-dur-1) var(--px-ease), box-shadow var(--px-dur-1) var(--px-ease), transform var(--px-dur-1) var(--px-ease);
   }
 
-  .btn:focus { box-shadow: 0 0 0 3px var(--px-primary-soft) !important; }
-  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn-lg { min-height: var(--px-control-height-lg); padding: 0.6rem 1.5rem; font-size: 0.9375rem; border-radius: var(--px-radius-lg); }
+
+  // Ring only for keyboard focus — a mouse click no longer leaves a lingering
+  // ring on a button (px-next's `.pxn-ring:focus-visible` contract).
+  .btn:focus { box-shadow: none; }
+  .btn:focus-visible { box-shadow: 0 0 0 3px var(--px-primary-soft) !important; }
+  @supports (color: color-mix(in srgb, red, blue)) {
+    .btn:focus-visible { box-shadow: 0 0 0 3px var(--px-focus-ring) !important; }
+  }
+  .btn:active:not(:disabled):not(.disabled):not(.is-loading) { transform: translateY(1px); }
+  .btn:disabled,
+  .btn.disabled { opacity: var(--px-disabled-opacity); cursor: not-allowed; }
+  // Loading hook — not wired into any view yet, kept consistent with
+  // PxButton's `.is-loading` so a future migration doesn't invent a new name.
+  .btn.is-loading,
+  .btn[aria-busy="true"] { cursor: progress; pointer-events: none; }
 
   .btn-primary { background: var(--px-primary) !important; border-color: var(--px-primary) !important; }
-  .btn-primary:hover:not(:disabled) { background: var(--px-primary-hover) !important; border-color: var(--px-primary-hover) !important; }
+  .btn-primary:hover:not(:disabled):not(.disabled) { background: var(--px-primary-hover) !important; border-color: var(--px-primary-hover) !important; }
 
   .btn-secondary,
   .btn-outline-secondary { color: var(--px-text-secondary); background: var(--px-surface); border-color: var(--px-border-strong); }
 
-  .btn-secondary:hover:not(:disabled),
-  .btn-outline-secondary:hover:not(:disabled) { color: var(--px-text); background: var(--px-surface-muted); border-color: #94a3b8; }
+  .btn-secondary:hover:not(:disabled):not(.disabled),
+  .btn-outline-secondary:hover:not(:disabled):not(.disabled) { color: var(--px-text); background: var(--px-surface-muted); border-color: #94a3b8; }
 
   .card { border: 1px solid var(--px-border); border-radius: var(--px-radius-lg); box-shadow: var(--px-shadow-xs); }
 

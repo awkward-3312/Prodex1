@@ -133,6 +133,21 @@
     border-bottom-color: var(--px-primary) !important;
   }
 
+  // Checkbox / radio (native + BootstrapVueNext's BS5 markup). The indicator
+  // itself (checked fill, size, radius) stays exactly as compat/_controls.scss
+  // paints it — only the keyboard focus ring is layered on top here, so it
+  // matches every other control instead of Bootstrap 4's plain outline.
+  .form-check-input {
+    transition: box-shadow var(--px-dur-1) var(--px-ease);
+  }
+  .form-check-input:focus-visible {
+    box-shadow: 0 0 0 3px var(--px-primary-soft);
+  }
+  @supports (color: color-mix(in srgb, red, blue)) {
+    .form-check-input:focus-visible { box-shadow: 0 0 0 3px var(--px-focus-ring); }
+  }
+  .form-check-input:disabled ~ .form-check-label { cursor: not-allowed; }
+
   // Dropdowns and contextual menus.
   .dropdown-menu {
     padding: var(--px-space-2);

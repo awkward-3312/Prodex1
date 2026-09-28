@@ -11,6 +11,7 @@
   --px-surface: #ffffff;
   --px-surface-subtle: #f8fafc;
   --px-surface-muted: #f1f5f9;
+  --px-surface-sunken: #e9ecf1; /* disabled controls — one tier below -muted */
   --px-border: #e2e8f0;
   --px-border-strong: #cbd5e1;
 
@@ -22,6 +23,7 @@
   --px-success: #16a34a;
   --px-warning: #d97706;
   --px-danger: #dc2626;
+  --px-danger-soft: rgba(220, 38, 38, 0.14);
   --px-info: #2563eb;
 
   --px-radius-sm: 6px;
@@ -102,6 +104,7 @@
   --px-surface: #1f2937;
   --px-surface-subtle: #172033;
   --px-surface-muted: #273449;
+  --px-surface-sunken: #101725;
   --px-border: #374151;
   --px-border-strong: #4b5563;
   --px-text: #f8fafc;
