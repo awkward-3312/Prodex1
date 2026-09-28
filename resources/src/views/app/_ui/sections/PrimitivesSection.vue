@@ -124,6 +124,56 @@
 
       <hr class="pxn-divider" />
 
+      <div class="pr-sq">
+        <span class="pr-selection__label">PxSearchInput · búsqueda y filtro de texto</span>
+        <div class="pr-sq__grid">
+          <div class="pr-sq__cell">
+            <span class="pr-sq__cap">Vacío · placeholder</span>
+            <px-search-input v-model="sq.a" aria-label="Buscar productos" placeholder="Buscar por nombre o código…" clear-label="Limpiar búsqueda" />
+          </div>
+          <div class="pr-sq__cell">
+            <span class="pr-sq__cap">Con valor · clear (X) y Escape · valor: “{{ sq.b }}”</span>
+            <px-search-input v-model="sq.b" aria-label="Buscar clientes" placeholder="Buscar…" @clear="sq.clears++" />
+            <span class="pr-sq__cap">Eventos clear recibidos: {{ sq.clears }}</span>
+          </div>
+          <div class="pr-sq__cell">
+            <span class="pr-sq__cap">Táctil · size="lg" (44 px)</span>
+            <px-search-input v-model="sq.c" size="lg" aria-label="Buscar (táctil)" placeholder="Buscar…" />
+          </div>
+          <div class="pr-sq__cell">
+            <span class="pr-sq__cap">Deshabilitado (con texto: sin clear)</span>
+            <px-search-input model-value="Reporte de ventas" disabled aria-label="Buscar deshabilitado" />
+          </div>
+          <div class="pr-sq__cell">
+            <span class="pr-sq__cap">Solo lectura</span>
+            <px-search-input model-value="SKU-000482" readonly aria-label="Buscar solo lectura" />
+          </div>
+          <div class="pr-sq__cell pr-sq__cell--narrow">
+            <span class="pr-sq__cap">Ancho compacto (el padre define el ancho)</span>
+            <px-search-input v-model="sq.d" aria-label="Buscar compacto" placeholder="Buscar" />
+          </div>
+          <div class="pr-sq__cell pr-sq__cell--wide">
+            <span class="pr-sq__cap">Texto largo, acentos, SKU y correo (no choca con la X)</span>
+            <px-search-input v-model="sq.long" aria-label="Buscar texto largo" placeholder="Buscar…" />
+            <div class="pr-sq__samples">
+              <px-button size="sm" variant="secondary" @click="sq.long = 'Ñandú café jalapeño — camión frigorífico Ámbito Ünico 5000 unidades'">Acentos</px-button>
+              <px-button size="sm" variant="secondary" @click="sq.long = 'SKU-000482-AZ-XL-2026'">SKU</px-button>
+              <px-button size="sm" variant="secondary" @click="sq.long = 'nombre.muy.largo.de.contacto@empresa-distribuidora-regional.example.com'">Correo</px-button>
+            </div>
+          </div>
+        </div>
+        <span class="pr-sq__cap">En una toolbar simple (input + select + botón; no rediseña la toolbar)</span>
+        <div class="pr-sq__toolbar">
+          <div class="pr-sq__toolbar-search">
+            <px-search-input v-model="sq.tb" aria-label="Buscar en la tabla" placeholder="Buscar por nombre, código o marca…" />
+          </div>
+          <px-select v-model="sq.status" :options="sqStatus" aria-label="Estado" />
+          <px-button variant="secondary" icon="filter">Filtros</px-button>
+        </div>
+      </div>
+
+      <hr class="pxn-divider" />
+
       <div class="pr-cb">
         <span class="pr-selection__label">PxCheckbox · trazo animado</span>
         <div class="pr-cb__grid">
@@ -249,14 +299,16 @@
 
 <script>
 import SectionHead from "./_SectionHead.vue";
-import { PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxLoader, PxEmptyState, PxFileUpload } from "@/components/px-next";
+import { PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxSearchInput, PxLoader, PxEmptyState, PxFileUpload } from "@/components/px-next";
 export default {
   name: "PrimitivesSection",
-  components: { SectionHead, PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxLoader, PxEmptyState, PxFileUpload },
+  components: { SectionHead, PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxSearchInput, PxLoader, PxEmptyState, PxFileUpload },
   props: { density: String, country: String },
   data() {
     return {
       cats: ["Farmacia", "Abarrotes", "Bebidas", "Ferretería", "Cuidado personal", "Limpieza"],
+      sq: { a: "", b: "Camiseta azul talla M", c: "", d: "", long: "", tb: "", status: "", clears: 0 },
+      sqStatus: [{ value: "", label: "Todos los estados" }, { value: "1", label: "Activos" }, { value: "0", label: "Inactivos" }],
       cb: { a: false, b: true, err: false, long: false, list: ["B"] },
       cbItems: ["A", "B", "C"],
       fu: { a: null, b: new File([new Uint8Array(1887437)], "inventario.xlsx"), c: null, d: null, e: [], f: null, g: null, progress: 45 },
@@ -291,6 +343,15 @@ export default {
 @media (max-width: 900px) { .pr-formgrid { grid-template-columns: minmax(0, 1fr); } }
 .pr-selection { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-7); }
 @media (max-width: 900px) { .pr-selection { grid-template-columns: minmax(0, 1fr); } }
+.pr-sq__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-7); margin: var(--pxn-space-4) 0; }
+@media (max-width: 900px) { .pr-sq__grid { grid-template-columns: minmax(0, 1fr); } }
+.pr-sq__cell { display: flex; flex-direction: column; gap: var(--pxn-space-3); min-width: 0; }
+.pr-sq__cell--narrow > .pxn-search { max-width: 190px; }
+.pr-sq__cell--wide { grid-column: 1 / -1; }
+.pr-sq__cap { font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
+.pr-sq__samples { display: flex; flex-wrap: wrap; gap: var(--pxn-space-3); }
+.pr-sq__toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pxn-space-4); margin-top: var(--pxn-space-3); }
+.pr-sq__toolbar-search { flex: 1 1 260px; max-width: 360px; min-width: 0; }
 .pr-cb__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-7); margin-top: var(--pxn-space-4); }
 @media (max-width: 900px) { .pr-cb__grid { grid-template-columns: minmax(0, 1fr); } }
 .pr-cb__child { margin-left: var(--pxn-space-7); }

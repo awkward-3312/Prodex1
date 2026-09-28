@@ -28,6 +28,7 @@ export { default as PxMenu } from "./PxMenu.vue";
 export { default as PxModal } from "./PxModal.vue";
 export { default as PxPageHeader } from "./PxPageHeader.vue";
 export { default as PxPagination } from "./PxPagination.vue";
+export { default as PxSearchInput } from "./PxSearchInput.vue";
 export { default as PxSelect } from "./PxSelect.vue";
 export { default as PxShell } from "./PxShell.vue";
 export { default as PxShellMock } from "./PxShellMock.vue";
