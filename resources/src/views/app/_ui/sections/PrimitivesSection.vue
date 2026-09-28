@@ -144,16 +144,29 @@
           </div>
         </div>
       </div>
+
+      <hr class="pxn-divider" />
+
+      <div class="pr-ld">
+        <span class="pr-selection__label">PxLoader · operación en curso</span>
+        <div class="pr-ld__grid">
+          <div class="pr-ld__cell"><px-loader size="sm" label="Guardando…" /><small>sm · con texto</small></div>
+          <div class="pr-ld__cell"><px-loader size="md" label="Generando PDF…" /><small>md · con texto</small></div>
+          <div class="pr-ld__cell"><px-loader size="lg" label="Importando productos…" /><small>lg · con texto</small></div>
+          <div class="pr-ld__cell"><px-loader size="md" label="Procesando venta" hide-label /><small>md · texto solo accesible</small></div>
+          <div class="pr-ld__cell pr-ld__cell--static"><px-loader size="md" label="Procesando…" /><small>reposo (reduced-motion)</small></div>
+        </div>
+      </div>
     </div>
   </section>
 </template>
 
 <script>
 import SectionHead from "./_SectionHead.vue";
-import { PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox } from "@/components/px-next";
+import { PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxLoader } from "@/components/px-next";
 export default {
   name: "PrimitivesSection",
-  components: { SectionHead, PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox },
+  components: { SectionHead, PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxLoader },
   props: { density: String, country: String },
   data() {
     return {
@@ -195,6 +208,10 @@ export default {
 @media (max-width: 900px) { .pr-cb__grid { grid-template-columns: minmax(0, 1fr); } }
 .pr-cb__child { margin-left: var(--pxn-space-7); }
 .pr-cb__out { font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
+.pr-ld__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: var(--pxn-space-6); margin-top: var(--pxn-space-4); }
+.pr-ld__cell { display: flex; flex-direction: column; align-items: center; gap: var(--pxn-space-4); padding: var(--pxn-space-6) var(--pxn-space-4); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface); }
+.pr-ld__cell small { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pr-ld__cell--static ::v-deep .pxn-loader__layer { animation: none; }
 .pr-selection__group { display: flex; flex-direction: column; gap: var(--pxn-space-4); }
 .pr-selection__label { font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.05em; color: var(--pxn-ink-3); }
 </style>

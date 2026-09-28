@@ -7,8 +7,8 @@
     <!-- Full Page Loading Overlay for PDF Download -->
     <div v-if="isPdfLoading" class="pdf-loading-overlay">
       <div class="pdf-loading-content">
-        <div class="pdf-spinner-wrapper">
-          <div class="pdf-spinner"></div>
+        <div class="pdf-spinner-wrapper px-next">
+          <px-loader size="md" :label="$t('Generating_PDF') || 'Generating PDF'" hide-label />
         </div>
         <h3 class="pdf-loading-title">{{ $t('Generating_PDF') || 'Generating PDF' }}</h3>
         <p class="pdf-loading-message">{{ $t('Please_wait') || 'Please wait while we prepare your document...' }}</p>
@@ -422,8 +422,10 @@
 
 <script>
 import NProgress from "nprogress";
+import PxLoader from "@/components/px-next/PxLoader.vue";
 
 export default {
+  components: { PxLoader },
   metaInfo: {
     title: "Bookings"
   },
@@ -1348,20 +1350,14 @@ export default {
   animation: slideUp 0.4s ease;
 }
 
+.pdf-spinner-wrapper.px-next {
+  background: transparent; /* px-next solo aporta los tokens del loader */
+}
+
 .pdf-spinner-wrapper {
   margin-bottom: 24px;
   display: flex;
   justify-content: center;
-}
-
-.pdf-spinner {
-  width: 60px;
-  height: 60px;
-  border: 5px solid #f1f5f9;
-  border-top: 5px solid #667eea;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin: 0 auto;
 }
 
 .pdf-loading-title {
@@ -1396,15 +1392,6 @@ export default {
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
   }
 }
 

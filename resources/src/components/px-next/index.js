@@ -20,6 +20,7 @@ export { default as PxEntityCell } from "./PxEntityCell.vue";
 export { default as PxField } from "./PxField.vue";
 export { default as PxInput } from "./PxInput.vue";
 export { default as PxKebab } from "./PxKebab.vue";
+export { default as PxLoader } from "./PxLoader.vue";
 export { default as PxMenu } from "./PxMenu.vue";
 export { default as PxModal } from "./PxModal.vue";
 export { default as PxPageHeader } from "./PxPageHeader.vue";
