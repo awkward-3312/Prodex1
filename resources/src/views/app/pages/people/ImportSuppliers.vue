@@ -21,31 +21,22 @@
       <b-row>
         <!-- Upload -->
         <b-col md="7" class="mb-4">
-          <div
-            class="dropzone"
-            :class="{ 'is-dragover': isDragOver, 'has-file': !!file }"
-            @dragover.prevent="onDragOver"
-            @dragleave.prevent="onDragLeave"
-            @drop.prevent="onDrop"
-            @click="browse"
-          >
-            <input ref="file" type="file" class="d-none" @change="onFileSelected"
-                   :accept="accept" />
-            <div class="dz-inner text-center">
-              <div class="dz-icon mb-2"><lucide-icon name="download" /></div>
-              <h5 class="mb-2">Click or drop your Excel file here</h5>
-              <div class="text-muted small">Allowed formats: XLSX, XLS · Max size: 20MB</div>
-
-              <!-- Selected file pill -->
-              <div v-if="file" class="file-pill mt-3 d-inline-flex align-items-center">
-                <div class="file-dot mr-2"></div>
-                <div class="file-meta mr-3">
-                  <div class="file-name">{{ fileName }}</div>
-                  <div class="file-size text-muted small">{{ prettySize }}</div>
-                </div>
-                <b-button size="sm" variant="outline-danger" @click.stop="clearFile">Remove</b-button>
-              </div>
-            </div>
+          <div class="px-next pxfu-host">
+            <px-file-upload
+              v-model="file"
+              :accept="accept"
+              :max-size="maxSize"
+              :uploading="uploading"
+              :progress="progress"
+              label="Drop your Excel file here"
+              drop-text="Drop the file to select it"
+              help="Allowed formats: XLSX, XLS · Max size: 20MB"
+              browse-text="Choose file"
+              replace-text="Replace"
+              remove-text="Remove file"
+              uploading-text="Uploading file"
+              :messages="uploadMessages"
+            />
           </div>
 
           <!-- Example format -->
@@ -131,15 +122,6 @@
             </div>
           </b-alert>
 
-          <!-- Progress -->
-          <div v-if="uploading" class="mt-3">
-            <div class="d-flex justify-content-between mb-1">
-              <small class="text-muted">Uploading</small>
-              <small>{{ progress }}%</small>
-            </div>
-            <b-progress :value="progress" height="8px"></b-progress>
-          </div>
-
           <!-- Actions -->
           <div class="d-flex flex-wrap align-items-center mt-3">
             <b-button
@@ -204,18 +186,18 @@
 
 <script>
 import NProgress from 'nprogress';
+import PxFileUpload from '@/components/px-next/PxFileUpload.vue';
 // axios assumed global
 
 export default {
   name: 'ImportSuppliersPage',
+  components: { PxFileUpload },
   data: function () {
     return {
       endpoint: 'suppliers/import',
 
-      // file state
+      // file state (v-model de PxFileUpload: File | null)
       file: null,
-      fileName: '',
-      fileSize: 0,
 
       // ui state
       uploading: false,
@@ -225,12 +207,16 @@ export default {
       errorMessages: [],
       warningMessages: [],
 
-      // dnd
-      isDragOver: false,
-
       // limits
       maxSize: 20 * 1024 * 1024, // 20MB
-      accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.xlsx,.xls',
+      accept: '.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel',
+      uploadMessages: {
+        type: '"{name}" is not an allowed file type. Please upload an .xlsx or .xls file.',
+        size: '"{name}" is too large. Please upload a file under the {max} limit.',
+        multiple: 'Please select a single file.',
+        folder: '"{name}" is a folder. Please select a file.',
+        empty: '"{name}" is empty.'
+      },
 
       // guide chips
       columnsGuide: [
@@ -245,12 +231,12 @@ export default {
       ]
     };
   },
+  watch: {
+    file: function () { this.clearErrors(); }
+  },
   computed: {
     canSubmit: function () {
       return !!this.file && this.errorMessages.length === 0;
-    },
-    prettySize: function () {
-      return this.formatBytes(this.fileSize);
     },
     exampleHref: function () {
       return '/import/exemples/suppliers.xlsx';
@@ -264,57 +250,13 @@ export default {
       }
     },
 
-    // DnD + browse
-    onDragOver: function () { this.isDragOver = true; },
-    onDragLeave: function () { this.isDragOver = false; },
-    onDrop: function (e) {
-      this.isDragOver = false;
-      var f = (e && e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) ? e.dataTransfer.files[0] : null;
-      if (f) this.loadFile(f);
-    },
-    browse: function () {
-      if (this.uploading) return;
-      if (this.$refs && this.$refs.file) this.$refs.file.click();
-    },
-    onFileSelected: function (e) {
-      var f = (e && e.target && e.target.files && e.target.files[0]) ? e.target.files[0] : null;
-      if (f) this.loadFile(f);
-    },
-
-    // File load + checks
-    loadFile: function (f) {
-      this.clearErrors();
-      var msgs = [];
-      if (f.size > this.maxSize) msgs.push('File is too large. Please upload a file under the 20MB limit.');
-      var name = f.name || '';
-      var ext = name.split('.').pop().toLowerCase();
-      if (['xlsx','xls'].indexOf(ext) === -1) msgs.push('Unsupported file type. Please upload an .xlsx or .xls file.');
-      if (msgs.length) {
-        this.errorMessages = msgs;
-        this.clearFile(false);
-        return;
-      }
-      this.file = f;
-      this.fileName = f.name;
-      this.fileSize = f.size;
-    },
-    clearFile: function (resetInput) {
-      if (typeof resetInput === 'undefined') resetInput = true;
-      this.file = null; this.fileName = ''; this.fileSize = 0;
-      if (resetInput && this.$refs && this.$refs.file) this.$refs.file.value = '';
+    clearFile: function () {
+      this.file = null;
     },
     clearErrors: function () {
       this.errorMessages = [];
       this.warningMessages = [];
     },
-    formatBytes: function (bytes) {
-      if (!bytes || bytes <= 0) return '0 B';
-      var k = 1024; var sizes = ['B','KB','MB','GB','TB'];
-      var i = Math.floor(Math.log(bytes) / Math.log(k));
-      var v = (bytes / Math.pow(k, i)).toFixed(2);
-      return v + ' ' + sizes[i];
-    },
-
     // errors: return ONLY errors[] if present
     onlyErrorsArray: function (data) {
       if (!data || !data.errors) return [];
@@ -372,6 +314,18 @@ export default {
         var data = resp && resp.data ? resp.data : {};
         var http = resp && resp.status ? resp.status : 0;
 
+        if (http === 413) {
+          this.errorMessages = ['The file is larger than the server allows. Please upload a smaller file.'];
+          this.toast('The file is too large for the server.', 'Import failed', 'danger');
+          return;
+        }
+        if (http >= 500 || (http >= 400 && http !== 422)) {
+          var srvMsg = (data && typeof data.message === 'string' && data.message.trim()) ? data.message : '';
+          this.errorMessages = [srvMsg || ('The server could not process the import (error ' + http + '). Please try again.')];
+          this.toast('The import could not be completed.', 'Import failed', 'danger');
+          return;
+        }
+
         if (http === 422 || data.status === false) {
           var errs = this.onlyErrorsArray(data);
           if (!errs.length && data && typeof data.message === 'string' &&
@@ -414,17 +368,8 @@ export default {
 .hero-body{position:relative;padding:1.1rem 1.1rem}
 .hero-icon{width:44px;height:44px;border-radius:12px;background:#2667ff10;color:#2667ff;display:inline-grid;place-items:center;font-size:20px}
 
-/* Dropzone */
-.dropzone{border:2px dashed #cfd8e3;border-radius:14px;padding:28px 18px;cursor:pointer;transition:all .15s ease;background:#fbfdff}
-.dropzone:hover{border-color:#9cb4ff;background:#f7fbff;box-shadow:0 1px 6px rgba(38,103,255,.08)}
-.dropzone.is-dragover{border-color:#2667ff;background:#f1f6ff}
-.dropzone.has-file{border-color:#cfd8e3}
-.dz-icon{font-size:28px;color:#2667ff}
-
-/* File pill */
-.file-pill{border:1px solid #e6ebf2;border-radius:999px;padding:8px 12px;background:#fff}
-.file-dot{width:10px;height:10px;background:#2667ff;border-radius:999px}
-.file-name{font-weight:600}
+/* PxFileUpload vive bajo .px-next solo para heredar los tokens: sin fondo propio */
+.pxfu-host.px-next{background:transparent}
 
 /* Example badges */
 .badge-success-soft{background:#eaf7ef;color:#0a7a2d;border:1px solid #cdebd7;font-weight:600}

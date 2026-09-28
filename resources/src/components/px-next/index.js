@@ -19,6 +19,7 @@ export { default as PxEmptyCharacter } from "./PxEmptyCharacter.vue";
 export { default as PxEmptyState } from "./PxEmptyState.vue";
 export { default as PxEntityCell } from "./PxEntityCell.vue";
 export { default as PxField } from "./PxField.vue";
+export { default as PxFileUpload } from "./PxFileUpload.vue";
 export { default as PxInput } from "./PxInput.vue";
 export { default as PxKebab } from "./PxKebab.vue";
 export { default as PxLoader } from "./PxLoader.vue";

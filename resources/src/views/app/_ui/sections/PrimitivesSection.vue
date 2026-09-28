@@ -197,22 +197,69 @@
           </div>
         </div>
       </div>
+
+      <hr class="pxn-divider" />
+
+      <div class="pr-fu">
+        <span class="pr-selection__label">PxFileUpload · arrastrar y soltar</span>
+        <div class="pr-fu__grid">
+          <div class="pr-fu__cell">
+            <px-file-upload v-model="fu.a" accept=".xlsx,.xls" :max-size="20 * 1024 * 1024" help="XLSX o XLS · máx. 20 MB" />
+            <small>Vacío · arrastra o selecciona un .xlsx/.xls real (valida tipo y tamaño)</small>
+          </div>
+          <div class="pr-fu__cell">
+            <px-file-upload v-model="fu.b" accept=".xlsx,.xls" />
+            <small>Archivo seleccionado (precargado) · Reemplazar / Quitar</small>
+          </div>
+          <div class="pr-fu__cell">
+            <px-file-upload v-model="fu.c" accept=".pdf,application/pdf" help="Solo PDF — prueba soltar otro tipo" />
+            <small>Error por extensión: solo PDF</small>
+          </div>
+          <div class="pr-fu__cell">
+            <px-file-upload v-model="fu.d" accept="image/*" :max-size="50 * 1024" help="Imágenes hasta 50 KB — prueba una mayor" />
+            <small>Error por tamaño: 50 KB</small>
+          </div>
+          <div class="pr-fu__cell">
+            <px-file-upload v-model="fu.e" multiple accept=".csv,.xlsx" help="Varios archivos permitidos" label="Arrastra tus archivos aquí" browse-text="Seleccionar archivos" />
+            <small>Múltiple</small>
+          </div>
+          <div class="pr-fu__cell">
+            <px-file-upload :model-value="fu.f" disabled help="Deshabilitado" />
+            <small>Deshabilitado</small>
+          </div>
+          <div class="pr-fu__cell">
+            <px-file-upload :model-value="fu.b" uploading accept=".xlsx" />
+            <small>Subiendo · indeterminado (usa PxLoader; el padre no conoce el %)</small>
+          </div>
+          <div class="pr-fu__cell">
+            <px-file-upload :model-value="fu.b" uploading :progress="fu.progress" accept=".xlsx" />
+            <label class="pr-fu__demo">DEMO visual del progreso (controlado a mano, no es lógica del componente)
+              <input type="range" min="0" max="100" v-model.number="fu.progress" aria-label="Progreso demo" />
+            </label>
+          </div>
+          <div class="pr-fu__cell">
+            <px-file-upload v-model="fu.g" accept=".xlsx" error="El servidor rechazó el archivo (422): falta la columna «name»." />
+            <small>Error del backend (lo entrega el padre)</small>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 </template>
 
 <script>
 import SectionHead from "./_SectionHead.vue";
-import { PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxLoader, PxEmptyState } from "@/components/px-next";
+import { PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxLoader, PxEmptyState, PxFileUpload } from "@/components/px-next";
 export default {
   name: "PrimitivesSection",
-  components: { SectionHead, PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxLoader, PxEmptyState },
+  components: { SectionHead, PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxLoader, PxEmptyState, PxFileUpload },
   props: { density: String, country: String },
   data() {
     return {
       cats: ["Farmacia", "Abarrotes", "Bebidas", "Ferretería", "Cuidado personal", "Limpieza"],
       cb: { a: false, b: true, err: false, long: false, list: ["B"] },
       cbItems: ["A", "B", "C"],
+      fu: { a: null, b: new File([new Uint8Array(1887437)], "inventario.xlsx"), c: null, d: null, e: [], f: null, g: null, progress: 45 },
       f: {
         name: "", sku: "ACE-500-100", price: "62.00", cat: "", rtn: "0801-1995-12345",
         notes: "", overselling: false, batch: true, costing: "promedio", online: true, price_login: false
@@ -257,6 +304,10 @@ export default {
 .pr-es__cell small { padding: 0 var(--pxn-space-4) var(--pxn-space-4); text-align: center; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 .pr-es__cell--static ::v-deep .pxn-ec__body, .pr-es__cell--static ::v-deep .pxn-ec__pupil, .pr-es__cell--static ::v-deep .pxn-ec__shadow, .pr-es__cell--static ::v-deep .pxn-ec__cell { animation: none !important; }
 .pr-es__cell--static ::v-deep .pxn-ec__cell.is-f1 { background-color: transparent; }
+.pr-fu__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: var(--pxn-space-6); margin-top: var(--pxn-space-4); }
+.pr-fu__cell { display: flex; flex-direction: column; gap: var(--pxn-space-3); min-width: 0; }
+.pr-fu__cell small, .pr-fu__demo { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pr-fu__demo { display: flex; flex-direction: column; gap: var(--pxn-space-2); }
 .pr-selection__group { display: flex; flex-direction: column; gap: var(--pxn-space-4); }
 .pr-selection__label { font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.05em; color: var(--pxn-ink-3); }
 </style>
