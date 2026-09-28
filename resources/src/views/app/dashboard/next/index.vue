@@ -68,10 +68,16 @@
       <template v-else-if="loading || adapted">
       <!-- KPI row — cifras inmediatas, sin count-up -->
       <div class="pxb1__kpis">
-        <px-card v-for="c in kpiCards" :key="c.key">
-          <px-skeleton v-if="loading" variant="lines" :rows="3" />
-          <px-stat v-else :label="c.label" :value="c.text" :value-title="c.title" :sub="c.sub" :icon="c.icon" />
-        </px-card>
+        <px-metric-card
+          v-for="c in kpiCards"
+          :key="c.key"
+          :label="c.label"
+          :value="c.text"
+          :value-title="c.title"
+          :sub="c.sub"
+          :icon="c.icon"
+          :loading="loading"
+        />
       </div>
 
       <!-- Valorización de inventario (FINANCIAL_MANAGEMENT: owner / gerente) -->
@@ -255,7 +261,7 @@ import PxSelect from "@/components/px-next/PxSelect.vue";
 import PxButton from "@/components/px-next/PxButton.vue";
 import PxAlert from "@/components/px-next/PxAlert.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
-import PxStat from "@/components/px-next/PxStat.vue";
+import PxMetricCard from "@/components/px-next/PxMetricCard.vue";
 import PxTable from "@/components/px-next/PxTable.vue";
 import PxEntityCell from "@/components/px-next/PxEntityCell.vue";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
@@ -296,7 +302,7 @@ function chartRamp() {
 export default {
   name: "PxNextDashboardPreview",
   components: {
-    PxPageHeader, PxBadge, PxSelect, PxButton, PxAlert, PxCard, PxStat,
+    PxPageHeader, PxBadge, PxSelect, PxButton, PxAlert, PxCard, PxMetricCard,
     PxTable, PxEntityCell, PxEmptyState, PxApexFrame
   },
   data() {
@@ -667,6 +673,8 @@ export default {
   display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--pxn-space-5); margin-top: var(--pxn-space-8);
 }
+// Seis columnas solo cuando cada card conserva ≥ ~255 px (como hoy con 5 a 1440 px): evita recortar títulos y cifras.
+@media (min-width: 1720px) { .pxb1__kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
 @media (max-width: 1200px) { .pxb1__kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 720px) { .pxb1__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 460px) { .pxb1__kpis { grid-template-columns: minmax(0, 1fr); } }

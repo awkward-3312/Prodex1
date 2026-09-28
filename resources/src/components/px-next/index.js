@@ -23,6 +23,7 @@ export { default as PxFileUpload } from "./PxFileUpload.vue";
 export { default as PxInput } from "./PxInput.vue";
 export { default as PxKebab } from "./PxKebab.vue";
 export { default as PxLoader } from "./PxLoader.vue";
+export { default as PxMetricCard } from "./PxMetricCard.vue";
 export { default as PxMenu } from "./PxMenu.vue";
 export { default as PxModal } from "./PxModal.vue";
 export { default as PxPageHeader } from "./PxPageHeader.vue";

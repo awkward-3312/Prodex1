@@ -42,6 +42,26 @@
       </p>
     </div>
 
+    <!-- PxMetricCard (DATOS DEMO, aislados del código productivo: tendencias y progreso son ilustrativos) -->
+    <div class="dd-mc">
+      <h3 class="dd-h3">PxMetricCard</h3>
+      <p class="dd-mc__note">Datos de demostración. La tendencia y el progreso solo se muestran cuando el padre tiene una comparación o una meta reales.</p>
+      <div class="dd-mc__grid">
+        <px-metric-card label="Ventas" value="L 39,500.00" icon="trending-up" sub="128 facturas" />
+        <px-metric-card label="Ingresos" value="L 1,250.00" icon="coins" trend="+12.4%" trend-direction="up" trend-tone="success" trend-hint="vs período anterior (demo)" />
+        <px-metric-card label="Gastos" value="L 8,910.00" icon="shopping-cart" trend="+3.1%" trend-direction="up" trend-tone="danger" trend-hint="vs mes pasado (demo)" />
+        <px-metric-card label="Stock" value="L 1,245,890.25" icon="boxes" trend="0.0%" trend-direction="flat" trend-tone="neutral" trend-hint="sin cambio (demo)" />
+        <px-metric-card label="Meta de ventas" value="L 39,500" icon="percent" :progress="mcProgress" :progress-label="mcProgress + ' % de la meta (demo)'" />
+        <px-metric-card label="Valor monetario largo" value="L 1.4 B" value-title="L 1,400,000,000.00" icon="coins" sub="Cifra íntegra en tooltip y lector de pantalla" />
+        <px-metric-card label="Cargando" value="—" loading />
+        <px-metric-card label="Card estática" value="L 39,500.00" icon="trending-up" sub="Sin hover ni cursor" />
+        <px-metric-card label="Card interactiva" value="L 39,500.00" icon="shopping-cart" sub="Navega al panel (router-link)" :to="{ name: 'dashboard' }" />
+      </div>
+      <label class="dd-mc__demo">Progreso demo (control manual)
+        <input type="range" min="0" max="100" v-model.number="mcProgress" aria-label="Progreso demo" />
+      </label>
+    </div>
+
     <!-- KPIs -->
     <div class="dd-kpihead">
       <h3 class="dd-h3">KPI / stats</h3>
@@ -157,17 +177,19 @@
 
 <script>
 import SectionHead from "./_SectionHead.vue";
-import { PxCard, PxStat, PxBadge, PxTag, PxAvatar, PxEntityCell, PxKebab } from "@/components/px-next";
+import { PxCard, PxStat, PxBadge, PxTag, PxAvatar, PxEntityCell, PxKebab, PxMetricCard } from "@/components/px-next";
 import { KPIS, OPERATIONAL_STATES, CUSTOMERS } from "../data/mock";
 import { money as fmtMoney, percent, number, date as fmtDate, COUNTRIES } from "../data/format";
 
 export default {
   name: "DataDisplaySection",
-  components: { SectionHead, PxCard, PxStat, PxBadge, PxTag, PxAvatar, PxEntityCell, PxKebab },
+  components: { SectionHead, PxCard, PxStat, PxBadge, PxTag, PxAvatar, PxEntityCell, PxKebab, PxMetricCard },
   props: { density: String, country: { type: String, default: "HN" } },
   data() {
     return {
       kpis: KPIS,
+      // DEMO: datos ilustrativos solo para revisar el componente; nada de esto viene del backend.
+      mcProgress: 76,
       opStates: OPERATIONAL_STATES,
       customers: CUSTOMERS,
       countries: COUNTRIES,
@@ -201,6 +223,10 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.dd-mc { margin-bottom: var(--pxn-space-9); }
+.dd-mc__note { font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); max-width: 80ch; margin: var(--pxn-space-3) 0 var(--pxn-space-5); }
+.dd-mc__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--pxn-space-5); }
+.dd-mc__demo { display: flex; flex-direction: column; gap: var(--pxn-space-2); margin-top: var(--pxn-space-5); max-width: 420px; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 .dd-h3 { font-size: var(--pxn-fs-h3); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); margin: var(--pxn-space-9) 0 var(--pxn-space-5); }
 .dd-h3:first-of-type { margin-top: 0; }
 .dd-kpihead { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--pxn-space-5); flex-wrap: wrap; }
