@@ -121,27 +121,57 @@
           <px-check type="switch" v-model="f.price_login">Mostrar precio solo a clientes con sesión</px-check>
         </div>
       </div>
+
+      <hr class="pxn-divider" />
+
+      <div class="pr-cb">
+        <span class="pr-selection__label">PxCheckbox · trazo animado</span>
+        <div class="pr-cb__grid">
+          <div class="pr-selection__group">
+            <px-checkbox v-model="cb.a">Desmarcado / marcado (v-model: {{ cb.a }})</px-checkbox>
+            <px-checkbox v-model="cb.b">Marcado inicial</px-checkbox>
+            <px-checkbox :model-value="false" disabled>Deshabilitado sin marcar</px-checkbox>
+            <px-checkbox :model-value="true" disabled>Deshabilitado marcado</px-checkbox>
+            <px-checkbox v-model="cb.err" invalid>Acepto los términos (inválido)</px-checkbox>
+            <px-checkbox v-model="cb.long">Etiqueta larga: permitir sobreventa controlada por almacén cuando el stock disponible sea insuficiente para cubrir el pedido completo</px-checkbox>
+            <px-checkbox v-model="cb.a" aria-label="Sin etiqueta visible" />
+          </div>
+          <div class="pr-selection__group">
+            <px-checkbox :model-value="cbAll" :indeterminate="cbSome" @change="toggleAll">Seleccionar todos</px-checkbox>
+            <px-checkbox v-for="it in cbItems" :key="it" v-model="cb.list" :native-value="it" class="pr-cb__child">Ítem {{ it }}</px-checkbox>
+            <span class="pr-cb__out">Seleccionados: {{ cb.list.join(", ") || "ninguno" }}</span>
+            <px-button size="sm" variant="secondary" @click="cb.a = !cb.a">Alternar 1.º por código</px-button>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 </template>
 
 <script>
 import SectionHead from "./_SectionHead.vue";
-import { PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck } from "@/components/px-next";
+import { PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox } from "@/components/px-next";
 export default {
   name: "PrimitivesSection",
-  components: { SectionHead, PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck },
+  components: { SectionHead, PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox },
   props: { density: String, country: String },
   data() {
     return {
       cats: ["Farmacia", "Abarrotes", "Bebidas", "Ferretería", "Cuidado personal", "Limpieza"],
+      cb: { a: false, b: true, err: false, long: false, list: ["B"] },
+      cbItems: ["A", "B", "C"],
       f: {
         name: "", sku: "ACE-500-100", price: "62.00", cat: "", rtn: "0801-1995-12345",
         notes: "", overselling: false, batch: true, costing: "promedio", online: true, price_login: false
       }
     };
   },
+  methods: {
+    toggleAll(v) { this.cb.list = v ? this.cbItems.slice() : []; }
+  },
   computed: {
+    cbAll() { return this.cb.list.length === this.cbItems.length; },
+    cbSome() { return this.cb.list.length > 0 && !this.cbAll; },
     rtnError() {
       const digits = (this.f.rtn || "").replace(/\D/g, "");
       return digits.length && digits.length !== 14 ? "El RTN de Honduras debe tener 14 dígitos." : null;
@@ -161,6 +191,10 @@ export default {
 @media (max-width: 900px) { .pr-formgrid { grid-template-columns: minmax(0, 1fr); } }
 .pr-selection { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--pxn-space-7); }
 @media (max-width: 900px) { .pr-selection { grid-template-columns: minmax(0, 1fr); } }
+.pr-cb__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-7); margin-top: var(--pxn-space-4); }
+@media (max-width: 900px) { .pr-cb__grid { grid-template-columns: minmax(0, 1fr); } }
+.pr-cb__child { margin-left: var(--pxn-space-7); }
+.pr-cb__out { font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
 .pr-selection__group { display: flex; flex-direction: column; gap: var(--pxn-space-4); }
 .pr-selection__label { font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.05em; color: var(--pxn-ink-3); }
 </style>
