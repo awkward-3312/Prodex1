@@ -671,17 +671,20 @@
           </div>
 
           <!-- Mobile-only Pay Now (matches mockup; desktop has its own pay bar at the bottom of the page) -->
-          <button
-            class="pos-shell-mobile-pay-btn"
-            @click="openModernPaymentModal"
-            :disabled="paymentProcessing || details.length === 0 || payNowBatchGate.blocked"
-            :title="payNowBatchGate.blocked ? payNowBatchGate.reason : $t('pos.Complete_and_process_payment')">
-            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px;">
-              <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
-            </svg>
-            <span class="pos-shell-mobile-pay-btn-label">{{ paymentProcessing ? $t('pos.Processing') : $t('pos.Pay_Now') }}</span>
-            <span class="pos-shell-mobile-pay-btn-amount">{{ formatPriceWithCurrentCurrency(amountDueAfterStoreCredit, 2) }}</span>
-          </button>
+          <div class="pos-shell-mobile-pay-btn">
+            <pos-pay-button
+              block
+              :currency="payCurrencySymbol"
+              :hold="payModalOpen"
+              size="lg"
+              :label="paymentProcessing ? $t('pos.Processing') : $t('pos.Pay_Now')"
+              :loading="paymentProcessing"
+              :disabled="details.length === 0 || payNowBatchGate.blocked"
+              :title="payNowBatchGate.blocked ? payNowBatchGate.reason : $t('pos.Complete_and_process_payment')"
+              @press="onPayPress">
+              <template #amount>{{ formatPriceWithCurrentCurrency(amountDueAfterStoreCredit, 2) }}</template>
+            </pos-pay-button>
+          </div>
         </div>
       </aside>
 
@@ -932,17 +935,15 @@
       </div>
 
       <!-- Pay now -->
-      <button
-        @click="openModernPaymentModal"
-        :disabled="paymentProcessing || details.length === 0 || payNowBatchGate.blocked"
-        :title="payNowBatchGate.blocked ? payNowBatchGate.reason : $t('pos.Complete_and_process_payment')"
+      <pos-pay-button
         class="pos-shell-pay-btn"
-        :style="{ height: '44px', padding: '0 26px', background: 'var(--accent)', color: 'var(--pxn-primary-contrast)', border: '1px solid var(--accent)', borderRadius: 'var(--pxn-radius-md)', fontSize: '15px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: (paymentProcessing || details.length === 0 || payNowBatchGate.blocked) ? 'not-allowed' : 'pointer', opacity: (paymentProcessing || details.length === 0 || payNowBatchGate.blocked) ? 0.55 : 1, boxShadow: 'none', transition: 'background-color 120ms var(--pxn-ease), filter 120ms var(--pxn-ease)' }">
-        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px;">
-          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
-        </svg>
-        <span>{{ paymentProcessing ? $t('pos.Processing') : $t('pos.Pay_Now') }}</span>
-      </button>
+        :currency="payCurrencySymbol"
+        :hold="payModalOpen"
+        :label="paymentProcessing ? $t('pos.Processing') : $t('pos.Pay_Now')"
+        :loading="paymentProcessing"
+        :disabled="details.length === 0 || payNowBatchGate.blocked"
+        :title="payNowBatchGate.blocked ? payNowBatchGate.reason : $t('pos.Complete_and_process_payment')"
+        @press="onPayPress" />
     </div>
 
     <!-- ============================================================
@@ -3585,6 +3586,7 @@ import { openCashDrawer } from "../../../utils/cashDrawerQz";
 import { loadStripe } from "@stripe/stripe-js";
 import ModernPaymentModal from "../components/ModernPaymentModal.vue";
 import PosReturnModal from "../components/PosReturnModal.vue";
+import PosPayButton from "../components/PosPayButton.vue";
 import CustomFieldsForm from "../../../components/CustomFieldsForm.vue";
 import posKeyboardShortcutsMixin, { POS_SHORTCUTS } from "../../../mixins/posKeyboardShortcuts";
 
@@ -3594,6 +3596,7 @@ export default {
     barcode: VueBarcode,
     ModernPaymentModal,
     PosReturnModal,
+    PosPayButton,
     CustomFieldsForm,
   },
   mixins: [posKeyboardShortcutsMixin],
@@ -3602,6 +3605,8 @@ export default {
   },
   data() {
     return {
+      // true mientras ModernPaymentModal está abierto (lo usa PosPayButton para sostener su estado).
+      payModalOpen: false,
       // ===== Mobile UI state (drives the phone layout) =====
       mobileActiveTab: 'home', // home | cart | hold | recent | more
       posSplitVertical: 50,
@@ -4071,6 +4076,11 @@ export default {
     // the historical strict stock-check behavior for existing installs.
     isOversellingAllowed() {
       return !!(this.pos_settings && this.pos_settings.allow_overselling);
+    },
+
+    // Mismo símbolo que usa formatPriceWithCurrentCurrency (currentUser.currency).
+    payCurrencySymbol() {
+      return (this.currentUser && this.currentUser.currency) ? this.currentUser.currency : '';
     },
 
     // Batch validation: when any cart line has a batch problem, Pay Now is blocked.
@@ -4581,6 +4591,8 @@ export default {
     },
   },
   mounted() {
+    this.$root.$on('bv::modal::show', this.onPayModalShow);
+    this.$root.$on('bv::modal::hidden', this.onPayModalHidden);
     this.changeSidebarProperties();
     this.loadPosSplitPreferences();
     try {
@@ -10336,31 +10348,31 @@ export default {
       if (!this.selectedClientId) {
         const msg = this.$t ? this.$t('Select_Customer') : 'Please select a customer before paying.';
         this.makeToast && this.makeToast('warning', msg, this.$t ? this.$t('Warning') : 'Warning');
-        return;
+        return false;
       }
       if (!this.sale || !this.sale.warehouse_id) {
         const msg = this.$t ? this.$t('SelectWarehouse') : 'Please select a warehouse before paying.';
         this.makeToast && this.makeToast('warning', msg, this.$t ? this.$t('Warning') : 'Warning');
-        return;
+        return false;
       }
       // Guard: batch validation — every batch-tracked line must have a complete, valid batch allocation.
       const gate = this.payNowBatchGate;
       if (gate && gate.blocked) {
         this.makeToast('danger', gate.reason, this.$t ? this.$t('Failed') : 'Failed');
-        return;
+        return false;
       }
       // Guard: stock validation before opening payment modal
       const stockCheck = this.verifyAllItemsInStock();
       if (!stockCheck.ok) {
         const msg = this.$t ? `${this.$t('InsufficientStock')} ${stockCheck.productName}` : `Insufficient stock for ${stockCheck.productName}`;
         this.makeToast('danger', msg, this.$t ? this.$t('Failed') : 'Failed');
-        return;
+        return false;
       }
       // Guard: total payable must not be negative (zero allowed)
       if (Number(this.GrandTotal) < 0) {
         const msg = this.$t ? `${this.$t('pos.Total_Payable')} cannot be negative` : 'Total Payable cannot be negative';
         this.makeToast('warning', msg, this.$t ? this.$t('Warning') : 'Warning');
-        return;
+        return false;
       }
       // Open modern payment modal with current sale data
       this.$refs.modernPaymentModal.openModal({
@@ -10368,6 +10380,13 @@ export default {
         reference: this.sale.Ref || "POS-" + new Date().getTime(),
         notes: this.selectedClientId ? `Payment for Customer #${this.selectedClientId}` : 'POS Payment'
       });
+      return true;
+    },
+    onPayModalShow(evt, id) { if (id === 'modern_payment_modal') this.payModalOpen = true; },
+    onPayModalHidden(evt, id) { if (id === 'modern_payment_modal') this.payModalOpen = false; },
+    // CTA animado: la animación solo corre si los guards pasaron y el modal se abrió.
+    onPayPress(ctl) {
+      if (this.openModernPaymentModal() !== false) ctl.play();
     },
 
     // F9 entry point: re-open the receipt modal for the most recent
@@ -10575,6 +10594,8 @@ export default {
 
   },
   beforeDestroy() {
+    this.$root.$off('bv::modal::show', this.onPayModalShow);
+    this.$root.$off('bv::modal::hidden', this.onPayModalHidden);
     this.stopPosResize();
     try {
       if (typeof document !== 'undefined' && document.documentElement) {
@@ -17548,10 +17569,6 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: not-allowed;
 }
 
-.pos-codecanyon .pos-shell-pay-btn:hover:not(:disabled) {
-  filter: brightness(1.04);
-}
-
 .pos-codecanyon .pos-shell-product-card:hover {
   border-color: var(--line-strong) !important;
   background: var(--soft);
@@ -18558,33 +18575,10 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     gap: 8px !important;
   }
 
-  /* --- Mobile Pay Now button (inside cart, full-width purple) --- */
+  /* --- Mobile Pay Now wrapper (inside cart). Visual del botón: PosPayButton.vue --- */
   .pos-codecanyon .pos-shell-mobile-pay-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
     width: calc(100% - 16px);
     margin: 8px;
-    height: 48px;
-    padding: 0 18px;
-    background: #6f53d9;
-    color: #ffffff;
-    border: 0;
-    border-radius: 12px;
-    font-size: 15px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 4px 14px rgba(111, 83, 217, 0.32);
-    transition: all 120ms ease;
-  }
-  .pos-codecanyon .pos-shell-mobile-pay-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-  .pos-codecanyon .pos-shell-mobile-pay-btn-amount {
-    margin-left: auto;
-    font-family: 'JetBrains Mono', monospace;
   }
 
   /* --- Hide the desktop bottom pay bar on mobile (replaced by tab bar + cart pay btn) --- */
