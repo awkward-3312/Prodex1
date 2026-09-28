@@ -15,6 +15,7 @@ export { default as PxCard } from "./PxCard.vue";
 export { default as PxCheck } from "./PxCheck.vue";
 export { default as PxCheckbox } from "./PxCheckbox.vue";
 export { default as PxChartFrame } from "./PxChartFrame.vue";
+export { default as PxEmptyCharacter } from "./PxEmptyCharacter.vue";
 export { default as PxEmptyState } from "./PxEmptyState.vue";
 export { default as PxEntityCell } from "./PxEntityCell.vue";
 export { default as PxField } from "./PxField.vue";

@@ -28,6 +28,13 @@
       <px-skeleton variant="table" :rows="8" :columns="7" />
     </div>
 
+    <px-alert v-else-if="loadError" tone="danger" class="pxcm__alert"
+      :title="loadError === 'forbidden' ? tr('No_permission_commission_rules', 'No tienes permiso para ver las reglas de comisión') : tr('Could_not_load_commission_rules', 'No se pudieron cargar las reglas de comisión')">
+      <template v-if="loadError !== 'forbidden'" #actions>
+        <px-button size="sm" variant="secondary" @click="load(serverParams.page)">{{ tr('Retry', 'Reintentar') }}</px-button>
+      </template>
+    </px-alert>
+
     <template v-else>
       <div class="pxcm__tablewrap">
         <px-table
@@ -52,10 +59,22 @@
           </template>
         </px-table>
 
+        <!-- Sin resultados: hay búsqueda o filtro activo, la colección puede tener datos -->
+        <px-empty-state
+          v-else-if="hasFilters"
+          character calm
+          :title="search ? tr('No_results_for', 'No encontramos resultados para «{q}»').replace('{q}', search) : tr('No_results', 'Sin resultados')"
+          :description="tr('Try_other_search_or_filters', 'Prueba con otro término o quita los filtros.')"
+        >
+          <px-button variant="secondary" size="sm" @click="clearFilters">{{ tr('Clear_search_and_filters', 'Limpiar búsqueda y filtros') }}</px-button>
+        </px-empty-state>
+
+        <!-- Vacío inicial: cargó bien y no existe ninguna regla -->
         <px-empty-state
           v-else
-          icon="percent"
-          :title="$t('No_commission_rules_yet') || 'Sin reglas de comisión todavía'"
+          character
+          :title="tr('No_commission_rules_yet', 'Sin reglas de comisión todavía')"
+          :description="tr('Add_first_commission_rule_hint', 'Crea tu primera regla para calcular comisiones automáticamente.')"
         >
           <px-button
             v-if="currentUserPermissions && currentUserPermissions.includes('commissions_add')"
@@ -157,18 +176,20 @@ import PxInput from "@/components/px-next/PxInput.vue";
 import PxCheckbox from "@/components/px-next/PxCheckbox.vue";
 import PxModal from "@/components/px-next/PxModal.vue";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
+import PxAlert from "@/components/px-next/PxAlert.vue";
 import VsPx from "@/views/app/products/next/edit/VsPx.vue";
 
 export default {
   metaInfo: { title: 'Commission Rules' },
   components: {
     PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxBadge,
-    PxField, PxInput, PxCheckbox, PxModal, PxEmptyState, "vs-px": VsPx
+    PxField, PxInput, PxCheckbox, PxModal, PxEmptyState, PxAlert, "vs-px": VsPx
   },
   data() {
     return {
       _searchTimer: null,
       isLoading: true,
+      loadError: '', // '' | 'error' | 'forbidden'
       modalOpen: false,
       rules: [],
       totalRows: 0,
@@ -184,6 +205,7 @@ export default {
   },
   computed: {
     ...mapGetters(['currentUserPermissions']),
+    hasFilters() { return !!(this.search || this.filterProgramId); },
     canRowActions() {
       const p = this.currentUserPermissions || [];
       return p.includes('commissions_edit') || p.includes('commissions_delete');
@@ -213,6 +235,13 @@ export default {
     this.load();
   },
   methods: {
+    // Si la clave no existe en las traducciones cargadas ($te), se usa el texto de respaldo.
+    tr(key, fallback) { return this.$te && this.$te(key) ? this.$t(key) : fallback; },
+    clearFilters() {
+      this.search = '';
+      this.filterProgramId = null;
+      this.load(1);
+    },
     onSearchInput(v) {
       this.search = v;
       if (this._searchTimer) clearTimeout(this._searchTimer);
@@ -232,15 +261,21 @@ export default {
     },
     load(page = 1) {
       NProgress.start();
+      this.loadError = '';
       const params = { page, limit: this.limit, SortField: this.serverParams.sort.field, SortType: this.serverParams.sort.type, search: this.search };
       if (this.filterProgramId) params.commission_program_id = this.filterProgramId;
-      axios.get('commission_rules', { params }).then((res) => {
+      axios.get('commission_rules', { params, meta: { skipErrorRedirect: true } }).then((res) => {
         const d = res.data.data || res.data;
         this.rules = d.rules || [];
         this.totalRows = d.totalRows || 0;
         NProgress.done();
         this.isLoading = false;
-      }).catch(() => { NProgress.done(); this.isLoading = false; });
+      }).catch((err) => {
+        NProgress.done();
+        this.isLoading = false;
+        this.rules = [];
+        this.loadError = err && err.response && err.response.status === 403 ? 'forbidden' : 'error';
+      });
     },
     onPage(p) { if (this.serverParams.page !== p) { this.serverParams.page = p; this.load(p); } },
     onLimit(v) { if (this.limit !== String(v)) { this.limit = String(v); this.load(1); } },
@@ -288,6 +323,7 @@ export default {
 .pxcm { min-height: 100%; background: var(--pxn-bg); padding: var(--pxn-space-8) var(--pxn-space-9) var(--pxn-space-9); }
 @media (max-width: 620px) { .pxcm { padding: var(--pxn-space-6) var(--pxn-space-5); } }
 .pxcm__pad { padding: var(--pxn-space-6) 0; }
+.pxcm__alert { margin-top: var(--pxn-space-5); }
 .pxcm__filterbar { margin-top: var(--pxn-space-4); max-width: 320px; }
 .pxcm__tablewrap { margin-top: var(--pxn-space-5); }
 .pxcm__gap { margin-top: var(--pxn-space-5); }

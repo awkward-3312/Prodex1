@@ -157,16 +157,56 @@
           <div class="pr-ld__cell pr-ld__cell--static"><px-loader size="md" label="Procesando…" /><small>reposo (reduced-motion)</small></div>
         </div>
       </div>
+
+      <hr class="pxn-divider" />
+
+      <div class="pr-es">
+        <span class="pr-selection__label">PxEmptyState · sin contenido</span>
+        <div class="pr-es__grid">
+          <div class="pr-es__cell">
+            <px-empty-state character title="No hay clientes todavía" description="Agrega tu primer cliente para comenzar a vender y dar seguimiento.">
+              <px-button variant="primary" icon="plus" size="sm">Agregar cliente</px-button>
+            </px-empty-state>
+            <small>Vacío inicial · cadencia original (0.5 s)</small>
+          </div>
+          <div class="pr-es__cell">
+            <px-empty-state character calm title="No hay clientes todavía" description="Agrega tu primer cliente para comenzar a vender y dar seguimiento.">
+              <px-button variant="primary" icon="plus" size="sm">Agregar cliente</px-button>
+            </px-empty-state>
+            <small>Vacío inicial · cadencia tranquila (1.2 s)</small>
+          </div>
+          <div class="pr-es__cell">
+            <px-empty-state character calm title="No encontramos resultados para «Samsung»" description="Revisa la ortografía o prueba con otro término.">
+              <px-button variant="secondary" size="sm">Limpiar búsqueda</px-button>
+            </px-empty-state>
+            <small>Sin resultados (búsqueda o filtros)</small>
+          </div>
+          <div class="pr-es__cell pr-es__cell--static">
+            <px-empty-state character title="No hay ventas todavía" />
+            <small>Sin descripción ni CTA (pose estática)</small>
+          </div>
+          <div class="pr-es__cell pr-es__cell--static">
+            <px-empty-state character title="No hay proveedores todavía" description="Los proveedores que registres aparecerán aquí.">
+              <px-button variant="primary" icon="plus" size="sm">Crear proveedor</px-button>
+            </px-empty-state>
+            <small>Reposo (reduced-motion)</small>
+          </div>
+          <div class="pr-es__cell">
+            <px-empty-state icon="inbox" title="Sin movimientos" description="Variante existente con glifo (sin cambios)." />
+            <small>PxEmptyState actual (glifo), intacto</small>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 </template>
 
 <script>
 import SectionHead from "./_SectionHead.vue";
-import { PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxLoader } from "@/components/px-next";
+import { PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxLoader, PxEmptyState } from "@/components/px-next";
 export default {
   name: "PrimitivesSection",
-  components: { SectionHead, PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxLoader },
+  components: { SectionHead, PxCard, PxPageHeader, PxBadge, PxButton, PxField, PxInput, PxSelect, PxTextarea, PxCheck, PxCheckbox, PxLoader, PxEmptyState },
   props: { density: String, country: String },
   data() {
     return {
@@ -212,6 +252,11 @@ export default {
 .pr-ld__cell { display: flex; flex-direction: column; align-items: center; gap: var(--pxn-space-4); padding: var(--pxn-space-6) var(--pxn-space-4); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface); }
 .pr-ld__cell small { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 .pr-ld__cell--static ::v-deep .pxn-loader__layer { animation: none; }
+.pr-es__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--pxn-space-6); margin-top: var(--pxn-space-4); }
+.pr-es__cell { display: flex; flex-direction: column; border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface); }
+.pr-es__cell small { padding: 0 var(--pxn-space-4) var(--pxn-space-4); text-align: center; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
+.pr-es__cell--static ::v-deep .pxn-ec__body, .pr-es__cell--static ::v-deep .pxn-ec__pupil, .pr-es__cell--static ::v-deep .pxn-ec__shadow, .pr-es__cell--static ::v-deep .pxn-ec__cell { animation: none !important; }
+.pr-es__cell--static ::v-deep .pxn-ec__cell.is-f1 { background-color: transparent; }
 .pr-selection__group { display: flex; flex-direction: column; gap: var(--pxn-space-4); }
 .pr-selection__label { font-size: var(--pxn-fs-xs); font-weight: var(--pxn-fw-semibold); text-transform: uppercase; letter-spacing: 0.05em; color: var(--pxn-ink-3); }
 </style>
