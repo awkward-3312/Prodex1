@@ -65,7 +65,13 @@
           @sort="onSort"
         >
           <template #cell-statut="{ row }">
-            <px-check type="switch" :modelValue="!!row.statut" @change="v => { row.statut = v; isChecked(row); }" />
+            <px-check
+              type="switch"
+              :modelValue="!!row.statut"
+              :loading="togglingUserIds.includes(row.id)"
+              :aria-label="(row.statut ? 'Desactivar' : 'Activar') + ' usuario ' + row.username"
+              @change="v => onToggleUserStatus(row, v)"
+            />
           </template>
           <template #row-actions="{ row }">
             <div class="pxcfg__rowbtns">
@@ -159,6 +165,7 @@ export default {
         is_all_warehouses: 1,
       },
       assigned_warehouses: [],
+      togglingUserIds: [] // filas con un PUT de activar/desactivar en curso (bloquea doble clic vía PxCheck loading)
     };
   },
 
@@ -250,7 +257,11 @@ export default {
       }
     },
 
-    isChecked(user) {
+    // Optimista: onToggleUserStatus ya movió row.statut antes de llamar aquí. `loading` (PxCheck) bloquea
+    // el switch mientras el PUT está en curso, para no disparar dos peticiones por doble clic. Si el
+    // backend rechaza el cambio (error de red o success:false), restaura `previousStatus` EXACTO —
+    // nunca un valor fijo — para que la UI nunca muestre un estado que el backend no confirmó.
+    isChecked(user, previousStatus) {
       axios
         .put("users_switch_activated/" + user.id, {
           statut: user.statut,
@@ -266,14 +277,22 @@ export default {
               this.makeToast("success", this.$t("DisActivateUser"), this.$t("Success"));
             }
           } else {
-            user.statut = 1;
+            user.statut = previousStatus;
             this.makeToast("warning", this.$t("Delete_Therewassomethingwronge"), this.$t("Warning"));
           }
         })
         .catch(error => {
-          user.statut = 1;
+          user.statut = previousStatus;
           this.makeToast("warning", this.$t("Delete_Therewassomethingwronge"), this.$t("Warning"));
-        });
+        })
+        .then(() => { this.togglingUserIds = this.togglingUserIds.filter(id => id !== user.id); });
+    },
+    onToggleUserStatus(row, v) {
+      if (this.togglingUserIds.includes(row.id)) return;
+      const previousStatus = row.statut;
+      row.statut = v;
+      this.togglingUserIds = [...this.togglingUserIds, row.id];
+      this.isChecked(row, previousStatus);
     },
 
     //--------------------------- Users PDF ---------------------------\\

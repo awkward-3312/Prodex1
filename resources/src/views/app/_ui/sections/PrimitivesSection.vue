@@ -119,6 +119,13 @@
           <span class="pr-selection__label">Switch</span>
           <px-check type="switch" v-model="f.online">Visible en tienda en línea</px-check>
           <px-check type="switch" v-model="f.price_login">Mostrar precio solo a clientes con sesión</px-check>
+          <px-check type="switch" :model-value="false" disabled>Deshabilitado (apagado)</px-check>
+          <px-check type="switch" :model-value="true" disabled>Deshabilitado (encendido)</px-check>
+          <px-check type="switch" v-model="sw.noLabel" aria-label="Sin etiqueta visible: notificaciones por correo" />
+          <span class="pr-cb__out">Sin etiqueta visible (arriba): {{ sw.noLabel ? "activado" : "desactivado" }}</span>
+          <px-check type="switch" :model-value="sw.pessimistic" :loading="sw.pessimisticLoading" @change="onPessimisticDemo">
+            {{ sw.pessimistic ? "Activo" : "Inactivo" }} · demo pesimista (~700 ms, como el piloto de Promociones)
+          </px-check>
         </div>
       </div>
 
@@ -311,6 +318,7 @@ export default {
       sqStatus: [{ value: "", label: "Todos los estados" }, { value: "1", label: "Activos" }, { value: "0", label: "Inactivos" }],
       cb: { a: false, b: true, err: false, long: false, list: ["B"] },
       cbItems: ["A", "B", "C"],
+      sw: { noLabel: false, pessimistic: false, pessimisticLoading: false },
       fu: { a: null, b: new File([new Uint8Array(1887437)], "inventario.xlsx"), c: null, d: null, e: [], f: null, g: null, progress: 45 },
       f: {
         name: "", sku: "ACE-500-100", price: "62.00", cat: "", rtn: "0801-1995-12345",
@@ -319,7 +327,13 @@ export default {
     };
   },
   methods: {
-    toggleAll(v) { this.cb.list = v ? this.cbItems.slice() : []; }
+    toggleAll(v) { this.cb.list = v ? this.cbItems.slice() : []; },
+    // Demo pesimista (documenta el patrón del piloto real): el knob NO se mueve hasta que "el backend" resuelve.
+    onPessimisticDemo(next) {
+      if (this.sw.pessimisticLoading) return; // guarda contra doble clic, igual que el piloto
+      this.sw.pessimisticLoading = true;
+      setTimeout(() => { this.sw.pessimistic = next; this.sw.pessimisticLoading = false; }, 700);
+    }
   },
   computed: {
     cbAll() { return this.cb.list.length === this.cbItems.length; },
