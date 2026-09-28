@@ -52,6 +52,13 @@
         <px-button size="md" variant="secondary">Medium 38</px-button>
         <px-button size="lg" variant="secondary">Large 44</px-button>
       </div>
+
+      <span class="pr-selection__label">Acción destructiva (icon-only) · reposo → hover/focus revela el nombre, sin cambiar de tamaño</span>
+      <div class="pr-btnrow">
+        <px-button variant="ghost" size="sm" icon-only icon="trash-2" destructive aria-label="Eliminar campo" />
+        <px-button variant="ghost" size="sm" icon-only icon="trash-2" destructive aria-label="Eliminar registro" :loading="delDemo.loading" @click="onDeleteDemo" />
+        <px-button variant="ghost" size="sm" icon-only icon="trash-2" destructive disabled aria-label="Eliminar (sin permiso)" />
+      </div>
     </div>
 
     <!-- Fields -->
@@ -319,6 +326,7 @@ export default {
       cb: { a: false, b: true, err: false, long: false, list: ["B"] },
       cbItems: ["A", "B", "C"],
       sw: { noLabel: false, pessimistic: false, pessimisticLoading: false },
+      delDemo: { loading: false },
       fu: { a: null, b: new File([new Uint8Array(1887437)], "inventario.xlsx"), c: null, d: null, e: [], f: null, g: null, progress: 45 },
       f: {
         name: "", sku: "ACE-500-100", price: "62.00", cat: "", rtn: "0801-1995-12345",
@@ -333,6 +341,13 @@ export default {
       if (this.sw.pessimisticLoading) return; // guarda contra doble clic, igual que el piloto
       this.sw.pessimisticLoading = true;
       setTimeout(() => { this.sw.pessimistic = next; this.sw.pessimisticLoading = false; }, 700);
+    },
+    // Demo del patrón destructivo: solo ilustra el estado `pending` (bloqueado, sin segundo click).
+    // No simula éxito/error de backend — eso es responsabilidad del consumidor real (ver el piloto).
+    onDeleteDemo() {
+      if (this.delDemo.loading) return;
+      this.delDemo.loading = true;
+      setTimeout(() => { this.delDemo.loading = false; }, 700);
     }
   },
   computed: {

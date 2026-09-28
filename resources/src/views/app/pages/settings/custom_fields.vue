@@ -27,7 +27,11 @@
           <template #row-actions="{ row }">
             <div class="pxcfg__rowbtns">
               <px-button variant="ghost" size="sm" icon-only icon="pencil" aria-label="Editar" @click="Edit_CustomField(row)" />
-              <px-button class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" aria-label="Eliminar" @click="Delete_CustomField(row.id)" />
+              <px-button
+                class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" destructive
+                aria-label="Eliminar" :loading="deletingIds.includes(row.id)"
+                @click="Delete_CustomField(row.id)"
+              />
             </div>
           </template>
         </px-table>
@@ -42,7 +46,11 @@
           <template #row-actions="{ row }">
             <div class="pxcfg__rowbtns">
               <px-button variant="ghost" size="sm" icon-only icon="pencil" aria-label="Editar" @click="Edit_CustomField(row)" />
-              <px-button class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" aria-label="Eliminar" @click="Delete_CustomField(row.id)" />
+              <px-button
+                class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" destructive
+                aria-label="Eliminar" :loading="deletingIds.includes(row.id)"
+                @click="Delete_CustomField(row.id)"
+              />
             </div>
           </template>
         </px-table>
@@ -140,6 +148,7 @@ export default {
       activeEntity: 'client',
       customerFields: [],
       supplierFields: [],
+      deletingIds: [], // ids con un DELETE en curso (bloquea el botón, evita doble petición)
       customField: {
         id: "",
         name: "",
@@ -296,7 +305,12 @@ export default {
       });
     },
 
+    // Confirmación (SweetAlert, ya existente) → petición → toast/refetch existentes, sin cambios.
+    // Único agregado de #13: `deletingIds` bloquea el botón (loading real) mientras el DELETE está en
+    // curso, para que un doble clic real no dispare una segunda petición; nunca "elimina" la fila antes
+    // de que el backend confirme (el refetch de éxito es lo único que la hace desaparecer).
     Delete_CustomField(id) {
+      if (this.deletingIds.includes(id)) return;
       this.$swal({
         title: this.$t("DeleteTitle"),
         text: this.$t("DeleteMessage"),
@@ -307,21 +321,22 @@ export default {
         cancelButtonText: this.$t("Cancel"),
         confirmButtonText: this.$t("Delete")
       }).then(result => {
-        if (result.value) {
-          axios
-            .delete("custom-fields/" + id)
-            .then(response => {
-              this.makeToast(
-                "success",
-                this.$t("Successfully_Deleted"),
-                this.$t("Success")
-              );
-              this.Get_CustomFields();
-            })
-            .catch(error => {
-              this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-            });
-        }
+        if (!result.value) return;
+        this.deletingIds = [...this.deletingIds, id];
+        axios
+          .delete("custom-fields/" + id)
+          .then(response => {
+            this.makeToast(
+              "success",
+              this.$t("Successfully_Deleted"),
+              this.$t("Success")
+            );
+            this.Get_CustomFields();
+          })
+          .catch(error => {
+            this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
+          })
+          .then(() => { this.deletingIds = this.deletingIds.filter(i => i !== id); });
       });
     },
 
