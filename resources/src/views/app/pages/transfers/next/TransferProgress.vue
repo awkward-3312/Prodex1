@@ -34,6 +34,9 @@
           <px-badge :tone="s.tone" :icon="s.flag ? 'alert-triangle' : null" class="pxtp__badge">{{ s.badge }}</px-badge>
           <div v-if="s.at" class="pxtp__time">{{ fmt(s.at) }}<template v-if="s.by"> · {{ s.by }}</template></div>
           <div v-if="s.note" class="pxtp__note">{{ s.note }}</div>
+          <transition name="pxtp-truck">
+            <transfer-truck v-if="s.transit" class="pxtp__truck" />
+          </transition>
         </div>
       </li>
     </ol>
@@ -46,13 +49,14 @@
 
 <script>
 import PxBadge from "@/components/px-next/PxBadge.vue";
+import TransferTruck from "./TransferTruck.vue";
 import { buildTransferSteps } from "./transferProgress.js";
 
 // Seguimiento de UN traslado. Recibe los datos que el detalle ya cargó (no consulta el backend)
 // y solo representa el estado real: las acciones (aprobar/despachar/recibir) siguen siendo del padre.
 export default {
   name: "TransferProgress",
-  components: { PxBadge },
+  components: { PxBadge, TransferTruck },
   props: {
     transfer: { type: Object, default: () => ({}) },
     workflow: { type: Object, default: () => ({}) },
@@ -163,6 +167,9 @@ export default {
 .pxtp__step.is-current .pxtp__title { color: var(--pxn-primary-ink); }
 .pxtp__time { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); overflow-wrap: anywhere; }
 .pxtp__note { font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); overflow-wrap: anywhere; }
+.pxtp__truck { margin-top: var(--pxn-space-4); }
+.pxtp-truck-leave-active { transition: opacity 180ms var(--pxn-ease); }
+.pxtp-truck-leave-to { opacity: 0; }
 .pxtp__unknown { display: flex; align-items: center; gap: var(--pxn-space-2); margin: var(--pxn-space-6) 0 0; font-size: var(--pxn-fs-sm); color: var(--pxn-warning-ink); }
 
 // Movimiento funcional: solo después del primer pintado y solo cuando el estado cambia.

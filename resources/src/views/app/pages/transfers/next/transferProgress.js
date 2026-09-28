@@ -92,6 +92,9 @@ export function buildTransferSteps({ transfer = {}, workflowTransfer = {}, event
   }
   if (logistics === "in_transit") {
     current(sent, TRANSFER_LOGISTICS_LABELS.in_transit, "info", dispatchedAt, dispatchedBy);
+    // Única regla que muestra el camión: mercancía despachada y aún sin ninguna recepción registrada.
+    // (partially_received ya tiene recepción iniciada en destino; received* ya llegó; el resto no salió.)
+    sent.transit = true;
     return { steps: [created, approved, sent, received], unknown: false, terminal: null };
   }
 
