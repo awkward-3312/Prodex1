@@ -17,6 +17,27 @@
         ? route('central.privacy-policy')
         : '/privacy-policy';
 @endphp
+@php
+    // Textos del consentimiento (sistema i18n existente: resources/lang/*/landing.php).
+    $consentI18n = [
+        'title' => __('landing.consent_title'),
+        'text' => __('landing.consent_text'),
+        'policy' => __('landing.privacy_policy'),
+        'accept' => __('landing.consent_accept'),
+        'reject' => __('landing.consent_reject'),
+        'customize' => __('landing.consent_customize'),
+        'save' => __('landing.consent_save'),
+        'prefsTitle' => __('landing.consent_prefs_title'),
+        'necessary' => __('landing.consent_necessary'),
+        'necessaryDesc' => __('landing.consent_necessary_desc'),
+        'analytics' => __('landing.consent_analytics'),
+        'analyticsDesc' => __('landing.consent_analytics_desc'),
+        'onlyNecessary' => __('landing.consent_only_necessary'),
+        'close' => __('landing.consent_close'),
+    ];
+@endphp
+<link rel="stylesheet" href="{{ asset('assets_super/css/prodex-consent.css') }}">
+<script type="application/json" id="prodex-consent-i18n">{!! json_encode($consentI18n, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) !!}</script>
 <script
     src="{{ asset('assets_super/js/prodex-consent.js') }}"
     data-ga-id="{{ $gaEmit }}"

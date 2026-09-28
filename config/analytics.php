@@ -22,10 +22,11 @@ return [
     'ga_measurement_id' => env('GA_MEASUREMENT_ID', ''),
 
     /*
-    | Only load analytics in these environments even when an ID is present.
+    | Only load analytics in these environments even when an ID is present
+    | (comma-separated ANALYTICS_ENABLED_ENVIRONMENTS, default: production).
     | Keeps local/staging noise out of the production property.
     */
-    'enabled_environments' => ['production'],
+    'enabled_environments' => array_values(array_filter(array_map('trim', explode(',', (string) env('ANALYTICS_ENABLED_ENVIRONMENTS', 'production'))))),
 
     /*
     | Consent bookkeeping. Bump the version when the cookie categories or their
