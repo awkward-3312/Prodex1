@@ -34,6 +34,31 @@
   --px-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
   --px-shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
 
+  /* Elevation reserved for floating elements only (menus, popovers, modals,
+     toasts, hover-lifted cards). Static surfaces use a hairline border, not
+     a shadow — mirrors the px-next "Panel de operación" contract. */
+  --px-shadow-popover: 0 1px 2px rgba(15, 23, 42, 0.08), 0 6px 16px rgba(15, 23, 42, 0.12);
+  --px-shadow-modal: 0 8px 16px rgba(15, 23, 42, 0.10), 0 24px 48px rgba(15, 23, 42, 0.16);
+  --px-shadow-card-hover: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.08);
+
+  /* Motion — functional only, never decorative. Zeroed under
+     prefers-reduced-motion (see _foundation.scss). */
+  --px-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --px-ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --px-ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --px-dur-1: 120ms;
+  --px-dur-2: 180ms;
+  --px-dur-3: 240ms;
+
+  /* Interaction states — one source for hover/focus/active/disabled/selected
+     so shared components stop redefining these ad hoc per file. */
+  --px-focus-ring: color-mix(in srgb, var(--px-primary) 42%, transparent);
+  --px-hover-tint: color-mix(in srgb, var(--px-primary) 6%, transparent);
+  --px-active-tint: color-mix(in srgb, var(--px-primary) 12%, transparent);
+  --px-selected-bg: color-mix(in srgb, var(--px-primary) 9%, var(--px-surface));
+  --px-selected-border: color-mix(in srgb, var(--px-primary) 40%, var(--px-surface));
+  --px-disabled-opacity: 0.55;
+
   --px-space-1: 4px;
   --px-space-2: 8px;
   --px-space-3: 12px;
@@ -86,4 +111,7 @@
   --px-shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.18);
   --px-shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.22);
   --px-shadow-md: 0 12px 32px rgba(0, 0, 0, 0.28);
+  --px-shadow-popover: 0 1px 2px rgba(0, 0, 0, 0.22), 0 6px 16px rgba(0, 0, 0, 0.30);
+  --px-shadow-modal: 0 8px 16px rgba(0, 0, 0, 0.24), 0 24px 48px rgba(0, 0, 0, 0.34);
+  --px-shadow-card-hover: 0 1px 2px rgba(0, 0, 0, 0.20), 0 4px 12px rgba(0, 0, 0, 0.26);
 }
