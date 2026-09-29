@@ -1176,6 +1176,8 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
 }
 .pxn-shell__panel-caret.is-open { transform: rotate(180deg); }
 
+/* Active navigation motion */
+.pxn-shell__panel-link{position:relative}.pxn-shell__panel-link>svg{transition:color var(--pxn-dur-1) var(--pxn-ease)}.pxn-shell__panel-link.is-active>svg{color:var(--pxn-primary)}.pxn-shell__panel-link::before{content:"";position:absolute;left:calc(var(--pxn-space-5) * -1);top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--pxn-primary);transform:scaleY(0);transition:transform 160ms var(--pxn-ease);pointer-events:none}.pxn-shell__panel-link.is-active::before{transform:scaleY(1)}@media(max-width:860px),(pointer:coarse){.pxn-shell__panel-link{min-height:44px}.pxn-shell__panel-link::before{left:calc(var(--pxn-space-4) * -1)}}@media(prefers-reduced-motion:reduce){.pxn-shell__panel-link>svg,.pxn-shell__panel-link::before{transition:none}}
 /* columna principal */
 /* `min-height: 0` deja que la columna se ajuste a la fila del grid (100vh) para
    que `.pxn-shell__canvas` (flex:1, overflow:auto) tenga altura acotada y
