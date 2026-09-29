@@ -338,4 +338,17 @@ return [
 
     'perfect_to_start'           => 'Perfect to start',
     'for_growing_teams'          => 'For growing teams',
+    'consent_title' => 'Your privacy matters',
+    'consent_text' => 'We use essential cookies to make the site work and, with your permission, analytics cookies to understand how it is used. You can reject non-essential cookies or choose what to allow.',
+    'consent_accept' => 'Accept',
+    'consent_reject' => 'Reject non-essential',
+    'consent_customize' => 'Customize',
+    'consent_save' => 'Save preferences',
+    'consent_prefs_title' => 'Cookie preferences',
+    'consent_necessary' => 'Necessary',
+    'consent_necessary_desc' => 'Required for the site to work (session, security, language and your cookie choice). Always on.',
+    'consent_analytics' => 'Analytics',
+    'consent_analytics_desc' => 'Help us understand how the site is used through aggregated statistics (Google Analytics).',
+    'consent_only_necessary' => 'This site only uses cookies that are necessary to work.',
+    'consent_close' => 'Close',
 ];
