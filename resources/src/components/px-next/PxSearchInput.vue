@@ -12,6 +12,7 @@
       :disabled="disabled"
       :readonly="readonly"
       v-bind="$attrs"
+      @keydown="onKeydown"
     />
     <button
       v-if="canClear"
