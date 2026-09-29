@@ -932,17 +932,7 @@
       </div>
 
       <!-- Pay now -->
-      <button
-        @click="openModernPaymentModal"
-        :disabled="paymentProcessing || details.length === 0 || payNowBatchGate.blocked"
-        :title="payNowBatchGate.blocked ? payNowBatchGate.reason : $t('pos.Complete_and_process_payment')"
-        class="pos-shell-pay-btn"
-        :style="{ height: '44px', padding: '0 26px', background: 'var(--accent)', color: 'var(--pxn-primary-contrast)', border: '1px solid var(--accent)', borderRadius: 'var(--pxn-radius-md)', fontSize: '15px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '10px', cursor: (paymentProcessing || details.length === 0 || payNowBatchGate.blocked) ? 'not-allowed' : 'pointer', opacity: (paymentProcessing || details.length === 0 || payNowBatchGate.blocked) ? 0.55 : 1, boxShadow: 'none', transition: 'background-color 120ms var(--pxn-ease), filter 120ms var(--pxn-ease)' }">
-        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px;">
-          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"></path>
-        </svg>
-        <span>{{ paymentProcessing ? $t('pos.Processing') : $t('pos.Pay_Now') }}</span>
-      </button>
+      <pos-pay-button class="pos-shell-pay-btn" :currency="payCurrencySymbol" :label="paymentProcessing ? $t('pos.Processing') : $t('pos.Pay_Now')" :loading="paymentProcessing" :disabled="details.length === 0 || payNowBatchGate.blocked" :title="payNowBatchGate.blocked ? payNowBatchGate.reason : $t('pos.Complete_and_process_payment')" @press="onPayPress" />
     </div>
 
     <!-- ============================================================
@@ -3586,12 +3576,14 @@ import { openCashDrawer } from "../../../utils/cashDrawerQz";
 import { loadStripe } from "@stripe/stripe-js";
 import ModernPaymentModal from "../components/ModernPaymentModal.vue";
 import PosReturnModal from "../components/PosReturnModal.vue";
+import PosPayButton from "../components/PosPayButton.vue";
 import CustomFieldsForm from "../../../components/CustomFieldsForm.vue";
 import posKeyboardShortcutsMixin, { POS_SHORTCUTS } from "../../../mixins/posKeyboardShortcuts";
 
 export default {
   components: { BForm, BFormGroup, BFormInput, BFormInvalidFeedback, BInputGroup, BFormCheckbox, BFormRadioGroup, BFormSelect, BButton, BCol, BDropdown, BPagination, BRow, BModal,
     barcode: VueBarcode,
+    PosPayButton,
     ModernPaymentModal,
     PosReturnModal,
     CustomFieldsForm,
@@ -4075,6 +4067,8 @@ export default {
 
     // Batch validation: when any cart line has a batch problem, Pay Now is blocked.
     // Returns { blocked: bool, reason: string | null } so the button can show a tooltip.
+    payCurrencySymbol() { return (this.currentUser && this.currentUser.currency) ? this.currentUser.currency : ""; },
+
     payNowBatchGate() {
       const details = Array.isArray(this.details) ? this.details : [];
       for (const d of details) {
@@ -10367,6 +10361,8 @@ export default {
         notes: this.selectedClientId ? `Payment for Customer #${this.selectedClientId}` : 'POS Payment'
       });
     },
+
+    onPayPress(ctl) { if (this.openModernPaymentModal() !== false) ctl.play(); },
 
     // F9 entry point: re-open the receipt modal for the most recent
     // completed sale. The shared print_pos() helper alone requires the
