@@ -85,7 +85,7 @@
 
             <px-field :label="$t('Events') + ' *'">
               <template #default>
-                <px-check :modelValue="!!subscribeAll" @change="v => subscribeAll = v">{{ $t('Subscribe_to_all_events') || 'Subscribe to all events (*)' }}</px-check>
+                <px-checkbox :modelValue="!!subscribeAll" @change="v => subscribeAll = v">{{ $t('Subscribe_to_all_events') || 'Subscribe to all events (*)' }}</px-checkbox>
                 <div v-if="!subscribeAll" class="pxcfg__eventsgrid">
                   <label v-for="e in availableEvents" :key="eventValue(e)" class="pxcfg__eventitem">
                     <input type="checkbox" :value="eventValue(e)" :checked="(webhook.events || []).includes(eventValue(e))" @change="toggleEvent(eventValue(e), $event.target.checked)" />
@@ -133,12 +133,13 @@ import PxModal from "@/components/px-next/PxModal.vue";
 import PxField from "@/components/px-next/PxField.vue";
 import PxInput from "@/components/px-next/PxInput.vue";
 import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxCheckbox from "@/components/px-next/PxCheckbox.vue";
 import PxBadge from "@/components/px-next/PxBadge.vue";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 
 export default {
   metaInfo: { title: "Webhooks" },
-  components: { PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxModal, PxField, PxInput, PxCheck, PxBadge, PxEmptyState },
+  components: { PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxModal, PxField, PxInput, PxCheck, PxCheckbox, PxBadge, PxEmptyState },
   data() {
     return {
       _searchTimer: null,
