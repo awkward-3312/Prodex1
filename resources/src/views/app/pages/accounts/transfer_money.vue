@@ -490,5 +490,5 @@ export default {
 .pxfl__formgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
 @media (max-width: 520px) { .pxfl__formgrid { grid-template-columns: minmax(0, 1fr); } }
 .pxfl__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); margin-top: var(--pxn-space-7); }
-.pxfl ::v-deep .pxn-field.is-invalid .vs__dropdown-toggle { border-color: var(--pxn-danger); }
+.pxfl :deep(.pxn-field.is-invalid .vs__dropdown-toggle){ border-color: var(--pxn-danger); }
 </style>

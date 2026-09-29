@@ -241,7 +241,7 @@ export default {
   .pxerr-content { order: 2; max-width: none; align-items: center; text-align: center; padding: var(--pxn-space-6); }
   .pxerr-message { max-width: 34ch; }
   .pxerr-actions { justify-content: center; width: 100%; }
-  .pxerr-actions ::v-deep .pxn-btn { flex: 1 1 auto; min-width: 0; }
+  .pxerr-actions :deep(.pxn-btn){ flex: 1 1 auto; min-width: 0; }
   .pxerr-hero { display: flex; flex-direction: column; align-items: center; }
 }
 

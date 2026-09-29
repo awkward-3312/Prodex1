@@ -381,7 +381,7 @@ export default {
 .pximpu__lead { margin: var(--pxn-space-3) 0 var(--pxn-space-6); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
 
 .pximpu__sec { margin-bottom: var(--pxn-space-6); }
-.pximpu__sec ::v-deep .pxn-card__body { display: flex; flex-direction: column; gap: var(--pxn-space-5); }
+.pximpu__sec :deep(.pxn-card__body){ display: flex; flex-direction: column; gap: var(--pxn-space-5); }
 
 .pximpu-dz {
   border: 2px dashed var(--pxn-border-strong); border-radius: var(--pxn-radius-lg);
@@ -405,7 +405,7 @@ export default {
 .pximpu-dz__filesize { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 
 .pximpu__example { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface); }
-.pximpu__example ::v-deep .pxn-card__body { display: block; padding: var(--pxn-space-5); }
+.pximpu__example :deep(.pxn-card__body){ display: block; padding: var(--pxn-space-5); }
 .pximpu__example-head { display: flex; align-items: center; gap: var(--pxn-space-2); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
 .pximpu__example-p { margin: var(--pxn-space-3) 0; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 .pximpu__req-badge {
@@ -437,5 +437,5 @@ export default {
 
 .pximpu__guide { margin-bottom: var(--pxn-space-5); }
 
-.pximpu__tip ::v-deep svg { vertical-align: -2px; margin-right: var(--pxn-space-2); }
+.pximpu__tip :deep(svg){ vertical-align: -2px; margin-right: var(--pxn-space-2); }
 </style>

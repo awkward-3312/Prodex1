@@ -132,5 +132,5 @@ export default {
 .pxcfg__pad { padding: var(--pxn-space-6) 0; }
 .pxcfg__tablewrap { margin-top: var(--pxn-space-5); }
 .pxcfg__rowbtns { display: flex; gap: var(--pxn-space-2); justify-content: flex-end; }
-.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+.pxcfg__del :deep(.pxn-btn__icon){ color: var(--pxn-danger); }
 </style>

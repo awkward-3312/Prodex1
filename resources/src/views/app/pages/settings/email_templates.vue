@@ -289,6 +289,6 @@ export default {
 .pxcfg__panel { margin-top: var(--pxn-space-4); }
 .pxcfg__tags { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); margin: 0 0 var(--pxn-space-3); }
 .pxcfg__tags code { font-family: var(--pxn-font-mono, monospace); overflow-wrap: anywhere; }
-.pxcfg__panel ::v-deep .ql-toolbar { border-color: var(--pxn-border); border-radius: var(--pxn-radius-md) var(--pxn-radius-md) 0 0; }
-.pxcfg__panel ::v-deep .ql-container { border-color: var(--pxn-border); border-radius: 0 0 var(--pxn-radius-md) var(--pxn-radius-md); min-height: 160px; }
+.pxcfg__panel :deep(.ql-toolbar){ border-color: var(--pxn-border); border-radius: var(--pxn-radius-md) var(--pxn-radius-md) 0 0; }
+.pxcfg__panel :deep(.ql-container){ border-color: var(--pxn-border); border-radius: 0 0 var(--pxn-radius-md) var(--pxn-radius-md); min-height: 160px; }
 </style>

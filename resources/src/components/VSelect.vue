@@ -87,7 +87,7 @@
 // cambio. Ninguna de las dos formas es un mecanismo de compat de Vue 2: son props/eventos propios y corrientes.
 // Estado explícitamente NO usado en ninguna vista real (taggable, AJAX/loading, getOptionLabel): no se implementa.
 // Clases y variables CSS (`.vs__*`, `--vs-*`) idénticas a las del paquete retirado — mismo `dist/vue-select.css`
-// copiado en `vue-select.css` junto a este componente — para que las ~15 vistas con overrides `::v-deep(.vs__...)`
+// copiado en `vue-select.css` junto a este componente — para que las ~15 vistas con overrides `:deep(.vs__...)`
 // sigan funcionando sin tocarlas.
 import { vSelectAppendToBody } from '../platform/directives/append-to-body.js';
 import './vue-select.css';

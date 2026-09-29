@@ -358,5 +358,5 @@ export default {
 .pxrp__ratio-pct { text-align: right; }
 .pxrp__ratio-pctlabel { display: block; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 .pxrp__ratio-pctval { font-size: var(--pxn-fs-kpi); font-weight: var(--pxn-fw-bold); color: var(--pxn-ink); }
-.pxrp ::v-deep .daterangepicker { z-index: 2055 !important; }
+.pxrp :deep(.daterangepicker){ z-index: 2055 !important; }
 </style>

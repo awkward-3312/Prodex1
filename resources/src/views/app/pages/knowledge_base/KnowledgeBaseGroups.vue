@@ -133,5 +133,5 @@ export default {
 .pxkb__clamp { max-width: 460px; margin: 2px 0; }
 .pxkb__slug { font-size: var(--pxn-fs-xs, 0.75rem); color: var(--pxn-text-muted); background: var(--pxn-surface-2, var(--pxn-surface)); padding: 1px 6px; border-radius: var(--pxn-radius-sm, 4px); }
 .pxkb__rowbtns { display: flex; gap: var(--pxn-space-1); justify-content: flex-end; }
-.pxkb__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+.pxkb__del :deep(.pxn-btn__icon){ color: var(--pxn-danger); }
 </style>

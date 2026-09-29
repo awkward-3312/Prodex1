@@ -542,10 +542,10 @@ export default {
 .pager { display:flex; justify-content:space-between; align-items:center; margin-top:10px; }
 
 /* Modern table appearance */
-::v-deep .table-modern thead th { background: #f8fafc; color:#374151; font-weight:600; border-bottom: 1px solid #e5e7eb; }
-::v-deep .table-modern tbody tr:hover { background: #f9fbff; }
-::v-deep .table-modern td, ::v-deep .table-modern th { vertical-align: middle; }
-::v-deep .badge { font-weight: 600; letter-spacing: .2px; }
+:deep(.table-modern thead th){ background: #f8fafc; color:#374151; font-weight:600; border-bottom: 1px solid #e5e7eb; }
+:deep(.table-modern tbody tr:hover){ background: #f9fbff; }
+:deep(.table-modern td), :deep(.table-modern th){ vertical-align: middle; }
+:deep(.badge){ font-weight: 600; letter-spacing: .2px; }
 
 /* Full Page Loading Overlay */
 .full-page-loading {

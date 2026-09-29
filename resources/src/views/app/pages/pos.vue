@@ -11074,19 +11074,19 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
 /* POS only: v-select one-line + ellipsis (selected value + search on one line) */
 .pos-codecanyon {
-  ::v-deep .vs__selected-options {
+  :deep(.vs__selected-options){
     flex-wrap: nowrap !important;
     align-items: center;
     overflow: hidden;
   }
-  ::v-deep .vs__selected {
+  :deep(.vs__selected){
     flex: 1 1 auto;
     min-width: 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  ::v-deep .vs__search {
+  :deep(.vs__search){
     flex: 1 1 auto;
     min-width: 0;
   }
@@ -11101,13 +11101,13 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex: 1 1 0;
   min-width: 160px;
 
-  ::v-deep .vs__dropdown-toggle {
+  :deep(.vs__dropdown-toggle){
     width: 100%;
     min-width: 0;
     border: 1px solid #e5e7eb;
   }
 
-  ::v-deep .vs__selected-options {
+  :deep(.vs__selected-options){
     width: 100%;
     flex: 1;
     min-width: 0;
@@ -11115,14 +11115,14 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     overflow: hidden;
   }
 
-  ::v-deep .vs__placeholder {
+  :deep(.vs__placeholder){
     width: 100%;
     white-space: nowrap;
     overflow: visible;
     max-width: 100%;
   }
 
-  ::v-deep .vs__selected {
+  :deep(.vs__selected){
     display: block;
     max-width: 100%;
     overflow: hidden;
@@ -12336,7 +12336,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
-::v-deep(.action-btn-icon) {
+:deep(.action-btn-icon) {
   width: 44px;
   height: 44px;
   padding: 0;
@@ -12390,7 +12390,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Ensure icomoon icons render consistently inside this component */
-::v-deep(i[class^="i-"]) {
+:deep(i[class^="i-"]) {
   line-height: 1;
   display: inline-block;
   vertical-align: middle;
@@ -12419,7 +12419,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex: 1;
 }
 /* Languages dropdown */
-::v-deep(#lang-dd .dropdown-menu) {
+:deep(#lang-dd .dropdown-menu) {
   min-width: 220px;
   padding: 8px;
 }
@@ -12449,7 +12449,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 .lang-item .flag-icon { width: 20px; height: 14px; object-fit: cover; }
 .lang-item .title-lang { font-size: 12px; color: $color-text-primary; }
 /* New Customer Modal improvements */
-::v-deep(.new-customer-form) {
+:deep(.new-customer-form) {
   .form-group {
     margin-bottom: 12px;
   }
@@ -13220,7 +13220,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: var(--ink-3);
   margin-top: var(--pxn-space-2);
 }
-::v-deep(.ps-input) {
+:deep(.ps-input) {
   border-radius: var(--pxn-radius-md);
   border: 1px solid var(--pxn-border-control);
   padding: var(--pxn-space-3) var(--pxn-space-4);
@@ -13228,7 +13228,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: var(--ink);
   transition: border-color var(--pxn-dur-1) var(--pxn-ease), box-shadow var(--pxn-dur-1) var(--pxn-ease);
 }
-::v-deep(.ps-input:focus) {
+:deep(.ps-input:focus) {
   border-color: var(--pxn-primary);
   box-shadow: 0 0 0 3px var(--accent-shadow);
 }
@@ -14894,7 +14894,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   /* Small size language dropdown toggle (override Bootstrap-Vue) */
-  ::v-deep(button#lang-dd__BV_toggle_) {
+  :deep(button#lang-dd__BV_toggle_) {
     width: 30px !important;
     height: 30px !important;
     min-width: 30px !important;
@@ -14905,8 +14905,8 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     align-items: center !important;
     justify-content: center !important;
   }
-  ::v-deep(button#lang-dd__BV_toggle_ > a.action-btn-icon),
-  ::v-deep(button#lang-dd__BV_toggle_ .action-btn-icon) {
+  :deep(button#lang-dd__BV_toggle_ > a.action-btn-icon),
+  :deep(button#lang-dd__BV_toggle_ .action-btn-icon) {
     width: 30px !important;
     height: 30px !important;
     padding: 0 !important;
@@ -14939,7 +14939,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   /* Small screen spacing removed per request */
 
   /* Compact header icons on small screens */
-  ::v-deep(.action-btn-icon) { width: 30px !important; height: 30px !important; }
+  :deep(.action-btn-icon) { width: 30px !important; height: 30px !important; }
 
   .pos-footer-bar {
     padding: 12px 16px;
@@ -15147,13 +15147,13 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   .pos-header-mobile .mobile-top .top-icons .btn-offline-status .offline-badge { top: -4px; right: -2px; background: $color-danger; color: #fff; border-radius: 999px; padding: 0 4px; font-size: 10px; line-height: 1.4; }
   .pos-header-mobile .mobile-top .top-icons .user-profile { width: 40px !important; height: 40px !important; }
   /* Bootstrap-Vue language toggle button size */
-  ::v-deep(button#lang-dd-mobile__BV_toggle_) { width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
-  ::v-deep(button#lang-dd-mobile__BV_toggle_ > a.action-btn-icon),
-  ::v-deep(button#lang-dd-mobile__BV_toggle_ .action-btn-icon) { width: 40px !important; height: 40px !important; }
+  :deep(button#lang-dd-mobile__BV_toggle_) { width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
+  :deep(button#lang-dd-mobile__BV_toggle_ > a.action-btn-icon),
+  :deep(button#lang-dd-mobile__BV_toggle_ .action-btn-icon) { width: 40px !important; height: 40px !important; }
 
   /* Bootstrap-Vue user dropdown container and toggle size */
   .pos-header-mobile #user-dd-mobile { width: 40px !important; height: 40px !important; }
-  ::v-deep(button#user-dd-mobile__BV_toggle_) { width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
+  :deep(button#user-dd-mobile__BV_toggle_) { width: 40px !important; height: 40px !important; min-width: 40px !important; min-height: 40px !important; padding: 0 !important; display: inline-flex !important; align-items: center !important; justify-content: center !important; }
 
   .pos-header-mobile .warehouse-select,
   .pos-header-mobile .customer-select-header,
@@ -16267,10 +16267,10 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   max-width: 200px;
 }
 
-.pos-codecanyon .pos-header ::v-deep(.warehouse-select .vs__dropdown-toggle),
-.pos-codecanyon .pos-header ::v-deep(.category-select-header .vs__dropdown-toggle),
-.pos-codecanyon .pos-header ::v-deep(.brand-select-header .vs__dropdown-toggle),
-.pos-codecanyon .pos-header ::v-deep(.customer-select-header .vs__dropdown-toggle) {
+.pos-codecanyon .pos-header :deep(.warehouse-select .vs__dropdown-toggle),
+.pos-codecanyon .pos-header :deep(.category-select-header .vs__dropdown-toggle),
+.pos-codecanyon .pos-header :deep(.brand-select-header .vs__dropdown-toggle),
+.pos-codecanyon .pos-header :deep(.customer-select-header .vs__dropdown-toggle) {
   height: 32px;
   min-height: 32px;
   padding: 0 8px;
@@ -16281,18 +16281,18 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 12px;
 }
 
-.pos-codecanyon .pos-header ::v-deep(.vs__placeholder),
-.pos-codecanyon .pos-header ::v-deep(.vs__selected) {
+.pos-codecanyon .pos-header :deep(.vs__placeholder),
+.pos-codecanyon .pos-header :deep(.vs__selected) {
   font-size: 12px;
   color: var(--ink-2);
 }
 
-.pos-codecanyon .pos-header ::v-deep(.vs__open-indicator) {
+.pos-codecanyon .pos-header :deep(.vs__open-indicator) {
   fill: var(--ink-3);
   scale: 0.8;
 }
 
-.pos-codecanyon ::v-deep(.vs__dropdown-menu) {
+.pos-codecanyon :deep(.vs__dropdown-menu) {
   min-width: 0;
 }
 
@@ -16341,7 +16341,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* User avatar */
-.pos-codecanyon ::v-deep(.user-profile) {
+.pos-codecanyon :deep(.user-profile) {
   width: 32px;
   height: 32px;
   border-radius: 99px;
@@ -17401,8 +17401,8 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 .pos-codecanyon .dropdown-toggle:focus,
 .pos-codecanyon .b-dropdown:focus,
 .pos-codecanyon .b-dropdown .btn:focus,
-.pos-codecanyon ::v-deep(.vs__dropdown-toggle:focus),
-.pos-codecanyon ::v-deep(.vs__search:focus) {
+.pos-codecanyon :deep(.vs__dropdown-toggle:focus),
+.pos-codecanyon :deep(.vs__search:focus) {
   outline: 0 !important;
   outline-offset: 0 !important;
   -webkit-tap-highlight-color: transparent;
@@ -17571,7 +17571,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Header v-select skin (deep into vue-select internals) */
-.pos-codecanyon .pos-shell-header ::v-deep(.pos-shell-select .vs__dropdown-toggle) {
+.pos-codecanyon .pos-shell-header :deep(.pos-shell-select .vs__dropdown-toggle) {
   height: 32px;
   min-height: 32px;
   padding: 0 8px;
@@ -17581,23 +17581,23 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: none;
   font-size: 12px;
 }
-.pos-codecanyon .pos-shell-header ::v-deep(.pos-shell-select .vs__selected-options) {
+.pos-codecanyon .pos-shell-header :deep(.pos-shell-select .vs__selected-options) {
   padding: 0;
 }
-.pos-codecanyon .pos-shell-header ::v-deep(.pos-shell-select .vs__placeholder),
-.pos-codecanyon .pos-shell-header ::v-deep(.pos-shell-select .vs__selected) {
+.pos-codecanyon .pos-shell-header :deep(.pos-shell-select .vs__placeholder),
+.pos-codecanyon .pos-shell-header :deep(.pos-shell-select .vs__selected) {
   font-size: 12px;
   color: #54546a;
   margin: 0;
 }
-.pos-codecanyon .pos-shell-header ::v-deep(.pos-shell-select .vs__search) {
+.pos-codecanyon .pos-shell-header :deep(.pos-shell-select .vs__search) {
   font-size: 12px;
   color: #1f1f2c;
   margin: 0;
   padding: 0;
 }
-.pos-codecanyon .pos-shell-header ::v-deep(.pos-shell-select .vs__open-indicator),
-.pos-codecanyon .pos-shell-header ::v-deep(.pos-shell-select .vs__clear) {
+.pos-codecanyon .pos-shell-header :deep(.pos-shell-select .vs__open-indicator),
+.pos-codecanyon .pos-shell-header :deep(.pos-shell-select .vs__clear) {
   fill: #8d8da0;
   scale: 0.8;
 }
@@ -18648,7 +18648,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     font-family: 'JetBrains Mono', monospace;
   }
   /* "More" b-dropdown trigger — strip default button styles */
-  .pos-codecanyon .pos-shell-mobile-tabbar ::v-deep(.pos-shell-mobile-tab-toggle) {
+  .pos-codecanyon .pos-shell-mobile-tabbar :deep(.pos-shell-mobile-tab-toggle) {
     width: 100% !important;
     height: 100% !important;
     padding: 0 !important;
@@ -18656,8 +18656,8 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border: 0 !important;
     color: #8d8da0 !important;
   }
-  .pos-codecanyon .pos-shell-mobile-tabbar ::v-deep(.pos-shell-mobile-tab-toggle:focus),
-  .pos-codecanyon .pos-shell-mobile-tabbar ::v-deep(.pos-shell-mobile-tab-toggle:hover) {
+  .pos-codecanyon .pos-shell-mobile-tabbar :deep(.pos-shell-mobile-tab-toggle:focus),
+  .pos-codecanyon .pos-shell-mobile-tabbar :deep(.pos-shell-mobile-tab-toggle:hover) {
     background: transparent !important;
     box-shadow: none !important;
   }

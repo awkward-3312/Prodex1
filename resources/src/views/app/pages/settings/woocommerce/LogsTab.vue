@@ -213,14 +213,14 @@ export default { components: { BBadge, BButton, BCard, BCol, BPagination, BRow, 
   border: none;
 }
 
-.filters-card ::v-deep .card-header {
+.filters-card :deep(.card-header){
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   border-bottom: 2px solid #e9ecef;
   padding: 1rem 1.5rem;
   border-radius: 12px 12px 0 0;
 }
 
-.form-group-modern ::v-deep label {
+.form-group-modern :deep(label){
   font-weight: 600;
   color: #495057;
   margin-bottom: 0.5rem;
@@ -239,13 +239,13 @@ export default { components: { BBadge, BButton, BCard, BCol, BPagination, BRow, 
   box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.15);
 }
 
-.v-select-modern ::v-deep .vs__dropdown-toggle {
+.v-select-modern :deep(.vs__dropdown-toggle){
   border-radius: 8px;
   border: 1px solid #dee2e6;
   min-height: 40px;
 }
 
-.v-select-modern ::v-deep .vs__dropdown-toggle:focus {
+.v-select-modern :deep(.vs__dropdown-toggle:focus){
   border-color: #667eea;
 }
 
@@ -254,14 +254,14 @@ export default { components: { BBadge, BButton, BCard, BCol, BPagination, BRow, 
   border: none;
 }
 
-.logs-card ::v-deep .card-header {
+.logs-card :deep(.card-header){
   background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
   border-bottom: 2px solid #e9ecef;
   padding: 1.25rem 1.5rem;
   border-radius: 12px 12px 0 0;
 }
 
-.logs-table ::v-deep thead.logs-table-header th {
+.logs-table :deep(thead.logs-table-header th){
   background: #f8f9fa;
   font-weight: 700;
   color: #495057;
@@ -272,16 +272,16 @@ export default { components: { BBadge, BButton, BCard, BCol, BPagination, BRow, 
   padding: 1rem;
 }
 
-.logs-table ::v-deep tbody tr {
+.logs-table :deep(tbody tr){
   transition: all 0.2s ease;
 }
 
-.logs-table ::v-deep tbody tr:hover {
+.logs-table :deep(tbody tr:hover){
   background: #f8f9ff;
   transform: scale(1.01);
 }
 
-.logs-table ::v-deep tbody td {
+.logs-table :deep(tbody td){
   padding: 1rem;
   vertical-align: middle;
 }
@@ -314,20 +314,20 @@ export default { components: { BBadge, BButton, BCard, BCol, BPagination, BRow, 
   transform: translateY(-2px);
 }
 
-.pagination-modern ::v-deep .page-link {
+.pagination-modern :deep(.page-link){
   border-radius: 8px;
   margin: 0 2px;
   border: 1px solid #dee2e6;
   color: #667eea;
 }
 
-.pagination-modern ::v-deep .page-item.active .page-link {
+.pagination-modern :deep(.page-item.active .page-link){
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-color: #667eea;
   color: white;
 }
 
-.pagination-modern ::v-deep .page-link:hover {
+.pagination-modern :deep(.page-link:hover){
   background: #f8f9ff;
   border-color: #667eea;
 }

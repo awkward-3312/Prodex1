@@ -241,8 +241,8 @@ export default {
 .ts-bulk-enter, .ts-bulk-leave-to { opacity: 0; transform: translateY(-6px); }
 
 .ts-tablebox { padding: var(--pxn-space-6) var(--pxn-space-7); }
-.ts-tablebox ::v-deep .pxn-table-wrap { max-height: 520px; display: flex; flex-direction: column; }
-.ts-tablebox ::v-deep .pxn-table-scroll { flex: 1; }
+.ts-tablebox :deep(.pxn-table-wrap){ max-height: 520px; display: flex; flex-direction: column; }
+.ts-tablebox :deep(.pxn-table-scroll){ flex: 1; }
 
 .ts-low { color: var(--pxn-danger-ink); font-weight: var(--pxn-fw-semibold); }
 .ts-strong { color: var(--pxn-ink); font-weight: var(--pxn-fw-semibold); }

@@ -719,5 +719,5 @@ export default {
 .pxrt-tbl tr:last-child td { border-bottom: 0; }
 .pxrt-tbl .is-right { text-align: right; }
 .pxrt-tbl__empty { text-align: center; color: var(--pxn-ink-3); }
-.pxrt ::v-deep .daterangepicker { z-index: 2055 !important; }
+.pxrt :deep(.daterangepicker){ z-index: 2055 !important; }
 </style>

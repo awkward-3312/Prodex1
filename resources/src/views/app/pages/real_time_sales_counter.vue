@@ -793,12 +793,12 @@ export default {
 .rts-control-warehouse { min-width: 220px; flex: 1 1 220px; max-width: 320px; }
 
 /* v-select inside the dark header */
-.rts-control-warehouse >>> .v-select {
+.rts-control-warehouse :deep(.v-select){
   width: 100%;
   background: transparent;
 }
 
-.rts-control-warehouse >>> .v-select .vs__dropdown-toggle {
+.rts-control-warehouse :deep(.v-select .vs__dropdown-toggle){
   height: 38px;
   background: rgba(255, 255, 255, 0.12) !important;
   border: 1px solid rgba(255, 255, 255, 0.22) !important;
@@ -810,18 +810,18 @@ export default {
   transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-.rts-control-warehouse >>> .v-select .vs__dropdown-toggle:hover {
+.rts-control-warehouse :deep(.v-select .vs__dropdown-toggle:hover){
   background: rgba(255, 255, 255, 0.2) !important;
   border-color: rgba(255, 255, 255, 0.35) !important;
 }
 
-.rts-control-warehouse >>> .v-select.vs--open .vs__dropdown-toggle {
+.rts-control-warehouse :deep(.v-select.vs--open .vs__dropdown-toggle){
   background: rgba(255, 255, 255, 0.22) !important;
   border-color: rgba(255, 255, 255, 0.45) !important;
   box-shadow: none !important;
 }
 
-.rts-control-warehouse >>> .v-select .vs__selected-options {
+.rts-control-warehouse :deep(.v-select .vs__selected-options){
   padding: 0 !important;
   margin: 0 !important;
   flex: 1;
@@ -830,7 +830,7 @@ export default {
   min-width: 0;
 }
 
-.rts-control-warehouse >>> .v-select .vs__selected {
+.rts-control-warehouse :deep(.v-select .vs__selected){
   color: #fff !important;
   font-weight: 600;
   font-size: 0.9rem;
@@ -843,8 +843,8 @@ export default {
   text-overflow: ellipsis;
 }
 
-.rts-control-warehouse >>> .v-select .vs__search,
-.rts-control-warehouse >>> .v-select .vs__search:focus {
+.rts-control-warehouse :deep(.v-select .vs__search),
+.rts-control-warehouse :deep(.v-select .vs__search:focus){
   color: #fff !important;
   font-size: 0.9rem;
   margin: 0 !important;
@@ -856,20 +856,20 @@ export default {
   box-shadow: none !important;
 }
 
-.rts-control-warehouse >>> .v-select .vs__search::placeholder {
+.rts-control-warehouse :deep(.v-select .vs__search::placeholder){
   color: rgba(255, 255, 255, 0.75) !important;
 }
 
-.rts-control-warehouse >>> .v-select .vs__actions {
+.rts-control-warehouse :deep(.v-select .vs__actions){
   padding: 0 0 0 0.4rem !important;
 }
 
-.rts-control-warehouse >>> .v-select .vs__clear,
-.rts-control-warehouse >>> .v-select .vs__open-indicator {
+.rts-control-warehouse :deep(.v-select .vs__clear),
+.rts-control-warehouse :deep(.v-select .vs__open-indicator){
   fill: rgba(255, 255, 255, 0.85) !important;
 }
 
-.rts-control-warehouse >>> .v-select .vs__dropdown-menu {
+.rts-control-warehouse :deep(.v-select .vs__dropdown-menu){
   z-index: 2056 !important;
   background: #fff !important;
   border-radius: 10px !important;
@@ -881,7 +881,7 @@ export default {
   overflow-y: auto;
 }
 
-.rts-control-warehouse >>> .v-select .vs__dropdown-option {
+.rts-control-warehouse :deep(.v-select .vs__dropdown-option){
   padding: 0.55rem 0.85rem !important;
   color: #1f2937 !important;
   background: transparent !important;
@@ -891,13 +891,13 @@ export default {
   text-overflow: ellipsis;
 }
 
-.rts-control-warehouse >>> .v-select .vs__dropdown-option--highlight,
-.rts-control-warehouse >>> .v-select .vs__dropdown-option:hover {
+.rts-control-warehouse :deep(.v-select .vs__dropdown-option--highlight),
+.rts-control-warehouse :deep(.v-select .vs__dropdown-option:hover){
   background: #ede9fe !important;
   color: #4c1d95 !important;
 }
 
-.rts-control-warehouse >>> .v-select .vs__no-options {
+.rts-control-warehouse :deep(.v-select .vs__no-options){
   color: #6b7280 !important;
   padding: 0.6rem 0.85rem !important;
   font-size: 0.85rem;

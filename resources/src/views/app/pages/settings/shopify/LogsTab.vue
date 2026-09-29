@@ -134,7 +134,7 @@ export default { components: { BBadge, BButton, BCard, BPagination, BTable, BMod
   border: none;
 }
 
-.sync-card ::v-deep .card-header {
+.sync-card :deep(.card-header){
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   border-bottom: 2px solid #e9ecef;
   padding: 1rem 1.5rem;

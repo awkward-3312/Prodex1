@@ -457,7 +457,7 @@ export default {
 @media (max-width: 620px) { .pxprd { padding: var(--pxn-space-6) var(--pxn-space-5); } }
 .pxprd__pad { padding: var(--pxn-space-6) 0; }
 .pxprd__card { margin-top: var(--pxn-space-5); }
-.pxprd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-8); }
-@media (max-width: 620px) { .pxprd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-5); } }
-@media print { .pxprd { padding: 0; background: #fff; } .pxprd__card ::v-deep .pxn-card__body { padding: 0; } }
+.pxprd__card :deep(.pxn-card__body){ padding: var(--pxn-space-8); }
+@media (max-width: 620px) { .pxprd__card :deep(.pxn-card__body){ padding: var(--pxn-space-5); } }
+@media print { .pxprd { padding: 0; background: #fff; } .pxprd__card :deep(.pxn-card__body){ padding: 0; } }
 </style>

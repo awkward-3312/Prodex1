@@ -357,17 +357,17 @@ export default {
    botón primario funciona sin retoque; el secundario se adapta aquí, de forma escoped,
    sin tocar PxButton.vue. */
 .pxerr-btn--ghost {
-  ::v-deep .pxn-btn { color: #fff; }
+  :deep(.pxn-btn){ color: #fff; }
 }
-.pxerr-actions ::v-deep .pxn-btn--ghost {
+.pxerr-actions :deep(.pxn-btn--ghost){
   border: 1px solid rgba(255, 255, 255, 0.28);
   color: #fff;
 }
-.pxerr-actions ::v-deep .pxn-btn--ghost:hover:not([disabled]) {
+.pxerr-actions :deep(.pxn-btn--ghost:hover:not([disabled])){
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
-.pxerr-actions ::v-deep .pxn-btn--ghost:focus-visible {
+.pxerr-actions :deep(.pxn-btn--ghost:focus-visible){
   box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.45);
 }
 
@@ -390,7 +390,7 @@ export default {
   }
   .pxerr-message { max-width: 34ch; }
   .pxerr-actions { justify-content: center; width: 100%; }
-  .pxerr-actions ::v-deep .pxn-btn { flex: 1 1 auto; min-width: 0; }
+  .pxerr-actions :deep(.pxn-btn){ flex: 1 1 auto; min-width: 0; }
 }
 
 @media (min-width: 861px) and (max-width: 1080px) {

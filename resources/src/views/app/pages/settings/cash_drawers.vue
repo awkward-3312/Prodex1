@@ -434,5 +434,5 @@ export default {
 .pxcfg__muted { color: var(--pxn-ink-3); }
 .pxcfg__warn { color: var(--pxn-warning); }
 .pxcfg__rowbtns { display: flex; gap: var(--pxn-space-2); justify-content: flex-end; }
-.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+.pxcfg__del :deep(.pxn-btn__icon){ color: var(--pxn-danger); }
 </style>

@@ -63,8 +63,8 @@ export default {
   align-items: center;
   gap: var(--pxn-space-2);
 }
-.pxn-field.is-invalid ::v-deep .pxn-input,
-.pxn-field.is-invalid ::v-deep .pxn-select {
+.pxn-field.is-invalid :deep(.pxn-input),
+.pxn-field.is-invalid :deep(.pxn-select){
   border-color: var(--pxn-danger);
 }
 </style>
