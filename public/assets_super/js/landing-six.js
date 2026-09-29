@@ -60,35 +60,3 @@
         });
     }
 })();
-
-(function () {
-    var banner = document.getElementById('cookieConsent');
-    if (!banner) return;
-    function show() {
-        banner.classList.remove('translate-y-[120%]', 'opacity-0', 'pointer-events-none');
-        banner.classList.add('translate-y-0', 'opacity-100');
-    }
-    if (!localStorage.getItem('cookie_consent')) setTimeout(show, 600);
-    function hide() { banner.classList.add('translate-y-[120%]', 'opacity-0', 'pointer-events-none'); }
-    var a = document.getElementById('cookieAcceptBtn');
-    var r = document.getElementById('cookieRejectBtn');
-    var c = document.getElementById('cookieCustomizeBtn');
-    var s = document.getElementById('cookieSaveBtn');
-    if (a) a.addEventListener('click', function () { localStorage.setItem('cookie_consent', JSON.stringify({ necessary: true, analytics: true, marketing: true, timestamp: Date.now() })); hide(); });
-    if (r) r.addEventListener('click', function () { localStorage.setItem('cookie_consent', JSON.stringify({ necessary: true, analytics: false, marketing: false, timestamp: Date.now() })); hide(); });
-    if (c) c.addEventListener('click', function () { var p = document.getElementById('cookieCustomize'); if (p) p.classList.toggle('hidden'); });
-    if (s) s.addEventListener('click', function () {
-        var ca = document.getElementById('cookieAnalytics');
-        var cm = document.getElementById('cookieMarketing');
-        localStorage.setItem('cookie_consent', JSON.stringify({ necessary: true, analytics: ca && ca.checked, marketing: cm && cm.checked, timestamp: Date.now() }));
-        hide();
-    });
-    window.reopenCookieConsent = function () {
-        localStorage.removeItem('cookie_consent');
-        var p = document.getElementById('cookieCustomize');
-        if (p) p.classList.add('hidden');
-        show();
-    };
-    var prefLink = document.getElementById('cookiePreferencesLink');
-    if (prefLink) prefLink.addEventListener('click', function (e) { e.preventDefault(); window.reopenCookieConsent(); });
-})();
