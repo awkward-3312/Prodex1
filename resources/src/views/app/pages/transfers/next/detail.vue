@@ -541,7 +541,9 @@ export default {
 .pxtrd__pad { padding: var(--pxn-space-6) 0; }
 .pxtrd__alert { margin-top: var(--pxn-space-5); }
 
-.pxtrd__top { display:grid; grid-template-columns:minmax(0,1fr); gap:var(--pxn-space-5); margin-top:var(--pxn-space-6); align-items:start; }\n@media (min-width:980px){.pxtrd__top{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}}\n.pxtrd__track :deep(.pxn-card__body){padding:var(--pxn-space-6)}
+.pxtrd__top { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--pxn-space-5); margin-top: var(--pxn-space-6); align-items: start; }
+@media (min-width: 980px) { .pxtrd__top { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); } }
+.pxtrd__track :deep(.pxn-card__body) { padding: var(--pxn-space-6); }
 .pxtrd__flow :deep(.pxn-card__body) { padding: var(--pxn-space-5); }
 .pxtrd__flow-states { display: flex; flex-wrap: wrap; gap: var(--pxn-space-6); }
 .pxtrd__state { display: flex; flex-direction: column; gap: var(--pxn-space-2); }
