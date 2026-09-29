@@ -39,6 +39,8 @@
 // El <input type="checkbox"> nativo es el control (foco, teclado, label, formularios); el SVG es decorativo.
 export default {
   name: "PxCheckbox",
+  inheritAttrs: false,
+  emits: ["update:modelValue", "change"],
   props: {
     modelValue: { type: [Boolean, Array], default: false },
     nativeValue: { type: [String, Number], default: null }, // valor del ítem cuando modelValue es un array
