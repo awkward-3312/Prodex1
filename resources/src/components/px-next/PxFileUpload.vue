@@ -94,6 +94,7 @@ const DEFAULT_MESSAGES = {
 
 export default {
   name: "PxFileUpload",
+  emits: ["update:modelValue", "change", "reject", "remove"],
   components: { PxLoader },
   props: {
     modelValue: { type: [File, Array], default: null },
@@ -206,9 +207,9 @@ export default {
         valid.forEach(v => {
           if (!next.some(x => x.name === v.name && x.size === v.size && x.lastModified === v.lastModified)) next.push(v);
         });
-        this.$emit("change", next);
+        this.$emit("update:modelValue", next); this.$emit("change", next);
       } else {
-        this.$emit("change", valid[0]);
+        this.$emit("update:modelValue", valid[0]); this.$emit("change", valid[0]);
       }
     },
     onInputChange(e) {
@@ -223,11 +224,11 @@ export default {
       if (this.multiple) {
         const next = this.files.slice();
         const [removed] = next.splice(i, 1);
-        this.$emit("change", next);
+        this.$emit("update:modelValue", next); this.$emit("change", next);
         this.$emit("remove", removed);
       } else {
         const removed = this.files[0];
-        this.$emit("change", null);
+        this.$emit("update:modelValue", null); this.$emit("change", null);
         this.$emit("remove", removed);
       }
     },
