@@ -424,7 +424,7 @@ import { modals, notifications } from "@/platform";
 import { vBTooltip, BSidebar, vBToggle, BModal, BButton, BCol, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
 import NProgress from "nprogress";
 
-export default { components: { BFormGroup, BFormInput, BButton, BCol, BRow, BModal, BSidebar }, directives: { 'b-toggle': vBToggle, 'b-tooltip': vBTooltip },
+export default { components: { BFormGroup, BFormInput, BButton, BCol, BRow, BModal, BSidebar, PxLoader }, directives: { 'b-toggle': vBToggle, 'b-tooltip': vBTooltip },
   metaInfo: {
     title: "Bookings"
   },
