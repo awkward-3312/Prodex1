@@ -27,7 +27,7 @@
           <template #row-actions="{ row }">
             <div class="pxcfg__rowbtns">
               <px-button variant="ghost" size="sm" icon-only icon="pencil" aria-label="Editar" @click="Edit_CustomField(row)" />
-              <px-button class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" aria-label="Eliminar" @click="Delete_CustomField(row.id)" />
+              <px-button class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" destructive aria-label="Eliminar" :loading="deletingIds.includes(row.id)" @click="Delete_CustomField(row.id)" />
             </div>
           </template>
         </px-table>
@@ -42,7 +42,7 @@
           <template #row-actions="{ row }">
             <div class="pxcfg__rowbtns">
               <px-button variant="ghost" size="sm" icon-only icon="pencil" aria-label="Editar" @click="Edit_CustomField(row)" />
-              <px-button class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" aria-label="Eliminar" @click="Delete_CustomField(row.id)" />
+              <px-button class="pxcfg__del" variant="ghost" size="sm" icon-only icon="trash-2" destructive aria-label="Eliminar" :loading="deletingIds.includes(row.id)" @click="Delete_CustomField(row.id)" />
             </div>
           </template>
         </px-table>
@@ -141,6 +141,7 @@ export default {
       activeEntity: 'client',
       customerFields: [],
       supplierFields: [],
+      deletingIds: [],
       customField: {
         id: "",
         name: "",
@@ -187,7 +188,8 @@ export default {
         })
         .catch(error => {
           this.makeToast("danger", this.$t("InvalidData"), this.$t("Failed"));
-        });
+        })
+          .then(() => { this.deletingIds = this.deletingIds.filter(i => i !== id); });
 
       axios
         .get("custom-fields?entity_type=provider")
@@ -298,6 +300,7 @@ export default {
     },
 
     Delete_CustomField(id) {
+      if (this.deletingIds.includes(id)) return;
       this.$swal({
         title: this.$t("DeleteTitle"),
         text: this.$t("DeleteMessage"),
@@ -309,6 +312,7 @@ export default {
         confirmButtonText: this.$t("Delete")
       }).then(result => {
         if (result.value) {
+          this.deletingIds = [...this.deletingIds, id];
           axios
             .delete("custom-fields/" + id)
             .then(response => {

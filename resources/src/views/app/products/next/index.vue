@@ -43,10 +43,10 @@
         :filter-count="activeFilterCount"
         :views="densityViews"
         :view="density"
-        @update:search="onSearchInput"
         @open-filters="filtersOpen = true"
         @update:view="density = $event"
       >
+        <template #lead><px-search-input :model-value="search" aria-label="Buscar productos" placeholder="Buscar por nombre, código, categoría o marca…" class="pxp__search" @update:modelValue="onSearchInput" /></template>
         <template #trail>
           <px-button
             v-if="can('product_import')"
@@ -235,6 +235,7 @@ import { mapGetters } from "vuex";
 import PxPageHeader from "@/components/px-next/PxPageHeader.vue";
 import PxButton from "@/components/px-next/PxButton.vue";
 import PxToolbar from "@/components/px-next/PxToolbar.vue";
+import PxSearchInput from "@/components/px-next/PxSearchInput.vue";
 import PxMenu from "@/components/px-next/PxMenu.vue";
 import PxTable from "@/components/px-next/PxTable.vue";
 import PxTag from "@/components/px-next/PxTag.vue";
@@ -264,7 +265,7 @@ export default {
   name: "ProductsListNext",
   metaInfo: { title: "Productos" },
   components: {
-    PxPageHeader, PxButton, PxToolbar, PxMenu, PxTable, PxTag, PxBadge, PxKebab,
+    PxPageHeader, PxButton, PxToolbar, PxSearchInput, PxMenu, PxTable, PxTag, PxBadge, PxKebab,
     PxPagination, PxAlert, PxEmptyState, PxModal, PxProductCell, ProductFilterPanel
   },
   data() {

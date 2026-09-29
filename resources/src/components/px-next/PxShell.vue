@@ -335,9 +335,12 @@
               <lucide-icon name="settings" :size="15" /><span>{{ $t('Settings') }}</span>
             </router-link>
             <div class="pxn-userchip__menu-sep" role="separator"></div>
-            <button type="button" class="pxn-userchip__item pxn-userchip__item--danger" role="menuitem" @click="doLogout">
-              <lucide-icon name="power" :size="15" /><span>{{ $t('logout') }}</span>
-            </button>
+            <div class="pxn-userchip__logout">
+              <button type="button" class="pxn-userchip__logout-btn pxn-ring" role="menuitem" @click="doLogout">
+                <lucide-icon name="power" :size="15" aria-hidden="true" />
+                <span class="pxn-userchip__logout-label">{{ $t('logout') }}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1173,6 +1176,8 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
 }
 .pxn-shell__panel-caret.is-open { transform: rotate(180deg); }
 
+/* Active navigation motion */
+.pxn-shell__panel-link{position:relative}.pxn-shell__panel-link>svg{transition:color var(--pxn-dur-1) var(--pxn-ease)}.pxn-shell__panel-link.is-active>svg{color:var(--pxn-primary)}.pxn-shell__panel-link::before{content:"";position:absolute;left:calc(var(--pxn-space-5) * -1);top:7px;bottom:7px;width:3px;border-radius:0 3px 3px 0;background:var(--pxn-primary);transform:scaleY(0);transition:transform 160ms var(--pxn-ease);pointer-events:none}.pxn-shell__panel-link.is-active::before{transform:scaleY(1)}@media(max-width:860px),(pointer:coarse){.pxn-shell__panel-link{min-height:44px}.pxn-shell__panel-link::before{left:calc(var(--pxn-space-4) * -1)}}@media(prefers-reduced-motion:reduce){.pxn-shell__panel-link>svg,.pxn-shell__panel-link::before{transition:none}}
 /* columna principal */
 /* `min-height: 0` deja que la columna se ajuste a la fila del grid (100vh) para
    que `.pxn-shell__canvas` (flex:1, overflow:auto) tenga altura acotada y
@@ -1447,6 +1452,7 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
 /* -------------------------------------------------------------------------
    Selector de alcance de sucursal (view scope) — pill px-next compacta.
    ------------------------------------------------------------------------- */
+.pxn-userchip__logout{position:relative;width:100%;height:44px}.pxn-userchip__logout-btn{position:absolute;left:0;top:0;width:44px;height:44px;display:flex;align-items:center;padding-left:14px;border:0;border-radius:var(--pxn-radius-pill);background:var(--pxn-danger-soft);color:var(--pxn-danger-ink);font:inherit;font-size:var(--pxn-fs-sm);font-weight:var(--pxn-fw-medium);white-space:nowrap;overflow:hidden;cursor:pointer;transition:width var(--pxn-dur-2) var(--pxn-ease),background-color var(--pxn-dur-2) var(--pxn-ease)}.pxn-userchip__logout-btn>svg{flex:none;color:var(--pxn-danger)}.pxn-userchip__logout-label{display:inline-block;max-width:0;margin-left:0;opacity:0;overflow:hidden;transition:max-width var(--pxn-dur-2) var(--pxn-ease),opacity var(--pxn-dur-2) var(--pxn-ease),margin-left var(--pxn-dur-2) var(--pxn-ease)}.pxn-userchip__logout-btn:hover,.pxn-userchip__logout-btn:focus-visible{width:176px}.pxn-userchip__logout-btn:hover .pxn-userchip__logout-label,.pxn-userchip__logout-btn:focus-visible .pxn-userchip__logout-label{max-width:140px;margin-left:var(--pxn-space-3);opacity:1}@media(hover:none),(pointer:coarse){.pxn-userchip__logout-btn{position:static;width:100%;height:44px;padding:0 var(--pxn-space-4);border-radius:var(--pxn-radius-sm)}.pxn-userchip__logout-label{max-width:none;margin-left:var(--pxn-space-3);opacity:1}}@media(prefers-reduced-motion:reduce){.pxn-userchip__logout-btn,.pxn-userchip__logout-label{transition:none}}
 .pxn-scopechip { position: relative; flex: none; }
 .pxn-scopechip__btn {
   display: inline-flex; align-items: center; gap: var(--pxn-space-3);

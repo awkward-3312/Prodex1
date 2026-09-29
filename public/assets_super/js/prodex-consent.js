@@ -1,21 +1,28 @@
 /*!
- * PRODEX — cookie consent + consent-gated analytics
+ * PRODEX — consentimiento de cookies + analítica condicionada al consentimiento
  * -------------------------------------------------------------------------
- * Single owner of the visitor's cookie decision for every public page
- * (Blade landing + static SEO pages). No analytics / marketing script is
- * loaded or fired before the matching category has been granted.
+ * Único responsable de la decisión de cookies del visitante en el sitio público (landing Blade,
+ * páginas SEO y páginas legales). Ningún script de analítica se carga o ejecuta antes de conceder
+ * la categoría correspondiente. Las cookies estrictamente necesarias (sesión, CSRF, idioma y la
+ * propia preferencia de consentimiento) no dependen de esta decisión.
  *
- * Public API (window.ProdexConsent):
- *   .get()               -> {necessary, analytics, marketing, v, timestamp} | null
+ * API pública (window.ProdexConsent):
+ *   .get()               -> {v, necessary, analytics, marketing, timestamp} | null   (null = sin decisión válida)
  *   .has('analytics')    -> boolean
- *   .set({analytics, marketing})  persist + apply + broadcast
- *   .openPreferences()   re-open the banner/preferences
- *   .onChange(fn)        subscribe (also fired once on load if a decision exists)
+ *   .set({analytics})    persistir + aplicar + difundir
+ *   .openPreferences()   reabre las preferencias (la decisión vigente NO se borra)
+ *   .onChange(fn)        suscribirse (también se ejecuta una vez al cargar si existe una decisión)
  *
- * Config comes from this script tag's data-* attributes:
- *   data-ga-id            GA4 measurement id (G-XXXXXXXXXX). Empty => no analytics.
- *   data-consent-version  integer; bumping it re-prompts returning visitors.
- *   data-privacy-url      href for the "privacy policy" link in the injected banner.
+ * Configuración (atributos data-* de esta etiqueta script, emitidos por central/partials/analytics.blade.php):
+ *   data-ga-id            id de medición GA4 (G-XXXXXXXXXX). Vacío => no hay tecnología no esencial
+ *                         (no se muestra banner: no hay nada que consentir).
+ *   data-consent-version  entero; incrementarlo vuelve a solicitar el consentimiento.
+ *   data-privacy-url      enlace a la política de privacidad.
+ * Textos: JSON traducido en <script type="application/json" id="prodex-consent-i18n"> (misma partial).
+ *
+ * Modelo de categorías: `necessary` (siempre activa) y `analytics` (GA4, la única tecnología no esencial
+ * instalada). No existe categoría de marketing porque no hay ninguna tecnología publicitaria; el campo
+ * `marketing` se conserva en el registro (siempre false) por compatibilidad.
  */
 (function () {
     "use strict";
@@ -29,15 +36,18 @@
     var listeners = [];
     var gaLoaded = false;
 
-    /* ---------------------------------------------------------------- state */
+    /* ---------------------------------------------------------------- estado */
 
+    // Devuelve la decisión vigente o null. Fail-safe: cualquier valor ausente, corrupto, de versión
+    // anterior o con tipos inesperados cuenta como "sin decisión" => no se habilita nada no esencial.
     function read() {
         try {
             var raw = localStorage.getItem(KEY);
             if (!raw) return null;
             var obj = JSON.parse(raw);
-            if (!obj || typeof obj !== "object") return null;
-            if ((obj.v || 1) < VERSION) return null; // stale schema -> re-ask
+            if (!obj || typeof obj !== "object" || Array.isArray(obj)) return null;
+            if (typeof obj.v !== "number" || obj.v < VERSION) return null; // sin versión o esquema obsoleto -> volver a preguntar
+            if (typeof obj.analytics !== "boolean") return null;
             return obj;
         } catch (e) {
             return null;
@@ -48,8 +58,8 @@
         var payload = {
             v: VERSION,
             necessary: true,
-            analytics: !!cats.analytics,
-            marketing: !!cats.marketing,
+            analytics: cats.analytics === true,
+            marketing: false,
             timestamp: Date.now(),
         };
         try {
@@ -69,7 +79,7 @@
         } catch (e) {}
     }
 
-    /* ------------------------------------------------------------ analytics */
+    /* ------------------------------------------------------------ analítica */
 
     function loadGa() {
         if (gaLoaded || !GA_ID) return;
@@ -77,14 +87,15 @@
 
         window.dataLayer = window.dataLayer || [];
         window.gtag = function () { window.dataLayer.push(arguments); };
-        window.gtag("js", new Date());
-        // Privacy-preserving defaults: no ad signals, IP anonymised, no cross-page ads.
+        // Google Consent Mode: todo denegado por defecto; la concesión de analítica se comunica con `update`.
         window.gtag("consent", "default", {
             ad_storage: "denied",
             ad_user_data: "denied",
             ad_personalization: "denied",
-            analytics_storage: "granted",
+            analytics_storage: "denied",
         });
+        window.gtag("js", new Date());
+        window.gtag("consent", "update", { analytics_storage: "granted" });
         window.gtag("config", GA_ID, { anonymize_ip: true, send_page_view: true });
 
         var s = document.createElement("script");
@@ -93,118 +104,181 @@
         document.head.appendChild(s);
     }
 
+    // Elimina solo las cookies propias de GA (_ga, _ga_<ID>, _gid, _gat*) en este dominio y sus subdominios.
+    // Las cookies de terceros que JavaScript first-party no puede tocar quedan fuera de alcance.
+    function clearGaCookies() {
+        var host = location.hostname;
+        var parts = host.split(".");
+        var domains = [undefined, host];
+        for (var i = 1; i < parts.length - 1; i++) domains.push("." + parts.slice(i).join("."));
+        document.cookie.split(";").forEach(function (c) {
+            var n = c.split("=")[0].trim();
+            if (n === "_ga" || n.indexOf("_ga_") === 0 || n === "_gid" || n.indexOf("_gat") === 0) {
+                domains.forEach(function (d) {
+                    document.cookie = n + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/" + (d ? "; domain=" + d : "");
+                });
+            }
+        });
+    }
+
     function applyAnalytics(granted) {
         if (!GA_ID) return;
         if (granted) {
+            window["ga-disable-" + GA_ID] = false;
             loadGa();
             if (window.gtag) window.gtag("consent", "update", { analytics_storage: "granted" });
-        } else if (window.gtag) {
-            window.gtag("consent", "update", { analytics_storage: "denied" });
-        }
-        if (!granted) {
-            // best-effort removal of any GA cookies already dropped
-            document.cookie.split(";").forEach(function (c) {
-                var n = c.split("=")[0].trim();
-                if (n.indexOf("_ga") === 0 || n === "_gid" || n.indexOf("_gat") === 0) {
-                    document.cookie = n + "=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/";
-                }
-            });
+        } else {
+            // Revocación: se detienen envíos futuros, se comunica denied y se limpian las cookies GA propias.
+            window["ga-disable-" + GA_ID] = true;
+            if (window.gtag) window.gtag("consent", "update", { analytics_storage: "denied" });
+            clearGaCookies();
         }
     }
 
     function apply(state) {
-        applyAnalytics(!!state && !!state.analytics);
+        applyAnalytics(!!state && state.analytics === true);
     }
 
-    /* --------------------------------------------------------------- banner */
+    /* ------------------------------------------------------------------- UI */
 
-    var bannerEl = null;
+    var T = { // textos de respaldo (los reales llegan traducidos desde la partial)
+        title: "Tu privacidad importa",
+        text: "Usamos cookies esenciales para que el sitio funcione y, con tu permiso, cookies de analítica para entender cómo se usa.",
+        policy: "Política de privacidad",
+        accept: "Aceptar",
+        reject: "Rechazar no esenciales",
+        customize: "Configurar",
+        save: "Guardar preferencias",
+        prefsTitle: "Preferencias de cookies",
+        necessary: "Necesarias",
+        necessaryDesc: "Requeridas para que el sitio funcione. Siempre activas.",
+        analytics: "Analíticas",
+        analyticsDesc: "Nos ayudan a entender cómo se usa el sitio.",
+        onlyNecessary: "Este sitio solo usa cookies necesarias para funcionar.",
+        close: "Cerrar",
+    };
+    try {
+        var i18nEl = document.getElementById("prodex-consent-i18n");
+        if (i18nEl) {
+            var loaded = JSON.parse(i18nEl.textContent || "{}");
+            for (var k in loaded) if (Object.prototype.hasOwnProperty.call(loaded, k) && loaded[k]) T[k] = loaded[k];
+        }
+    } catch (e) {}
 
-    function ensureBanner() {
-        var existing = document.getElementById("lpCookie");
-        if (existing) return existing;
+    var ui = null; // { root, banner, prefs, ... }
+    var lastFocus = null;
 
-        // Static SEO pages have no Blade banner — inject a minimal accessible one.
-        var el = document.createElement("div");
-        el.id = "lpCookie";
-        el.setAttribute("role", "dialog");
-        el.setAttribute("aria-modal", "false");
-        el.setAttribute("aria-label", "Preferencias de cookies");
-        el.setAttribute("data-hidden", "true");
-        el.style.cssText =
-            "position:fixed;z-index:60;left:16px;right:16px;bottom:16px;max-width:420px;" +
-            "background:#fff;border:1px solid #E7EAF0;border-radius:16px;padding:20px;" +
-            "box-shadow:0 26px 60px -12px rgba(15,23,42,.24);font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#334155";
-        el.innerHTML =
-            '<p style="font-weight:700;color:#0F172A;margin:0 0 6px">Cookies en PRODEX</p>' +
-            '<p style="margin:0 0 12px;font-size:13px">Usamos cookies esenciales para que el sitio funcione y, si lo aceptas, ' +
-            'cookies de analítica para entender el uso del sitio. ' +
-            '<a href="' + PRIVACY_URL + '" style="color:#4F46E5">Política de privacidad</a></p>' +
-            '<div style="display:flex;flex-wrap:wrap;gap:8px">' +
-            '<button type="button" id="lpCookieAccept" style="flex:1;min-width:120px;background:#0F172A;color:#fff;border:0;border-radius:9999px;padding:9px 14px;font-weight:600;cursor:pointer">Aceptar todas</button>' +
-            '<button type="button" id="lpCookieReject" style="flex:1;min-width:120px;background:#fff;color:#0F172A;border:1px solid #E7EAF0;border-radius:9999px;padding:9px 14px;font-weight:600;cursor:pointer">Rechazar no esenciales</button>' +
-            '</div>';
-        document.body.appendChild(el);
-        return el;
+    function el(tag, attrs, children) {
+        var n = document.createElement(tag);
+        for (var a in attrs || {}) {
+            if (a === "text") n.textContent = attrs[a];
+            else n.setAttribute(a, attrs[a]);
+        }
+        (children || []).forEach(function (c) { if (c) n.appendChild(c); });
+        return n;
     }
 
-    function focusables() {
-        if (!bannerEl) return [];
-        return Array.prototype.slice.call(
-            bannerEl.querySelectorAll('button,[href],input:not([disabled]),[tabindex]:not([tabindex="-1"])')
-        ).filter(function (n) { return n.offsetParent !== null; });
-    }
+    function buildUi() {
+        if (ui) return ui;
+        var titleId = "pxc-title", descId = "pxc-desc", prefsTitleId = "pxc-prefs-title";
 
-    function openBanner() {
-        bannerEl = ensureBanner();
-        bannerEl.setAttribute("data-hidden", "false");
-        var f = focusables();
-        if (f.length) f[0].focus();
-    }
+        var policyLink = el("a", { href: PRIVACY_URL + "#cookies", text: T.policy });
+        var desc = el("p", { class: "pxc__text", id: descId }, [document.createTextNode(T.text + " "), policyLink]);
 
-    function closeBanner() {
-        if (bannerEl) bannerEl.setAttribute("data-hidden", "true");
-    }
+        var accept = el("button", { type: "button", class: "pxc__btn pxc__btn--primary", "data-pxc": "accept", text: T.accept });
+        var reject = el("button", { type: "button", class: "pxc__btn pxc__btn--secondary", "data-pxc": "reject", text: T.reject });
+        var customize = el("button", { type: "button", class: "pxc__link", "data-pxc": "customize", "aria-expanded": "false", "aria-controls": "pxc-prefs", text: T.customize });
+        var actions = el("div", { class: "pxc__actions" }, [customize, reject, accept]);
 
-    function wireBanner() {
-        bannerEl = ensureBanner();
-        var byId = function (id) { return document.getElementById(id); };
+        // Preferencias: solo categorías reales (necessary + analytics).
+        var necInput = el("input", { type: "checkbox", id: "pxc-necessary", checked: "", disabled: "" });
+        var necRow = el("div", { class: "pxc__cat" }, [
+            el("div", { class: "pxc__cat-info" }, [
+                el("label", { class: "pxc__cat-name", for: "pxc-necessary", text: T.necessary }),
+                el("p", { class: "pxc__cat-desc", text: T.necessaryDesc }),
+            ]),
+            el("span", { class: "pxc__switch is-locked" }, [necInput, el("span", { class: "pxc__slider", "aria-hidden": "true" })]),
+        ]);
+        var anInput = el("input", { type: "checkbox", id: "pxc-analytics", "data-pxc": "analytics" });
+        var anRow = el("div", { class: "pxc__cat" }, [
+            el("div", { class: "pxc__cat-info" }, [
+                el("label", { class: "pxc__cat-name", for: "pxc-analytics", text: T.analytics }),
+                el("p", { class: "pxc__cat-desc", text: T.analyticsDesc }),
+            ]),
+            el("span", { class: "pxc__switch" }, [anInput, el("span", { class: "pxc__slider", "aria-hidden": "true" })]),
+        ]);
+        var save = el("button", { type: "button", class: "pxc__btn pxc__btn--primary", "data-pxc": "save", text: T.save });
+        var acceptAll = el("button", { type: "button", class: "pxc__btn pxc__btn--secondary", "data-pxc": "accept", text: T.accept });
+        var close = el("button", { type: "button", class: "pxc__link", "data-pxc": "close", text: T.close });
+        var prefs = el("div", { class: "pxc__prefs", id: "pxc-prefs", hidden: "" }, [
+            el("h3", { class: "pxc__prefs-title", id: prefsTitleId, text: T.prefsTitle }),
+            necRow,
+            GA_ID ? anRow : el("p", { class: "pxc__cat-desc", text: T.onlyNecessary }),
+            el("div", { class: "pxc__actions" }, GA_ID ? [close, acceptAll, save] : [close]),
+        ]);
 
-        var accept = byId("lpCookieAccept");
-        var reject = byId("lpCookieReject");
-        var customize = byId("lpCookieCustomize");
-        var save = byId("lpCookieSave");
-        var panel = byId("lpCookiePanel");
-        var aBox = byId("lpCookieAnalytics");
-        var mBox = byId("lpCookieMarketing");
-        var prefsLink = byId("lpCookiePrefs");
+        var root = el("section", { class: "pxc", id: "pxcConsent", role: "dialog", "aria-modal": "false", "aria-labelledby": titleId, "aria-describedby": descId, hidden: "" }, [
+            el("h2", { class: "pxc__title", id: titleId, text: T.title }),
+            desc,
+            actions,
+            prefs,
+        ]);
+        document.body.appendChild(root);
 
-        if (accept) accept.addEventListener("click", function () { API.set({ analytics: true, marketing: true }); closeBanner(); });
-        if (reject) reject.addEventListener("click", function () { API.set({ analytics: false, marketing: false }); closeBanner(); });
-        if (customize) customize.addEventListener("click", function () {
-            if (!panel) return;
-            panel.hidden = !panel.hidden;
-            customize.setAttribute("aria-expanded", panel.hidden ? "false" : "true");
-            if (!panel.hidden) { var first = panel.querySelector("input,button"); if (first) first.focus(); }
+        root.addEventListener("click", function (e) {
+            var b = e.target.closest ? e.target.closest("[data-pxc]") : null;
+            if (!b) return;
+            var act = b.getAttribute("data-pxc");
+            if (act === "accept") { API.set({ analytics: true }); closeUi(true); }
+            else if (act === "reject") { API.set({ analytics: false }); closeUi(true); }
+            else if (act === "save") { API.set({ analytics: anInput.checked }); closeUi(true); }
+            else if (act === "customize") { togglePrefs(); }
+            else if (act === "close") { closeUi(true); }
         });
-        if (save) save.addEventListener("click", function () {
-            API.set({ analytics: aBox ? aBox.checked : false, marketing: mBox ? mBox.checked : false });
-            closeBanner();
+        // Teclado: Escape nunca cuenta como consentimiento; con decisión previa cierra el panel y devuelve el foco.
+        root.addEventListener("keydown", function (e) {
+            if (e.key !== "Escape") return;
+            if (!prefs.hidden && !read()) { togglePrefs(false); customize.focus(); return; }
+            if (read()) closeUi(true);
         });
-        if (prefsLink) prefsLink.addEventListener("click", function (e) { e.preventDefault(); API.openPreferences(); });
 
-        // Keyboard: ESC returns focus to the page without forcing a decision
-        // (no choice => nothing non-essential runs, banner returns next visit).
-        bannerEl.addEventListener("keydown", function (e) {
-            if (e.key === "Escape") { closeBanner(); }
-            if (e.key === "Tab") {
-                var f = focusables();
-                if (!f.length) return;
-                var first = f[0], last = f[f.length - 1];
-                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-            }
-        });
+        ui = { root: root, prefs: prefs, customize: customize, anInput: anInput, actions: actions, desc: desc, title: root.querySelector(".pxc__title") };
+        return ui;
+    }
+
+    function togglePrefs(force) {
+        var u = buildUi();
+        var open = typeof force === "boolean" ? force : u.prefs.hidden;
+        u.prefs.hidden = !open;
+        u.customize.setAttribute("aria-expanded", open ? "true" : "false");
+        u.root.classList.toggle("is-prefs", open);
+        if (open) { var f = u.prefs.querySelector("input:not([disabled]),button"); if (f) f.focus(); }
+    }
+
+    function openUi(mode) {
+        var u = buildUi();
+        var stored = read();
+        u.anInput.checked = !!(stored && stored.analytics);
+        u.root.hidden = false;
+        // Con decisión previa (reapertura) se muestra directamente el panel de preferencias.
+        var reopen = mode === "prefs";
+        u.root.classList.toggle("is-reopen", reopen);
+        u.actions.hidden = reopen;
+        u.desc.hidden = reopen;
+        u.title.hidden = reopen;
+        togglePrefs(reopen);
+        requestAnimationFrame(function () { u.root.classList.add("is-open"); });
+    }
+
+    function closeUi(restoreFocus) {
+        if (!ui) return;
+        ui.root.classList.remove("is-open");
+        var done = function () { ui.root.hidden = true; };
+        // Sin transición (reduced-motion) `transitionend` no llega: se cierra al siguiente frame.
+        var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reduce) done(); else setTimeout(done, 220);
+        if (restoreFocus && lastFocus && document.contains(lastFocus)) { try { lastFocus.focus(); } catch (e) {} }
+        lastFocus = null;
     }
 
     /* ------------------------------------------------------------------ API */
@@ -213,28 +287,17 @@
         get: read,
         has: function (cat) {
             var s = read();
-            return !!s && !!s[cat];
+            return !!s && s[cat] === true;
         },
         set: function (cats) {
             var state = write(cats || {});
-            // reflect into any open preferences checkboxes
-            var a = document.getElementById("lpCookieAnalytics");
-            var m = document.getElementById("lpCookieMarketing");
-            if (a) a.checked = state.analytics;
-            if (m) m.checked = state.marketing;
             apply(state);
             broadcast(state);
             return state;
         },
         openPreferences: function () {
-            var stored = read();
-            var a = document.getElementById("lpCookieAnalytics");
-            var m = document.getElementById("lpCookieMarketing");
-            if (a && stored) a.checked = !!stored.analytics;
-            if (m && stored) m.checked = !!stored.marketing;
-            var panel = document.getElementById("lpCookiePanel");
-            if (panel) panel.hidden = false;
-            openBanner();
+            lastFocus = document.activeElement;
+            openUi("prefs");
         },
         onChange: function (fn) {
             if (typeof fn === "function") {
@@ -247,7 +310,7 @@
 
     window.ProdexConsent = API;
 
-    // Thin analytics helper — silently no-op until analytics is granted + GA is up.
+    // Helper ligero de analítica: no hace nada hasta que se conceda analítica y GA esté disponible.
     window.ProdexAnalytics = {
         track: function (name, params) {
             if (!GA_ID || !API.has("analytics") || typeof window.gtag !== "function") return;
@@ -255,17 +318,26 @@
         },
     };
 
-    /* --------------------------------------------------------------- bootstrap */
+    /* --------------------------------------------------------------- arranque */
 
     function init() {
-        wireBanner();
+        // Enlaces "Preferencias de cookies" del pie de página (una por variante de landing).
+        document.addEventListener("click", function (e) {
+            var a = e.target.closest ? e.target.closest("#cookiePreferencesLink, #lpCookiePrefs, [data-consent-open]") : null;
+            if (!a) return;
+            e.preventDefault();
+            API.openPreferences();
+        });
+
         var stored = read();
         if (stored) {
             apply(stored);
             broadcast(stored);
-        } else {
-            setTimeout(openBanner, 600);
+        } else if (GA_ID) {
+            // Sin decisión válida: solo lo necesario y se muestra el banner (sin plazo ni scroll que cuenten como consentimiento).
+            openUi("banner");
         }
+        // Sin tecnología no esencial (GA_ID vacío) no hay nada que consentir: no se muestra banner.
     }
 
     if (document.readyState === "loading") {

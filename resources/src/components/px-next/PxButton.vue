@@ -5,7 +5,7 @@
     :class="[
       `pxn-btn--${variant}`,
       `pxn-btn--${size}`,
-      { 'pxn-btn--block': block, 'pxn-btn--icon': iconOnly, 'is-loading': loading }
+      { 'pxn-btn--block': block, 'pxn-btn--icon': iconOnly, 'is-loading': loading, 'pxn-btn--destructive': destructive && iconOnly }
     ]"
     :type="tag === 'button' ? type : null"
     :href="tag === 'a' ? href : null"
@@ -17,6 +17,7 @@
     <lucide-icon v-if="icon && !loading" :name="icon" :size="iconSize" class="pxn-btn__icon" />
     <span v-if="!iconOnly" class="pxn-btn__label"><slot /></span>
     <lucide-icon v-if="trailingIcon && !iconOnly" :name="trailingIcon" :size="iconSize" class="pxn-btn__icon pxn-btn__icon--trail" />
+    <span v-if="revealName" class="pxn-btn__hint" aria-hidden="true">{{ revealName }}</span>
   </component>
 </template>
 
@@ -36,11 +37,13 @@ export default {
     iconOnly: { type: Boolean, default: false },
     block: { type: Boolean, default: false },
     loading: { type: Boolean, default: false },
-    disabled: { type: Boolean, default: false }
+    disabled: { type: Boolean, default: false },
+    destructive: { type: Boolean, default: false }
   },
   computed: {
     tag() { return this.href ? "a" : "button"; },
-    iconSize() { return this.size === "sm" ? 14 : this.size === "lg" ? 18 : 16; }
+    iconSize() { return this.size === "sm" ? 14 : this.size === "lg" ? 18 : 16; },
+    revealName() { return this.destructive && this.iconOnly ? (this.$attrs["aria-label"] || null) : null; }
   }
 };
 </script>
@@ -119,6 +122,7 @@ export default {
 
 .pxn-btn__icon { flex: none; }
 .pxn-btn__label { display: inline-flex; }
+.pxn-btn--destructive{position:relative}.pxn-btn--destructive:hover:not([disabled]):not([aria-disabled="true"]),.pxn-btn--destructive:focus-visible:not([disabled]){background:var(--pxn-danger-soft);border-color:var(--pxn-danger-border);color:var(--pxn-danger-ink)}.pxn-btn--destructive .pxn-btn__icon{transition:transform var(--pxn-dur-1) var(--pxn-ease)}.pxn-btn--destructive:hover:not([disabled]) .pxn-btn__icon,.pxn-btn--destructive:focus-visible:not([disabled]) .pxn-btn__icon{transform:translateY(1px)}.pxn-btn__hint{position:absolute;left:50%;bottom:calc(100% + var(--pxn-space-3));transform:translate(-50%,4px);padding:var(--pxn-space-2) var(--pxn-space-4);border-radius:var(--pxn-radius-sm);background:var(--pxn-ink);color:var(--pxn-surface);font-size:var(--pxn-fs-xs);font-weight:var(--pxn-fw-medium);white-space:nowrap;opacity:0;pointer-events:none;z-index:40;transition:opacity var(--pxn-dur-1) var(--pxn-ease),transform var(--pxn-dur-1) var(--pxn-ease)}.pxn-btn--destructive:hover:not([disabled]) .pxn-btn__hint,.pxn-btn--destructive:focus-visible:not([disabled]) .pxn-btn__hint{opacity:1;transform:translate(-50%,0)}@media(prefers-reduced-motion:reduce){.pxn-btn--destructive .pxn-btn__icon,.pxn-btn__hint{transition:none}.pxn-btn--destructive:hover:not([disabled]) .pxn-btn__icon,.pxn-btn--destructive:focus-visible:not([disabled]) .pxn-btn__icon{transform:none}}
 
 .pxn-btn__spinner {
   width: 14px; height: 14px; flex: none;

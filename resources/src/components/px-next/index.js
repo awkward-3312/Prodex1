@@ -33,3 +33,10 @@ export { default as PxTag } from "./PxTag.vue";
 export { default as PxTextarea } from "./PxTextarea.vue";
 export { default as PxToast } from "./PxToast.vue";
 export { default as PxToolbar } from "./PxToolbar.vue";
+
+export { default as PxCheckbox } from "./PxCheckbox.vue";
+export { default as PxLoader } from "./PxLoader.vue";
+export { default as PxEmptyCharacter } from "./PxEmptyCharacter.vue";
+export { default as PxFileUpload } from "./PxFileUpload.vue";
+export { default as PxMetricCard } from "./PxMetricCard.vue";
+export { default as PxSearchInput } from "./PxSearchInput.vue";

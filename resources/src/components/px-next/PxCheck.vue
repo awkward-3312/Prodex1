@@ -1,19 +1,20 @@
 <template>
-  <label v-bind="plainAttrs()" class="pxn-check" :class="[`pxn-check--${type}`, { 'is-disabled': disabled }, $attrs.class]" :style="$attrs.style">
+  <label class="pxn-check" :class="[`pxn-check--${type}`, { 'is-disabled': disabled, 'is-loading': loading }, $attrs.class]" :style="$attrs.style">
     <input
-      v-bind="listeners()"
+      v-bind="{ ...listeners(), ...plainAttrs() }"
       class="pxn-check__native pxn-ring"
       :type="type === 'switch' ? 'checkbox' : type"
+      :role="type === 'switch' ? 'switch' : null"
       :checked="isChecked"
       :name="name"
       :value="nativeValue"
-      :disabled="disabled"
+      :disabled="disabled || loading"
       @change="onChange"
     />
     <span class="pxn-check__box" aria-hidden="true">
       <lucide-icon v-if="type === 'checkbox'" name="check" :size="12" class="pxn-check__tick" />
       <span v-else-if="type === 'radio'" class="pxn-check__dot"></span>
-      <span v-else class="pxn-check__knob"></span>
+      <span v-else class="pxn-check__knob"><span v-if="loading" class="pxn-check__spin"></span></span>
     </span>
     <span v-if="$slots.default" class="pxn-check__label"><slot /></span>
   </label>
@@ -35,7 +36,8 @@ export default {
     modelValue: { type: [Boolean, String, Number, Array], default: false },
     nativeValue: { type: [String, Number], default: null },
     name: { type: String, default: null },
-    disabled: { type: Boolean, default: false }
+    disabled: { type: Boolean, default: false },
+    loading: { type: Boolean, default: false }
   },
   computed: {
     isChecked() {
@@ -48,15 +50,17 @@ export default {
     listeners() { return forwardListeners(this.$attrs); },
     plainAttrs() { return forwardPlainAttrs(this.$attrs); },
     onChange(e) {
+      const checkedNow = e.target.checked;
+      e.target.checked = this.isChecked;
       let next;
       if (Array.isArray(this.modelValue)) {
         next = this.modelValue.slice();
         const i = next.indexOf(this.nativeValue);
-        e.target.checked ? (i === -1 && next.push(this.nativeValue)) : (i > -1 && next.splice(i, 1));
+        checkedNow ? (i === -1 && next.push(this.nativeValue)) : (i > -1 && next.splice(i, 1));
       } else if (this.type === "radio") {
         next = this.nativeValue;
       } else {
-        next = e.target.checked;
+        next = checkedNow;
       }
       this.$emit("update:modelValue", next);
       this.$emit("change", next);
@@ -77,6 +81,7 @@ export default {
   min-height: 24px;
 }
 .pxn-check.is-disabled { cursor: not-allowed; opacity: 0.55; }
+.pxn-check.is-loading:not(.is-disabled) { opacity: 0.75; }
 
 .pxn-check__native {
   position: absolute;
@@ -111,14 +116,18 @@ export default {
 
 /* switch */
 .pxn-check--switch .pxn-check__box {
+  position: relative;
   width: 34px; height: 20px;
   border-radius: 999px;
   padding: 2px;
   justify-content: flex-start;
   background: var(--pxn-surface-3);
   border-color: transparent;
+  transition: background-color var(--pxn-dur-1) var(--pxn-ease);
 }
+.pxn-check--switch .pxn-check__box::before { content:""; position:absolute; top:50%; left:50%; width:44px; height:44px; transform:translate(-50%,-50%); }
 .pxn-check--switch .pxn-check__knob {
+  position: relative;
   width: 16px; height: 16px;
   border-radius: 999px;
   background: #fff;
@@ -127,4 +136,8 @@ export default {
 }
 .pxn-check--switch .pxn-check__native:checked + .pxn-check__box { background: var(--pxn-primary); }
 .pxn-check--switch .pxn-check__native:checked + .pxn-check__box .pxn-check__knob { transform: translateX(14px); }
+</style>
+
+<style lang="scss" scoped>
+.pxn-check--switch.is-loading,.pxn-check--switch.is-loading .pxn-check__box{cursor:progress}.pxn-check__spin{position:absolute;inset:0;margin:3px;border-radius:999px;border:2px solid var(--pxn-border-strong);border-top-color:var(--pxn-primary);animation:pxn-check-spin .6s linear infinite}@keyframes pxn-check-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.pxn-check--switch .pxn-check__box,.pxn-check--switch .pxn-check__knob{transition:none}.pxn-check__spin{animation:none}}
 </style>

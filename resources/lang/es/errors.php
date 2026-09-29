@@ -5,7 +5,7 @@ return [
     '403_message' => 'No tienes permiso para ver esta página. Si crees que es un error, inicia sesión con la cuenta correcta o vuelve al inicio.',
 
     '404_title'   => 'Página no encontrada',
-    '404_message' => 'La página que buscas no existe o se movió a otra dirección. Revisa el enlace o vuelve al inicio de PRODEX.',
+    '404_message' => 'Parece que esta ruta se perdió en el espacio. Revisa el enlace o vuelve al inicio de PRODEX.',
 
     '419_title'   => 'Tu sesión expiró',
     '419_message' => 'Por seguridad, la página caducó antes de enviarse. Vuelve a cargarla e inténtalo de nuevo.',

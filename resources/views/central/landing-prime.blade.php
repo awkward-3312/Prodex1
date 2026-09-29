@@ -649,24 +649,6 @@
     </a>
 @endif
 
-{{-- Cookie consent — state + analytics gating owned by prodex-consent.js --}}
-<div id="lpCookie" class="lp-cookie fixed z-[50] left-4 right-4 sm:left-auto sm:right-6 bottom-6 sm:max-w-sm bg-white border border-slate-200 rounded-2xl shadow-2xl p-5" data-hidden="true"
-     role="dialog" aria-modal="false" aria-labelledby="lpCookieTitle" aria-describedby="lpCookieDesc">
-    <div class="flex items-center gap-2 mb-2"><i class="bi bi-shield-lock text-indigo-600" aria-hidden="true"></i><p id="lpCookieTitle" class="font-bold text-slate-950 text-sm">{{ __('landing.cookie_banner_title') }}</p></div>
-    <p id="lpCookieDesc" class="text-xs text-slate-600 leading-relaxed">{{ __('landing.cookie_banner_text') }} <a href="{{ route('central.privacy-policy') }}#cookies" class="text-indigo-600 underline">{{ __('landing.privacy_policy') }}</a></p>
-    <div class="mt-3 flex flex-wrap gap-2">
-        <button type="button" id="lpCookieAccept" class="lp-btn lp-btn--primary text-xs px-3 py-2">{{ __('landing.cookie_accept_all') }}</button>
-        <button type="button" id="lpCookieReject" class="lp-btn lp-btn--ghost text-xs px-3 py-2">{{ __('landing.cookie_reject_all') }}</button>
-        <button type="button" id="lpCookieCustomize" class="lp-btn lp-btn--ghost text-xs px-3 py-2" aria-expanded="false" aria-controls="lpCookiePanel">{{ __('landing.cookie_customize') }}</button>
-    </div>
-    <div id="lpCookiePanel" hidden class="mt-3 space-y-2 border-t border-slate-100 pt-3">
-        <label class="flex items-center justify-between text-xs text-slate-600"><span>{{ __('landing.cookie_necessary') }}</span><input type="checkbox" checked disabled aria-label="{{ __('landing.cookie_necessary') }}"></label>
-        <label class="flex items-center justify-between text-xs text-slate-600"><span>{{ __('landing.cookie_analytics') }}</span><input type="checkbox" id="lpCookieAnalytics"></label>
-        <label class="flex items-center justify-between text-xs text-slate-600"><span>{{ __('landing.cookie_marketing') }}</span><input type="checkbox" id="lpCookieMarketing"></label>
-        <button type="button" id="lpCookieSave" class="lp-btn lp-btn--ghost text-xs px-3 py-2 w-full">{{ __('landing.cookie_save_preferences') }}</button>
-    </div>
-</div>
-
 <script src="{{ asset('assets_super/js/landing-prime.js') }}" defer></script>
 @include('central.partials.analytics')
 </body>

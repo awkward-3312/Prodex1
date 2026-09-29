@@ -130,7 +130,7 @@
         </div>
 
         <div class="pxcm__gap">
-          <px-check v-model="form.is_active" type="checkbox">{{ $t('Active') }}</px-check>
+          <px-checkbox v-model="form.is_active">{{ $t('Active') }}</px-checkbox>
         </div>
 
         <div class="pxcm__actionbar">
@@ -157,6 +157,7 @@ import PxBadge from "@/components/px-next/PxBadge.vue";
 import PxField from "@/components/px-next/PxField.vue";
 import PxInput from "@/components/px-next/PxInput.vue";
 import PxCheck from "@/components/px-next/PxCheck.vue";
+import PxCheckbox from "@/components/px-next/PxCheckbox.vue";
 import PxModal from "@/components/px-next/PxModal.vue";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 import VsPx from "@/views/app/products/next/edit/VsPx.vue";
@@ -165,7 +166,7 @@ export default {
   metaInfo: { title: 'Commission Rules' },
   components: { BForm,
     PxPageHeader, PxToolbar, PxTable, PxPagination, PxButton, PxKebab, PxBadge,
-    PxField, PxInput, PxCheck, PxModal, PxEmptyState, "vs-px": VsPx
+    PxField, PxInput, PxCheck, PxCheckbox, PxModal, PxEmptyState, "vs-px": VsPx
   },
   data() {
     return {

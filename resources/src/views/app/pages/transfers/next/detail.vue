@@ -50,8 +50,12 @@
           </template>
         </px-page-header>
 
-        <!-- ===== Estados + acciones de flujo ===== -->
-        <px-card class="pxtrd__flow">
+        <!-- ===== Seguimiento + estados + acciones de flujo ===== -->
+        <div class="pxtrd__top">
+          <px-card title="Seguimiento del traslado" class="pxtrd__track">
+            <transfer-progress :transfer="transfer" :workflow="workflow" :from="fromLabel" :to="toLabel" :lines="details.length" :units="transfer.items" />
+          </px-card>
+          <px-card class="pxtrd__flow">
           <div class="pxtrd__flow-states">
             <div class="pxtrd__state">
               <span class="pxtrd__state-k">Estado</span>
@@ -104,7 +108,8 @@
           <p v-else-if="!workflowError" class="pxtrd__flow-none">
             <lucide-icon name="info" :size="13" /> No hay acciones de flujo disponibles para tu usuario en el estado actual.
           </p>
-        </px-card>
+          </px-card>
+        </div>
 
         <div class="pxtrd__kpis">
           <px-card class="pxtrd__kpi"><div class="pxtrd__kpi-label">Líneas</div><div class="pxtrd__kpi-val pxn-num">{{ details.length }}</div></px-card>
@@ -256,6 +261,7 @@ import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
 import PxModal from "@/components/px-next/PxModal.vue";
 import PxField from "@/components/px-next/PxField.vue";
 import PxTextarea from "@/components/px-next/PxTextarea.vue";
+import TransferProgress from "./TransferProgress.vue";
 import { getPriceDecimals, getPriceFormatSetting, formatPriceDisplay } from "@/utils/priceFormat";
 import {
   statutLabel, approvalLabel, logisticsLabel, eventLabel,
@@ -265,7 +271,7 @@ import {
 export default {
   name: "TransferDetailNext",
   metaInfo: { title: "Detalle de traslado" },
-  components: { PxPageHeader, PxCard, PxButton, PxBadge, PxAlert, PxEmptyState, PxModal, PxField, PxTextarea },
+  components: { PxPageHeader, PxCard, PxButton, PxBadge, PxAlert, PxEmptyState, PxModal, PxField, PxTextarea, TransferProgress },
   data() {
     return {
       isLoading: true,
@@ -535,7 +541,7 @@ export default {
 .pxtrd__pad { padding: var(--pxn-space-6) 0; }
 .pxtrd__alert { margin-top: var(--pxn-space-5); }
 
-.pxtrd__flow { margin-top: var(--pxn-space-6); }
+.pxtrd__top { display:grid; grid-template-columns:minmax(0,1fr); gap:var(--pxn-space-5); margin-top:var(--pxn-space-6); align-items:start; }\n@media (min-width:980px){.pxtrd__top{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}}\n.pxtrd__track :deep(.pxn-card__body){padding:var(--pxn-space-6)}
 .pxtrd__flow :deep(.pxn-card__body) { padding: var(--pxn-space-5); }
 .pxtrd__flow-states { display: flex; flex-wrap: wrap; gap: var(--pxn-space-6); }
 .pxtrd__state { display: flex; flex-direction: column; gap: var(--pxn-space-2); }
