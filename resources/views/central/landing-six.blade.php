@@ -457,20 +457,9 @@
         </div>
     </footer>
 
-    <div class="fixed bottom-4 left-4 right-4 max-w-lg mx-auto z-[60] p-4 rounded-2xl bg-white border border-black/10 shadow-2xl translate-y-[120%] opacity-0 transition-all duration-300 pointer-events-none" id="cookieConsent">
-        <h4 class="text-sm font-bold text-[#0A2640] mb-1">{{ __('landing.cookie_banner_title') }}</h4>
-        <p class="text-xs text-[#0A2640]/70 mb-3">{{ __('landing.cookie_banner_text') }} <a href="{{ route('central.privacy-policy') }}#cookies" class="text-[#0A2640] font-semibold underline">{{ __('landing.privacy_policy') }}</a></p>
-        <div class="flex flex-wrap gap-2">
-            <button type="button" class="px-3 py-1.5 rounded-full bg-[#0A2640] text-white text-xs font-bold" id="cookieAcceptBtn">{{ __('landing.cookie_accept_all') }}</button>
-            <button type="button" class="px-3 py-1.5 rounded-full border border-black/15 text-xs font-semibold" id="cookieRejectBtn">{{ __('landing.cookie_reject_all') }}</button>
-            <button type="button" class="px-3 py-1.5 text-xs font-semibold text-[#65CE89]" id="cookieCustomizeBtn">{{ __('landing.cookie_customize') }}</button>
-        </div>
-        <div id="cookieCustomize" class="hidden mt-3 pt-3 border-t border-black/10">
-            <label class="flex items-center gap-2 text-xs mb-2"><input type="checkbox" id="cookieAnalytics"> {{ __('landing.cookie_analytics') }}</label>
-            <label class="flex items-center gap-2 text-xs mb-2"><input type="checkbox" id="cookieMarketing"> {{ __('landing.cookie_marketing') }}</label>
-            <button type="button" class="px-3 py-1.5 rounded-full bg-[#65CE89] text-[#0A2640] text-xs font-bold" id="cookieSaveBtn">{{ __('landing.cookie_save_preferences') }}</button>
-        </div>
-    </div>
+    {{-- Consentimiento de cookies: implementación única (assets_super/js/prodex-consent.js) --}}
+    @include('central.partials.analytics')
+
 
     <script src="{{ asset('assets_super/js/landing-six.js') }}"></script>
 </body>
