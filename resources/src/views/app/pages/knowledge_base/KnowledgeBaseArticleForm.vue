@@ -208,6 +208,6 @@ export default {
 @media (max-width: 560px) { .pxkb__grid2 { grid-template-columns: minmax(0, 1fr); } }
 .pxkb__narrow { max-width: 160px; }
 .pxkb__editor { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md, 8px); overflow: hidden; }
-.pxkb__editor ::v-deep .ql-toolbar { border: 0; border-bottom: 1px solid var(--pxn-border); background: var(--pxn-surface-2, var(--pxn-surface)); }
-.pxkb__editor ::v-deep .ql-container { border: 0; min-height: 220px; }
+.pxkb__editor :deep(.ql-toolbar){ border: 0; border-bottom: 1px solid var(--pxn-border); background: var(--pxn-surface-2, var(--pxn-surface)); }
+.pxkb__editor :deep(.ql-container){ border: 0; min-height: 220px; }
 </style>

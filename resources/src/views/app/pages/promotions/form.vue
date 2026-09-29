@@ -674,7 +674,7 @@ export default {
 @media (max-width: 1080px) { .pxpf__side { order: -1; } }
 .pxpf__sticky { position: sticky; top: var(--pxn-space-6); display: flex; flex-direction: column; gap: var(--pxn-space-5); }
 
-.pxpf__preview ::v-deep .pxn-card__body { display: flex; flex-direction: column; gap: var(--pxn-space-3); }
+.pxpf__preview :deep(.pxn-card__body){ display: flex; flex-direction: column; gap: var(--pxn-space-3); }
 .pxpf__preview-tag { font-size: var(--pxn-fs-xs); text-transform: uppercase; letter-spacing: 0.06em; color: var(--pxn-ink-3); }
 .pxpf__preview-val { display: flex; align-items: baseline; gap: var(--pxn-space-3); }
 .pxpf__preview-num { font-size: var(--pxn-fs-display); font-weight: var(--pxn-fw-bold); color: var(--pxn-primary); }

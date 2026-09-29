@@ -632,9 +632,9 @@ export default {
 @media (max-width: 620px) { .pxqtd { padding: var(--pxn-space-6) var(--pxn-space-5); } }
 .pxqtd__pad { padding: var(--pxn-space-6) 0; }
 .pxqtd__card { margin-top: var(--pxn-space-5); }
-.pxqtd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-8); }
-@media (max-width: 620px) { .pxqtd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-5); } }
-@media print { .pxqtd { padding: 0; background: #fff; } .pxqtd__card ::v-deep .pxn-card__body { padding: 0; } }
+.pxqtd__card :deep(.pxn-card__body){ padding: var(--pxn-space-8); }
+@media (max-width: 620px) { .pxqtd__card :deep(.pxn-card__body){ padding: var(--pxn-space-5); } }
+@media print { .pxqtd { padding: 0; background: #fff; } .pxqtd__card :deep(.pxn-card__body){ padding: 0; } }
 
 .main-content {
   width: 100%;

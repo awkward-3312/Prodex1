@@ -1195,7 +1195,7 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
 }
 
 /* El <top-nav /> real trae su propio .main-header; lo encajamos en la rejilla. */
-.pxn-shell__topbar ::v-deep .main-header {
+.pxn-shell__topbar :deep(.main-header){
   position: static;
   flex: 1;
   min-width: 0;
@@ -1211,21 +1211,21 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
    · #notif-dd             → campana px-next
    · .px-operational-context → selector de alcance px-next
    · #px-transfer-issues-btn → control de incidencias px-next               */
-.pxn-shell__topbar ::v-deep .main-header > .logo,
-.pxn-shell__topbar ::v-deep .main-header > .menu-toggle,
-.pxn-shell__topbar ::v-deep #user-dd,
-.pxn-shell__topbar ::v-deep #notif-dd,
-.pxn-shell__topbar ::v-deep .px-operational-context,
-.pxn-shell__topbar ::v-deep #px-transfer-issues-btn { display: none !important; }
+.pxn-shell__topbar :deep(.main-header > .logo),
+.pxn-shell__topbar :deep(.main-header > .menu-toggle),
+.pxn-shell__topbar :deep(#user-dd),
+.pxn-shell__topbar :deep(#notif-dd),
+.pxn-shell__topbar :deep(.px-operational-context),
+.pxn-shell__topbar :deep(#px-transfer-issues-btn){ display: none !important; }
 
 /* El topbar comienza justo después del rail: el contenido real de TopNav
    (nav-right) se alinea a la izquierda del cluster px-next. */
-.pxn-shell__topbar ::v-deep .main-header .header-part-right.nav-right {
+.pxn-shell__topbar :deep(.main-header .header-part-right.nav-right){
   gap: var(--pxn-space-3);
 }
 
 /* ---- Jerarquía 1: POS = acción primaria --------------------------------- */
-.pxn-shell__topbar ::v-deep .main-header .nav-right .btn.btn-primary {
+.pxn-shell__topbar :deep(.main-header .nav-right .btn.btn-primary){
   height: 36px;
   padding: 0 var(--pxn-space-5);
   border-radius: var(--pxn-radius-pill);
@@ -1235,17 +1235,17 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
   font-weight: var(--pxn-fw-semibold);
   box-shadow: none;
 }
-.pxn-shell__topbar ::v-deep .main-header .nav-right .btn.btn-primary:hover,
-.pxn-shell__topbar ::v-deep .main-header .nav-right .btn.btn-primary:focus,
-.pxn-shell__topbar ::v-deep .main-header .nav-right .btn.btn-primary:active {
+.pxn-shell__topbar :deep(.main-header .nav-right .btn.btn-primary:hover),
+.pxn-shell__topbar :deep(.main-header .nav-right .btn.btn-primary:focus),
+.pxn-shell__topbar :deep(.main-header .nav-right .btn.btn-primary:active){
   background: var(--pxn-primary-hover) !important;
   border-color: var(--pxn-primary-hover) !important;
   color: var(--pxn-primary-contrast) !important;
 }
-.pxn-shell__topbar ::v-deep .main-header .nav-right .btn.btn-primary svg { color: currentColor; }
+.pxn-shell__topbar :deep(.main-header .nav-right .btn.btn-primary svg){ color: currentColor; }
 
 /* ---- Jerarquía 5: Existencias = consulta secundaria -------------------- */
-.pxn-shell__topbar ::v-deep #px-stock-visibility-nav {
+.pxn-shell__topbar :deep(#px-stock-visibility-nav){
   height: 36px; margin: 0;
   border-radius: var(--pxn-radius-md);
   border: 1px solid var(--pxn-border);
@@ -1253,7 +1253,7 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
   color: var(--pxn-ink-2);
   font-weight: var(--pxn-fw-medium);
 }
-.pxn-shell__topbar ::v-deep #px-stock-visibility-nav:hover {
+.pxn-shell__topbar :deep(#px-stock-visibility-nav:hover){
   border-color: var(--pxn-border-strong);
   background: var(--pxn-surface-hover);
   color: var(--pxn-ink);
@@ -1261,8 +1261,8 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
 
 /* ---- Jerarquía 6: utilidades (tema · pantalla completa · idioma) ------
    agrupadas y visualmente secundarias, sin bordes individuales pesados. */
-.pxn-shell__topbar ::v-deep .main-header .nav-right .nav-icon-btn,
-.pxn-shell__topbar ::v-deep .main-header #lang-dd .dropdown-toggle-no-caret {
+.pxn-shell__topbar :deep(.main-header .nav-right .nav-icon-btn),
+.pxn-shell__topbar :deep(.main-header #lang-dd .dropdown-toggle-no-caret){
   width: 34px !important; height: 34px !important;
   border: 0 !important;
   background: transparent !important;
@@ -1270,14 +1270,14 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
   border-radius: var(--pxn-radius-md) !important;
   box-shadow: none !important;
 }
-.pxn-shell__topbar ::v-deep .main-header .nav-right .nav-icon-btn:hover,
-.pxn-shell__topbar ::v-deep .main-header #lang-dd .dropdown-toggle-no-caret:hover {
+.pxn-shell__topbar :deep(.main-header .nav-right .nav-icon-btn:hover),
+.pxn-shell__topbar :deep(.main-header #lang-dd .dropdown-toggle-no-caret:hover){
   background: var(--pxn-surface-2) !important;
   color: var(--pxn-ink-2) !important;
   border-color: transparent !important;
 }
 /* Encierra el trío de utilidades en un contenedor sutil. */
-.pxn-shell__topbar ::v-deep .main-header .nav-right {
+.pxn-shell__topbar :deep(.main-header .nav-right){
   align-items: center;
 }
 
@@ -1687,7 +1687,7 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
   .pxn-shell__navtoggle-label { display: none; }
   .pxn-topbar__rhs { gap: var(--pxn-space-3); }
   .pxn-topbar__attn { gap: var(--pxn-space-2); }
-  .pxn-shell__topbar ::v-deep .main-header .header-part-right.nav-right { gap: var(--pxn-space-2); }
+  .pxn-shell__topbar :deep(.main-header .header-part-right.nav-right){ gap: var(--pxn-space-2); }
   .pxn-notif__menu { position: fixed; top: 58px; right: 12px; left: 12px; width: auto; max-width: none; }
 }
 

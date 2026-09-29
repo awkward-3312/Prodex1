@@ -246,6 +246,6 @@ export default {
 @media (max-width: 560px) { .pxff__grid { grid-template-columns: minmax(0, 1fr); } }
 .pxff__wide { grid-column: 1 / -1; }
 .pxff__actionbar { display: flex; justify-content: flex-end; gap: var(--pxn-space-3); }
-.pxff ::v-deep .pxn-field.is-invalid .pxn-input,
-.pxff ::v-deep .pxn-field.is-invalid .vs__dropdown-toggle { border-color: var(--pxn-danger); }
+.pxff :deep(.pxn-field.is-invalid .pxn-input),
+.pxff :deep(.pxn-field.is-invalid .vs__dropdown-toggle){ border-color: var(--pxn-danger); }
 </style>

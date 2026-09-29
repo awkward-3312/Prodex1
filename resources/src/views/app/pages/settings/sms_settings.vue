@@ -354,5 +354,5 @@ export default {
 .pxcfg__alert { margin-top: var(--pxn-space-4); }
 .pxcfg__alert code { font-family: var(--pxn-font-mono, monospace); }
 .pxcfg__pre { background: var(--pxn-surface-2); padding: var(--pxn-space-3); border-radius: var(--pxn-radius-sm); overflow-x: auto; font-size: var(--pxn-fs-xs); margin-top: var(--pxn-space-3); }
-.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+.pxcfg__del :deep(.pxn-btn__icon){ color: var(--pxn-danger); }
 </style>

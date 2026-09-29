@@ -1093,7 +1093,7 @@ export default { components: { BFormCheckbox, BBadge, BButton, BCard, BLink, BPr
   background: #e9ecef;
 }
 
-.progress-modern ::v-deep .progress-bar {
+.progress-modern :deep(.progress-bar){
   background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
   border-radius: 10px;
 }

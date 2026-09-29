@@ -542,7 +542,7 @@ export default {
 .pxos__pad { padding: var(--pxn-space-6) 0; }
 
 .pxos__actions { display: flex; flex-wrap: wrap; gap: var(--pxn-space-3); justify-content: flex-end; max-width: 100%; min-width: 0; }
-.pxos ::v-deep .pxn-pagehead__actions { min-width: 0; flex: 1 1 auto; }
+.pxos :deep(.pxn-pagehead__actions){ min-width: 0; flex: 1 1 auto; }
 @media (max-width: 720px) { .pxos__actions { justify-content: flex-start; } }
 
 .pxos__tablewrap { margin-top: var(--pxn-space-5); transition: opacity var(--pxn-dur-1) var(--pxn-ease); }
@@ -599,8 +599,8 @@ export default {
 
 // Reskin local del clock-picker legacy — el widget en sí (carátula de
 // reloj, popup) no se toca, solo el input disparador visible en el form.
-.pxos__clock ::v-deep .vue-clock-picker input,
-.pxos__clock ::v-deep input.form-control {
+.pxos__clock :deep(.vue-clock-picker input),
+.pxos__clock :deep(input.form-control){
   width: 100%;
   height: var(--pxn-control-h-md);
   padding: 0 var(--pxn-space-5);
@@ -611,5 +611,5 @@ export default {
   font: inherit;
   font-size: var(--pxn-fs-body);
 }
-.pxos__clock ::v-deep input.form-control:disabled { background: var(--pxn-surface-3); color: var(--pxn-ink-disabled); }
+.pxos__clock :deep(input.form-control:disabled){ background: var(--pxn-surface-3); color: var(--pxn-ink-disabled); }
 </style>

@@ -200,7 +200,7 @@ export default {
 .pxac__err { margin-top: var(--pxn-space-5); }
 .pxac__filtercard { margin-top: var(--pxn-space-5); }
 .pxac__filterrow { display: flex; align-items: flex-end; gap: var(--pxn-space-5); flex-wrap: wrap; }
-.pxac__filterrow ::v-deep .pxn-field { max-width: 220px; }
+.pxac__filterrow :deep(.pxn-field){ max-width: 220px; }
 .pxac__twocol { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-5); margin: var(--pxn-space-5) 0; }
 @media (max-width: 780px) { .pxac__twocol { grid-template-columns: minmax(0, 1fr); } }
 .pxac__line { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-4); padding: var(--pxn-space-2) 0; font-size: var(--pxn-fs-sm); }

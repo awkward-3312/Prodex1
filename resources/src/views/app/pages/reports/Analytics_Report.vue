@@ -526,5 +526,5 @@ export default {
 .pxrp__profitlabel { font-size: var(--pxn-fs-body); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
 .pxrp__profitval { font-size: var(--pxn-fs-lg); font-weight: var(--pxn-fw-bold); color: var(--pxn-ink); }
 .pxrp__profitformula { margin-top: var(--pxn-space-2); font-size: var(--pxn-fs-xs); font-style: italic; color: var(--pxn-ink-3); }
-.pxrp ::v-deep .daterangepicker { z-index: 2055 !important; }
+.pxrp :deep(.daterangepicker){ z-index: 2055 !important; }
 </style>

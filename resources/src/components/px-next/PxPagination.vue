@@ -82,7 +82,7 @@ export default {
 .pxn-pg__of { color: var(--pxn-ink-3); }
 .pxn-pg__controls { display: flex; align-items: center; gap: var(--pxn-space-6); }
 .pxn-pg__size { display: inline-flex; align-items: center; gap: var(--pxn-space-3); color: var(--pxn-ink-3); }
-.pxn-pg__size ::v-deep .pxn-select { height: var(--pxn-control-h-sm); width: auto; padding-right: 30px; }
+.pxn-pg__size :deep(.pxn-select){ height: var(--pxn-control-h-sm); width: auto; padding-right: 30px; }
 .pxn-pg__pages { display: inline-flex; align-items: center; gap: 2px; }
 .pxn-pg__btn {
   display: inline-flex;

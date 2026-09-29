@@ -644,7 +644,7 @@ export default {
 // PxPageHeader's own actions wrapper is a flex item of the header row with no
 // min-width override, so it hugs its content instead of shrinking — force it
 // to participate in the row's shrink/wrap so our button group can wrap.
-.pxat ::v-deep .pxn-pagehead__actions { min-width: 0; flex: 1 1 auto; }
+.pxat :deep(.pxn-pagehead__actions){ min-width: 0; flex: 1 1 auto; }
 @media (max-width: 720px) { .pxat__actions { justify-content: flex-start; } }
 
 .pxat__tablewrap { margin-top: var(--pxn-space-5); transition: opacity var(--pxn-dur-1) var(--pxn-ease); }
@@ -726,8 +726,8 @@ export default {
 
 // Reskin local del clock-picker legacy — el widget en sí (carátula de
 // reloj, popup) no se toca, solo el input disparador visible en el form.
-.pxat__clock ::v-deep .vue-clock-picker input,
-.pxat__clock ::v-deep input.form-control {
+.pxat__clock :deep(.vue-clock-picker input),
+.pxat__clock :deep(input.form-control){
   width: 100%;
   height: var(--pxn-control-h-md);
   padding: 0 var(--pxn-space-5);
@@ -738,5 +738,5 @@ export default {
   font: inherit;
   font-size: var(--pxn-fs-body);
 }
-.pxat__clock.is-invalid ::v-deep input.form-control { border-color: var(--pxn-danger); }
+.pxat__clock.is-invalid :deep(input.form-control){ border-color: var(--pxn-danger); }
 </style>

@@ -256,7 +256,7 @@ export default {
 @media (max-width: 640px) { .pxcfg__grid { grid-template-columns: minmax(0, 1fr); } }
 .pxcfg__mt { margin-top: var(--pxn-space-4); }
 .pxcfg__alert { margin-top: var(--pxn-space-4); }
-.pxcfg__del ::v-deep .pxn-btn__label { color: var(--pxn-danger); }
+.pxcfg__del :deep(.pxn-btn__label){ color: var(--pxn-danger); }
 
 .pxrole__toolbar-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--pxn-space-4); }
 .pxrole__search { max-width: 420px; width: 100%; }

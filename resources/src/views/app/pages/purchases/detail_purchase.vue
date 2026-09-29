@@ -904,9 +904,9 @@ export default {
 @media (max-width: 620px) { .pxpd { padding: var(--pxn-space-6) var(--pxn-space-5); } }
 .pxpd__pad { padding: var(--pxn-space-6) 0; }
 .pxpd__card { margin-top: var(--pxn-space-5); }
-.pxpd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-8); }
-@media (max-width: 620px) { .pxpd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-5); } }
-@media print { .pxpd { padding: 0; background: #fff; } .pxpd__card ::v-deep .pxn-card__body { padding: 0; } }
+.pxpd__card :deep(.pxn-card__body){ padding: var(--pxn-space-8); }
+@media (max-width: 620px) { .pxpd__card :deep(.pxn-card__body){ padding: var(--pxn-space-5); } }
+@media print { .pxpd { padding: 0; background: #fff; } .pxpd__card :deep(.pxn-card__body){ padding: 0; } }
 </style>
 
 <style scoped>

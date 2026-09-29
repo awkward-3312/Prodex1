@@ -77,7 +77,8 @@
               >
                 <b-button variant="primary" size="sm" @click="copyCronLine" class="due-cron-copy-btn">
                   <lucide-icon class="me-1" name="files" />{{ $t('Copy') || 'Copy' }}
-                </b-button>
+                </b-button>
+
             </div>
           </div>
           <p class="small text-muted mb-3">
@@ -487,11 +488,11 @@ export default { components: { BButton, BCol, BRow },
 }
 
 /* Table wrapper padding for vue-good-table */
-.due-table-card >>> .vgt-wrap {
+.due-table-card :deep(.vgt-wrap){
   padding: 0 1rem 1rem;
 }
 
-.due-table-card >>> .vgt-inner-wrap {
+.due-table-card :deep(.vgt-inner-wrap){
   box-shadow: none;
   border: none;
 }

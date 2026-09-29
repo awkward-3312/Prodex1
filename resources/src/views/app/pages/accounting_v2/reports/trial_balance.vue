@@ -180,7 +180,7 @@ export default {
 .pxac__pad { padding: var(--pxn-space-6) 0; }
 .pxac__filtercard { margin-top: var(--pxn-space-5); }
 .pxac__filterrow { display: flex; align-items: flex-end; gap: var(--pxn-space-5); flex-wrap: wrap; }
-.pxac__filterrow ::v-deep .pxn-field { min-width: 160px; }
+.pxac__filterrow :deep(.pxn-field){ min-width: 160px; }
 .pxac__tablewrap { margin-top: var(--pxn-space-5); }
 .pxac__totalrow {
   display: grid; grid-template-columns: 1fr auto auto; gap: var(--pxn-space-6);

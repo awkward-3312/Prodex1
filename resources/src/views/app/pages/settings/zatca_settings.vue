@@ -333,5 +333,5 @@ export default {
 .pxcfg__warntext { color: var(--pxn-warning); }
 .pxcfg__pager { display: flex; align-items: center; justify-content: space-between; margin-top: var(--pxn-space-3); font-size: var(--pxn-fs-sm); }
 .pxcfg__pagerbtns { display: flex; align-items: center; gap: var(--pxn-space-3); }
-.pxcfg__del ::v-deep .pxn-btn__label { color: var(--pxn-danger); }
+.pxcfg__del :deep(.pxn-btn__label){ color: var(--pxn-danger); }
 </style>

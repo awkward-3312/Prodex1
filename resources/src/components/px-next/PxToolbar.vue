@@ -81,7 +81,7 @@ export default {
 @media (max-width: 640px) {
   .pxn-toolbar__lead { flex: 1 1 100%; }
   .pxn-toolbar__trail { margin-left: 0; flex: 1 1 100%; }
-  .pxn-toolbar__trail ::v-deep .pxn-btn { flex: 1 1 auto; }
+  .pxn-toolbar__trail :deep(.pxn-btn){ flex: 1 1 auto; }
 }
 
 .pxn-toolbar__search { position: relative; display: flex; align-items: center; flex: 1 1 auto; max-width: 340px; min-width: 180px; }

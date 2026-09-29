@@ -91,7 +91,7 @@ export default {
 @media (max-width: 620px) { .pxac { padding: var(--pxn-space-6) var(--pxn-space-5); } }
 .pxac__filtercard { margin-top: var(--pxn-space-5); }
 .pxac__filterrow { display: flex; align-items: flex-end; gap: var(--pxn-space-5); flex-wrap: wrap; }
-.pxac__filterrow ::v-deep .pxn-field { max-width: 260px; }
+.pxac__filterrow :deep(.pxn-field){ max-width: 260px; }
 .pxac__kpis { display: grid; gap: var(--pxn-space-5); margin: var(--pxn-space-5) 0; }
 .pxac__kpis--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 720px) { .pxac__kpis--3 { grid-template-columns: minmax(0, 1fr); } }

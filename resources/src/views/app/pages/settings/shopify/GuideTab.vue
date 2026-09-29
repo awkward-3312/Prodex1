@@ -79,7 +79,7 @@ export default {
   border: none;
 }
 
-.guide-card ::v-deep .card-header {
+.guide-card :deep(.card-header){
   background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
   border-bottom: 2px solid #e9ecef;
   padding: 1.25rem 1.5rem;

@@ -249,5 +249,5 @@ export default {
 .pxcfg__tablewrap { margin-top: var(--pxn-space-4); }
 .pxcfg__flag { border-radius: 3px; vertical-align: middle; }
 .pxcfg__rowbtns { display: flex; gap: var(--pxn-space-2); flex-wrap: wrap; justify-content: flex-end; }
-.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+.pxcfg__del :deep(.pxn-btn__icon){ color: var(--pxn-danger); }
 </style>
