@@ -14,6 +14,7 @@
       :required="required"
       :aria-invalid="invalid ? 'true' : null"
       :aria-label="ariaLabel"
+      v-bind="$attrs"
       @change="onChange"
     />
     <span class="pxn-cb__box" aria-hidden="true">
