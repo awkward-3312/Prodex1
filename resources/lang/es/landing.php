@@ -409,4 +409,17 @@ return [
 
     'perfect_to_start'           => 'Perfecto para empezar',
     'for_growing_teams'          => 'Para equipos en crecimiento',
+    'consent_title' => 'Tu privacidad importa',
+    'consent_text' => 'Usamos cookies esenciales para que el sitio funcione y, con tu permiso, cookies de analítica para entender cómo se usa. Puedes rechazar las no esenciales o elegir qué permitir.',
+    'consent_accept' => 'Aceptar',
+    'consent_reject' => 'Rechazar no esenciales',
+    'consent_customize' => 'Configurar',
+    'consent_save' => 'Guardar preferencias',
+    'consent_prefs_title' => 'Preferencias de cookies',
+    'consent_necessary' => 'Necesarias',
+    'consent_necessary_desc' => 'Necesarias para que el sitio funcione (sesión, seguridad, idioma y tu elección de cookies). Siempre activas.',
+    'consent_analytics' => 'Analíticas',
+    'consent_analytics_desc' => 'Nos ayudan a entender cómo se usa el sitio con estadísticas agregadas (Google Analytics).',
+    'consent_only_necessary' => 'Este sitio solo usa cookies necesarias para funcionar.',
+    'consent_close' => 'Cerrar',
 ];
