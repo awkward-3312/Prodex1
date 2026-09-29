@@ -1,6 +1,7 @@
 <template>
   <div class="pxn-empty" :class="{ 'pxn-empty--inline': inline }">
-    <div class="pxn-empty__glyph" :class="`is-${tone}`" aria-hidden="true">
+    <px-empty-character v-if="character" :calm="calm" class="pxn-empty__character" />
+    <div v-else class="pxn-empty__glyph" :class="`is-${tone}`" aria-hidden="true">
       <lucide-icon :name="icon" :size="inline ? 20 : 24" />
     </div>
     <h3 class="pxn-empty__title">{{ title }}</h3>
@@ -12,14 +13,19 @@
 <script>
 // Empty / zero / no-results state. `tone` only tints the glyph chip — the
 // message text carries the meaning.
+import PxEmptyCharacter from "./PxEmptyCharacter.vue";
+
 export default {
   name: "PxEmptyState",
+  components: { PxEmptyCharacter },
   props: {
     icon: { type: String, default: "inbox" },
     title: { type: String, required: true },
     description: { type: String, default: null },
     tone: { type: String, default: "neutral" }, // neutral | info | warning
-    inline: { type: Boolean, default: false }
+    inline: { type: Boolean, default: false },
+    character: { type: Boolean, default: false }, // ilustración pixelada en lugar del glifo (opt-in)
+    calm: { type: Boolean, default: false } // cadencia más tranquila de la ilustración
   }
 };
 </script>
