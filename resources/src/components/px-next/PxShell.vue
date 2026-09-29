@@ -344,9 +344,12 @@
               <lucide-icon name="settings" :size="15" /><span>{{ $t('Settings') }}</span>
             </router-link>
             <div class="pxn-userchip__menu-sep" role="separator"></div>
-            <button type="button" class="pxn-userchip__item pxn-userchip__item--danger" role="menuitem" @click="doLogout">
-              <lucide-icon name="power" :size="15" /><span>{{ $t('logout') }}</span>
-            </button>
+            <div class="pxn-userchip__logout">
+              <button type="button" class="pxn-userchip__logout-btn pxn-ring" role="menuitem" @click="doLogout">
+                <lucide-icon name="power" :size="15" aria-hidden="true" />
+                <span class="pxn-userchip__logout-label">{{ $t('logout') }}</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1475,10 +1478,75 @@ a.pxn-shell__module:hover { background: var(--pxn-surface-2); color: var(--pxn-i
 .pxn-userchip__item:hover { background: var(--pxn-surface-2); color: var(--pxn-ink); text-decoration: none; }
 .pxn-userchip__item > svg { flex: none; color: var(--pxn-ink-3); }
 .pxn-userchip__item:hover > svg { color: var(--pxn-ink-2); }
-.pxn-userchip__item--danger { color: var(--pxn-danger-ink); }
-.pxn-userchip__item--danger > svg { color: var(--pxn-danger); }
-.pxn-userchip__item--danger:hover { background: var(--pxn-danger-soft); color: var(--pxn-danger-ink); }
-.pxn-userchip__item--danger:hover > svg { color: var(--pxn-danger); }
+
+/* #14 · Cerrar sesión: control propio y compacto (no una fila más del menú). En reposo es un
+   círculo ~44×44 con el icono centrado; en hover/focus-visible se expande en pill revelando el
+   texto. El wrapper reserva un slot de ancho completo y altura fija — el botón es absolute dentro
+   de él, así que su propio ancho SÍ puede animar sin mover el dropdown, Perfil, Configuración ni
+   la topbar (nada fuera del wrapper está en el mismo flujo). Expande hacia la derecha porque el
+   icono está anclado al borde izquierdo del menú, igual que el resto de los ítems. */
+.pxn-userchip__logout { position: relative; width: 100%; height: 44px; }
+.pxn-userchip__logout-btn {
+  position: absolute;
+  left: 0; top: 0;
+  width: 44px; height: 44px;
+  display: flex;
+  align-items: center;
+  padding-left: 14px;
+  border: 0;
+  border-radius: var(--pxn-radius-pill);
+  background: var(--pxn-danger-soft);
+  color: var(--pxn-danger-ink);
+  font: inherit;
+  font-size: var(--pxn-fs-sm);
+  font-weight: var(--pxn-fw-medium);
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  transition: width var(--pxn-dur-2) var(--pxn-ease), background-color var(--pxn-dur-2) var(--pxn-ease);
+}
+.pxn-userchip__logout-btn > svg { flex: none; color: var(--pxn-danger); }
+.pxn-userchip__logout-label {
+  display: inline-block;
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition: max-width var(--pxn-dur-2) var(--pxn-ease), opacity var(--pxn-dur-2) var(--pxn-ease), margin-left var(--pxn-dur-2) var(--pxn-ease);
+}
+.pxn-userchip__logout-btn:hover,
+.pxn-userchip__logout-btn:focus-visible {
+  width: 176px;
+  background: var(--pxn-danger-soft);
+}
+.pxn-userchip__logout-btn:hover .pxn-userchip__logout-label,
+.pxn-userchip__logout-btn:focus-visible .pxn-userchip__logout-label {
+  max-width: 140px;
+  margin-left: var(--pxn-space-3);
+  opacity: 1;
+}
+
+/* Touch/mobile: sin hover, así que "cerrar sesión" queda siempre expandido y legible — nunca
+   escondido detrás de una interacción que el dedo no puede disparar. */
+@media (hover: none), (pointer: coarse) {
+  .pxn-userchip__logout-btn {
+    position: static;
+    width: 100%;
+    height: 44px;
+    padding: 0 var(--pxn-space-4);
+    border-radius: var(--pxn-radius-sm);
+  }
+  .pxn-userchip__logout-label {
+    max-width: none;
+    margin-left: var(--pxn-space-3);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pxn-userchip__logout-btn,
+  .pxn-userchip__logout-label { transition: none; }
+}
 
 /* -------------------------------------------------------------------------
    Selector de alcance de sucursal (view scope) — pill px-next compacta.
