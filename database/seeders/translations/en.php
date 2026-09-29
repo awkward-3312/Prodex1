@@ -3560,4 +3560,6 @@ return [
 'Clear_search_and_filters' => 'Clear search and filters',
 'Could_not_load_commission_rules' => 'Could not load commission rules',
 'No_permission_commission_rules' => 'You do not have permission to view commission rules',
+'error_404_title' => 'Page not found',
+'error_404_lost_in_space' => 'Looks like this route got lost in space.',
 ];

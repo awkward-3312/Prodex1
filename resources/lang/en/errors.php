@@ -5,7 +5,7 @@ return [
     '403_message' => 'You do not have permission to view this page. If you think this is a mistake, sign in with the right account or head back home.',
 
     '404_title'   => 'Page not found',
-    '404_message' => 'The page you are looking for does not exist or has moved. Check the link or go back to the PRODEX home page.',
+    '404_message' => 'Looks like this route got lost in space. Check the link or go back to the PRODEX home page.',
 
     '419_title'   => 'Your session expired',
     '419_message' => 'For your security the page timed out before it was submitted. Reload it and try again.',

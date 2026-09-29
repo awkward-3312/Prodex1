@@ -3094,4 +3094,6 @@ return [
 'Clear_search_and_filters' => 'Limpiar búsqueda y filtros',
 'Could_not_load_commission_rules' => 'No se pudieron cargar las reglas de comisión',
 'No_permission_commission_rules' => 'No tienes permiso para ver las reglas de comisión',
+'error_404_title' => 'Página no encontrada',
+'error_404_lost_in_space' => 'Parece que esta ruta se perdió en el espacio.',
 ];
