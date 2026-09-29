@@ -141,7 +141,7 @@ export default {
     window.addEventListener("drop", this.resetDrag);
     window.addEventListener("dragend", this.resetDrag);
   },
-  beforeDestroy() {
+  beforeUnmount() {
     window.removeEventListener("drop", this.resetDrag);
     window.removeEventListener("dragend", this.resetDrag);
   },
