@@ -206,9 +206,10 @@
 import { BAlert, BButton, BCard, BCol, BProgress, BRow } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import NProgress from 'nprogress';
+import PxFileUpload from '@/components/px-next/PxFileUpload.vue';
 // axios assumed global
 
-export default { components: { BAlert, BButton, BCard, BCol, BProgress, BRow },
+export default { components: { BAlert, BButton, BCard, BCol, BProgress, BRow, PxFileUpload },
   name: 'ImportSuppliersPage',
   data: function () {
     return {
@@ -232,7 +233,8 @@ export default { components: { BAlert, BButton, BCard, BCol, BProgress, BRow },
 
       // limits
       maxSize: 20 * 1024 * 1024, // 20MB
-      accept: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,.xlsx,.xls',
+      accept: '.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel',
+      uploadMessages: { type: '"{name}" is not an allowed file type.', size: '"{name}" is too large. Max {max}.', multiple: 'Please select a single file.', folder: 'Please select a file.', empty: 'The file is empty.' },
 
       // guide chips
       columnsGuide: [
@@ -247,12 +249,10 @@ export default { components: { BAlert, BButton, BCard, BCol, BProgress, BRow },
       ]
     };
   },
+  watch: { file: function () { this.clearErrors(); } },
   computed: {
     canSubmit: function () {
       return !!this.file && this.errorMessages.length === 0;
-    },
-    prettySize: function () {
-      return this.formatBytes(this.fileSize);
     },
     exampleHref: function () {
       return '/import/exemples/suppliers.xlsx';
