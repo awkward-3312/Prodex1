@@ -21,31 +21,8 @@
       <b-row>
         <!-- Upload -->
         <b-col md="7" class="mb-4">
-          <div
-            class="dropzone"
-            :class="{ 'is-dragover': isDragOver, 'has-file': !!file }"
-            @dragover.prevent="onDragOver"
-            @dragleave.prevent="onDragLeave"
-            @drop.prevent="onDrop"
-            @click="browse"
-          >
-            <input ref="file" type="file" class="d-none" @change="onFileSelected"
-                   :accept="accept" />
-            <div class="dz-inner text-center">
-              <div class="dz-icon mb-2"><lucide-icon name="download" /></div>
-              <h5 class="mb-2">Click or drop your Excel file here</h5>
-              <div class="text-muted small">Allowed formats: XLSX, XLS · Max size: 20MB</div>
-
-              <!-- Selected file pill -->
-              <div v-if="file" class="file-pill mt-3 d-inline-flex align-items-center">
-                <div class="file-dot me-2"></div>
-                <div class="file-meta me-3">
-                  <div class="file-name">{{ fileName }}</div>
-                  <div class="file-size text-muted small">{{ prettySize }}</div>
-                </div>
-                <b-button size="sm" variant="outline-danger" @click.stop="clearFile">Remove</b-button>
-              </div>
-            </div>
+          <div class="px-next pxfu-host">
+            <px-file-upload v-model="file" :accept="accept" :max-size="maxSize" :uploading="uploading" :progress="progress" label="Drop your Excel file here" drop-text="Drop the file to select it" help="Allowed formats: XLSX, XLS · Max size: 20MB" browse-text="Choose file" replace-text="Replace" remove-text="Remove file" uploading-text="Uploading file" :messages="uploadMessages" />
           </div>
 
           <!-- Example format -->
