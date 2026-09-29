@@ -1674,7 +1674,7 @@ export default { components: { BFormGroup, BFormInput, BButton, BCol, BRow, BMod
       padding: 0.5rem 1rem;
     }
 
-    :deep(.vs--open .vs__dropdown-toggle) {
+    &.vs--open :deep(.vs__dropdown-toggle) {
       border-color: #667eea;
       box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
