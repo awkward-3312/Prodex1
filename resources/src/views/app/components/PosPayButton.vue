@@ -70,7 +70,7 @@ export default {
   data() {
     return { playing: false, locked: false, holdTimer: null, lockTimer: null };
   },
-  beforeDestroy() {
+  beforeUnmount() {
     clearTimeout(this.holdTimer);
     clearTimeout(this.lockTimer);
   },
