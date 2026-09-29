@@ -677,57 +677,8 @@
     <script src="{{ asset('assets_super/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ asset('assets_super/js/landing-two.js') }}"></script>
 
-    {{-- ── Cookie Consent Banner ──────────────────────────────────────── --}}
-    <div class="cookie-consent" id="cookieConsent">
-        <div class="cookie-consent-header">
-            <i class="bi bi-shield-lock"></i>
-            <h4>{{ __('landing.cookie_banner_title') }}</h4>
-        </div>
-        <p class="cookie-consent-text">
-            {{ __('landing.cookie_banner_text') }}
-            <a href="{{ route('central.privacy-policy') }}#cookies">{{ __('landing.privacy_policy') }}</a>
-        </p>
-        <div class="cookie-consent-actions">
-            <button class="cb-btn cb-btn-accept" id="cookieAcceptBtn">{{ __('landing.cookie_accept_all') }}</button>
-            <button class="cb-btn cb-btn-reject" id="cookieRejectBtn">{{ __('landing.cookie_reject_all') }}</button>
-            <button class="cb-btn cb-btn-customize" id="cookieCustomizeBtn">{{ __('landing.cookie_customize') }}</button>
-        </div>
-        <div class="cookie-customize-panel" id="cookieCustomize">
-            <div class="cookie-option">
-                <div class="cookie-option-info">
-                    <h5>{{ __('landing.cookie_necessary') }}</h5>
-                    <p>{{ __('landing.cookie_necessary_desc') }}</p>
-                </div>
-                <label class="cookie-toggle">
-                    <input type="checkbox" checked disabled>
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <div class="cookie-option">
-                <div class="cookie-option-info">
-                    <h5>{{ __('landing.cookie_analytics') }}</h5>
-                    <p>{{ __('landing.cookie_analytics_desc') }}</p>
-                </div>
-                <label class="cookie-toggle">
-                    <input type="checkbox" id="cookieAnalytics">
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <div class="cookie-option">
-                <div class="cookie-option-info">
-                    <h5>{{ __('landing.cookie_marketing') }}</h5>
-                    <p>{{ __('landing.cookie_marketing_desc') }}</p>
-                </div>
-                <label class="cookie-toggle">
-                    <input type="checkbox" id="cookieMarketing">
-                    <span class="slider"></span>
-                </label>
-            </div>
-            <div class="cookie-save-row">
-                <button class="cb-btn" id="cookieSaveBtn">{{ __('landing.cookie_save_preferences') }}</button>
-            </div>
-        </div>
-    </div>
+    {{-- Consentimiento de cookies: implementación única (assets_super/js/prodex-consent.js) --}}
+    @include('central.partials.analytics')
 
 </body>
 </html>
