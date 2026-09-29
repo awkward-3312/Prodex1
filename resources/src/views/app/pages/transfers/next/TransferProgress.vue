@@ -102,7 +102,7 @@ export default {
     // Las transiciones se habilitan después del primer pintado: al aparecer, todo es legible de inmediato.
     this.raf = requestAnimationFrame(() => { this.raf = requestAnimationFrame(() => { this.ready = true; }); });
   },
-  beforeDestroy() {
+  beforeUnmount() {
     cancelAnimationFrame(this.raf);
     clearTimeout(this.pulseTimer);
   },
