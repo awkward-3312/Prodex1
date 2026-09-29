@@ -68,10 +68,7 @@
       <template v-else-if="loading || adapted">
       <!-- KPI row — cifras inmediatas, sin count-up -->
       <div class="pxb1__kpis">
-        <px-card v-for="c in kpiCards" :key="c.key">
-          <px-skeleton v-if="loading" variant="lines" :rows="3" />
-          <px-stat v-else :label="c.label" :value="c.text" :value-title="c.title" :sub="c.sub" :icon="c.icon" />
-        </px-card>
+        <px-metric-card v-for="c in kpiCards" :key="c.key" :label="c.label" :value="c.text" :value-title="c.title" :sub="c.sub" :icon="c.icon" :loading="loading" />
       </div>
 
       <!-- Valorización de inventario (FINANCIAL_MANAGEMENT: owner / gerente) -->
@@ -255,7 +252,7 @@ import PxSelect from "@/components/px-next/PxSelect.vue";
 import PxButton from "@/components/px-next/PxButton.vue";
 import PxAlert from "@/components/px-next/PxAlert.vue";
 import PxCard from "@/components/px-next/PxCard.vue";
-import PxStat from "@/components/px-next/PxStat.vue";
+import PxMetricCard from "@/components/px-next/PxMetricCard.vue";
 import PxTable from "@/components/px-next/PxTable.vue";
 import PxEntityCell from "@/components/px-next/PxEntityCell.vue";
 import PxEmptyState from "@/components/px-next/PxEmptyState.vue";
@@ -296,7 +293,7 @@ function chartRamp() {
 export default {
   name: "PxNextDashboardPreview",
   components: {
-    PxPageHeader, PxBadge, PxSelect, PxButton, PxAlert, PxCard, PxStat,
+    PxPageHeader, PxBadge, PxSelect, PxButton, PxAlert, PxCard, PxMetricCard,
     PxTable, PxEntityCell, PxEmptyState, PxApexFrame
   },
   data() {
