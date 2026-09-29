@@ -3096,4 +3096,6 @@ return [
 'No_permission_commission_rules' => 'No tienes permiso para ver las reglas de comisión',
 'error_404_title' => 'Página no encontrada',
 'error_404_lost_in_space' => 'Parece que esta ruta se perdió en el espacio.',
+'error_403_title' => 'Acceso denegado',
+'error_403_no_permission' => 'Tu cuenta no tiene permiso para acceder a esta sección.',
 ];

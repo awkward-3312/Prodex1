@@ -38,29 +38,20 @@
         .btn:focus-visible{outline:3px solid rgba(79,70,229,.45);outline-offset:2px}
         footer{padding:22px 20px;text-align:center;font-size:13px;color:var(--ink-3)}
         @hasSection('illustration')
-        /* Solo se carga cuando una página de error concreta (p. ej. 404) rellena la sección
-           `illustration` — 403/500 siguen exactamente igual, sin nada de este bloque.
-           Una sola superficie navy (el propio .card se convierte en el hero): la escena vive
-           DENTRO de él como fondo absoluto, no como un panel separado al lado del texto. */
+        /* Solo se carga cuando una página de error concreta rellena la sección `illustration`
+           — 500 sigue exactamente igual, sin nada de este bloque. Estructura de "hero card"
+           compartida entre variantes (404 espacial, 403 pencil); cada variante (`.card--space`,
+           `.card--pencil`) solo aporta su propia paleta/fondo — así 404 y 403 comparten
+           tipografía/spacing/botones sin compartir ilustración ni layout de fondo. */
         :root{--pxerr-navy:#081428;--pxerr-navy-2:#0f2a4a;--pxerr-cyan:#06b6d4;--pxerr-star:#eef4ff}
         .wrap{padding:24px}
         .card{position:relative;overflow:hidden;max-width:1200px;min-height:min(640px,calc(100vh - 48px));
-            display:flex;align-items:center;text-align:left;border-radius:16px;color:#fff;
-            background:radial-gradient(60% 55% at 74% 68%,rgba(6,182,212,.20) 0%,transparent 60%),
-                       radial-gradient(90% 70% at 18% 22%,var(--pxerr-navy-2) 0%,transparent 60%),
-                       linear-gradient(155deg,var(--pxerr-navy-2) 0%,var(--pxerr-navy) 68%)}
+            display:flex;align-items:center;text-align:left;border-radius:16px}
         .card-body{position:relative;z-index:3;max-width:640px;padding:48px 48px 48px clamp(28px,6vw,72px)}
-        .brand{color:#fff;margin-bottom:28px}
-        .brand span{background:#fff;color:var(--pxerr-navy)}
-        .code{display:block;font-size:clamp(80px,12vw,140px);font-weight:800;line-height:.9;letter-spacing:-.03em;
-            text-transform:none;margin:0 0 8px;
-            background:linear-gradient(180deg,#fff 0%,var(--pxerr-cyan) 130%);-webkit-background-clip:text;background-clip:text;color:transparent;
-            text-shadow:0 0 34px rgba(6,182,212,.45)}
-        h1{color:#fff;font-size:clamp(22px,3vw,28px)}
-        p.lead{color:rgba(255,255,255,.72);margin:0 0 28px}
+        .code{display:block;font-size:clamp(80px,12vw,140px);font-weight:800;line-height:.9;letter-spacing:-.03em;text-transform:none;margin:0 0 8px}
+        h1{font-size:clamp(22px,3vw,28px)}
+        p.lead{margin:0 0 28px}
         .actions{justify-content:flex-start}
-        .btn--ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.28)}
-        .btn--ghost:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.28)}
         @media (max-width:860px){
             .card{flex-direction:column;min-height:auto}
             .card-body{max-width:none;text-align:center;padding:244px 24px 32px}
@@ -68,6 +59,20 @@
             .actions .btn{flex:1 1 auto}
         }
         .illustration{position:absolute;inset:0;z-index:0}
+
+        /* Variante 404 — hero espacial navy de punta a punta (astronauta + estrellas). */
+        .card--space{color:#fff;
+            background:radial-gradient(60% 55% at 74% 68%,rgba(6,182,212,.20) 0%,transparent 60%),
+                       radial-gradient(90% 70% at 18% 22%,var(--pxerr-navy-2) 0%,transparent 60%),
+                       linear-gradient(155deg,var(--pxerr-navy-2) 0%,var(--pxerr-navy) 68%)}
+        .card--space .brand{color:#fff;margin-bottom:28px}
+        .card--space .brand span{background:#fff;color:var(--pxerr-navy)}
+        .card--space .code{background:linear-gradient(180deg,#fff 0%,var(--pxerr-cyan) 130%);-webkit-background-clip:text;background-clip:text;color:transparent;
+            text-shadow:0 0 34px rgba(6,182,212,.45)}
+        .card--space h1{color:#fff}
+        .card--space p.lead{color:rgba(255,255,255,.72)}
+        .card--space .btn--ghost{background:transparent;color:#fff;border-color:rgba(255,255,255,.28)}
+        .card--space .btn--ghost:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.28)}
         .pxerr-orbit{position:absolute;top:8%;right:-12%;width:62%;aspect-ratio:1;border:1px solid rgba(6,182,212,.16);border-radius:50%;transform:rotate(-18deg)}
         .pxerr-glow{position:absolute;top:30%;right:10%;width:34%;aspect-ratio:1;border-radius:50%;
             background:radial-gradient(circle,rgba(6,182,212,.35) 0%,transparent 70%);filter:blur(6px)}
@@ -125,13 +130,56 @@
         .pxerr-astro__head::before{content:"";position:absolute;width:12px;height:25px;top:calc(50% - 12.5px);left:-4px;
             background:#618095;border-radius:5px;box-shadow:92px 0 0 #618095}
         @media (prefers-reduced-motion:reduce){.pxerr-star,.pxerr-astro{animation:none}.pxerr-star{opacity:.6}.pxerr-astro{transform:none}}
+
+        /* Variante 403 — superficie clara PRODEX (no el espacio de 404): el lápiz de Uiverse,
+           geometría 1:1, con un acento navy/cyan CONTENIDO detrás (no todo el card en navy). */
+        .card--pencil{background:var(--bg)}
+        .card--pencil .code{background:linear-gradient(180deg,var(--pxerr-navy-2) 0%,var(--pxerr-cyan) 130%);
+            -webkit-background-clip:text;background-clip:text;color:transparent}
+        .card--pencil .illustration{position:absolute;top:50%;right:6%;left:auto;bottom:auto;transform:translateY(-50%);
+            width:clamp(220px,30vw,340px);height:clamp(220px,30vw,340px);display:flex;align-items:center;justify-content:center;z-index:0}
+        .card--pencil .illustration::before{content:"";position:absolute;inset:8%;border-radius:50%;
+            background:radial-gradient(circle,rgba(6,182,212,.16) 0%,rgba(15,42,74,.10) 55%,transparent 78%)}
+        @media (max-width:860px){
+            /* El lápiz pasa a flujo normal (ya no es absolute como el astronauta de 404), así
+               que no necesita el padding-top reservado — solo su propio margin-bottom. */
+            .card--pencil .illustration{position:relative;top:0;right:0;left:auto;bottom:auto;transform:none;margin:0 auto 8px;width:clamp(160px,42vw,220px);height:clamp(160px,42vw,220px)}
+            .card--pencil .card-body{padding-top:8px}
+        }
+        .pencil{position:relative;z-index:1;display:block;width:clamp(160px,20vw,220px);height:auto;color:var(--ink-3)}
+        @media (max-width:860px){ .pencil{width:clamp(130px,38vw,180px)} }
+        .pencil__body1,.pencil__body2,.pencil__body3,.pencil__eraser,.pencil__eraser-skew,.pencil__point,.pencil__rotate,.pencil__stroke{
+            animation-duration:3s;animation-timing-function:linear;animation-iteration-count:infinite}
+        .pencil__body1,.pencil__body2,.pencil__body3{transform:rotate(-90deg)}
+        .pencil__body1{animation-name:pencilBody1}
+        .pencil__body2{animation-name:pencilBody2}
+        .pencil__body3{animation-name:pencilBody3}
+        .pencil__eraser{animation-name:pencilEraser;transform:rotate(-90deg) translate(49px,0)}
+        .pencil__eraser-skew{animation-name:pencilEraserSkew;animation-timing-function:ease-in-out}
+        .pencil__point{animation-name:pencilPoint;transform:rotate(-90deg) translate(49px,-30px)}
+        .pencil__rotate{animation-name:pencilRotate}
+        .pencil__stroke{animation-name:pencilStroke;transform:translate(100px,100px) rotate(-113deg)}
+        @keyframes pencilBody1{from,to{stroke-dashoffset:351.86;transform:rotate(-90deg)}50%{stroke-dashoffset:150.8;transform:rotate(-225deg)}}
+        @keyframes pencilBody2{from,to{stroke-dashoffset:406.84;transform:rotate(-90deg)}50%{stroke-dashoffset:174.36;transform:rotate(-225deg)}}
+        @keyframes pencilBody3{from,to{stroke-dashoffset:296.88;transform:rotate(-90deg)}50%{stroke-dashoffset:127.23;transform:rotate(-225deg)}}
+        @keyframes pencilEraser{from,to{transform:rotate(-45deg) translate(49px,0)}50%{transform:rotate(0deg) translate(49px,0)}}
+        @keyframes pencilEraserSkew{from,32.5%,67.5%,to{transform:skewX(0)}35%,65%{transform:skewX(-4deg)}37.5%,62.5%{transform:skewX(8deg)}40%,45%,50%,55%,60%{transform:skewX(-15deg)}42.5%,47.5%,52.5%,57.5%{transform:skewX(15deg)}}
+        @keyframes pencilPoint{from,to{transform:rotate(-90deg) translate(49px,-30px)}50%{transform:rotate(-225deg) translate(49px,-30px)}}
+        @keyframes pencilRotate{from{transform:translate(100px,100px) rotate(0)}to{transform:translate(100px,100px) rotate(720deg)}}
+        @keyframes pencilStroke{from{stroke-dashoffset:439.82;transform:translate(100px,100px) rotate(-113deg)}50%{stroke-dashoffset:164.93;transform:translate(100px,100px) rotate(-113deg)}75%,to{stroke-dashoffset:439.82;transform:translate(100px,100px) rotate(112deg)}}
+        /* stroke-dashoffset es un atributo SVG, no CSS: al quitar la animación cada pieza vuelve a
+           su transform/atributo YA definidos arriba (los mismos del original) — ninguno se rompe
+           ni queda a medio dibujar. */
+        @media (prefers-reduced-motion:reduce){
+            .pencil__body1,.pencil__body2,.pencil__body3,.pencil__eraser,.pencil__eraser-skew,.pencil__point,.pencil__rotate,.pencil__stroke{animation:none}
+        }
         @endif
         @media (prefers-reduced-motion:reduce){*{transition:none!important}}
     </style>
 </head>
 <body>
     <main class="wrap">
-        <div class="card">
+        <div class="card @yield('card_variant')">
             @hasSection('illustration')
                 @yield('illustration')
             @endif

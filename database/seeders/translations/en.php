@@ -3562,4 +3562,6 @@ return [
 'No_permission_commission_rules' => 'You do not have permission to view commission rules',
 'error_404_title' => 'Page not found',
 'error_404_lost_in_space' => 'Looks like this route got lost in space.',
+'error_403_title' => 'Access denied',
+'error_403_no_permission' => 'Your account doesn\'t have permission to access this section.',
 ];
