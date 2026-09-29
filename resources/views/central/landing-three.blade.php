@@ -2150,91 +2150,11 @@
     @endif
 
 
-    {{-- =========================================================
-         COOKIES
-    ========================================================== --}}
-    <div
-        id="cookieConsent"
-        class="fixed bottom-4 left-4 right-4 max-w-xl mx-auto z-[100] p-5 rounded-2xl bg-white border border-slate-200 shadow-2xl shadow-slate-900/15 translate-y-[120%] opacity-0 transition-all duration-300 pointer-events-none">
-
-        <h4 class="text-sm font-bold text-slate-950 mb-1">
-            Uso de cookies
-        </h4>
-
-        <p class="text-xs text-slate-500 leading-6 mb-4">
-
-            Utilizamos cookies para mejorar tu experiencia en la plataforma.
-
-            <a
-                href="{{ route('central.privacy-policy') }}#cookies"
-                class="text-indigo-600 hover:underline">
-                Política de privacidad
-            </a>
-
-        </p>
-
-        <div class="flex flex-wrap gap-2">
-
-            <button
-                type="button"
-                id="cookieAcceptBtn"
-                class="px-4 py-2 rounded-full bg-slate-950 text-white text-xs font-semibold hover:bg-indigo-600 transition">
-                Aceptar todas
-            </button>
-
-            <button
-                type="button"
-                id="cookieRejectBtn"
-                class="px-4 py-2 rounded-full border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50">
-                Rechazar
-            </button>
-
-            <button
-                type="button"
-                id="cookieCustomizeBtn"
-                class="px-4 py-2 rounded-full text-indigo-600 text-xs font-semibold hover:bg-indigo-50">
-                Personalizar
-            </button>
-
-        </div>
-
-        <div
-            id="cookieCustomize"
-            class="hidden mt-4 pt-4 border-t border-slate-100">
-
-            <p class="text-xs text-slate-500 mb-3">
-                Selecciona qué tipos de cookies deseas permitir.
-            </p>
-
-            <label class="flex items-center gap-2 text-xs text-slate-700 mb-3">
-                <input
-                    type="checkbox"
-                    id="cookieAnalytics"
-                    class="rounded border-slate-300">
-                Cookies de análisis
-            </label>
-
-            <label class="flex items-center gap-2 text-xs text-slate-700 mb-3">
-                <input
-                    type="checkbox"
-                    id="cookieMarketing"
-                    class="rounded border-slate-300">
-                Cookies de marketing
-            </label>
-
-            <button
-                type="button"
-                id="cookieSaveBtn"
-                class="px-4 py-2 rounded-full bg-indigo-600 text-white text-xs font-semibold hover:bg-indigo-500">
-                Guardar preferencias
-            </button>
-
-        </div>
-
-    </div>
-
-
     <script src="{{ asset('assets_super/js/landing-three.js') }}"></script>
+
+    {{-- Consentimiento de cookies: implementación única (assets_super/js/prodex-consent.js) --}}
+    @include('central.partials.analytics')
+
 
 </body>
 </html>
