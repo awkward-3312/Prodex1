@@ -1,7 +1,7 @@
 <template>
-  <label v-bind="plainAttrs()" class="pxn-check" :class="[`pxn-check--${type}`, { 'is-disabled': disabled, 'is-loading': loading }, $attrs.class]" :style="$attrs.style">
+  <label class="pxn-check" :class="[`pxn-check--${type}`, { 'is-disabled': disabled, 'is-loading': loading }, $attrs.class]" :style="$attrs.style">
     <input
-      v-bind="listeners()"
+      v-bind="{ ...listeners(), ...plainAttrs() }"
       class="pxn-check__native pxn-ring"
       :type="type === 'switch' ? 'checkbox' : type"
       :role="type === 'switch' ? 'switch' : null"
