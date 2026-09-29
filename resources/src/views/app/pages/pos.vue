@@ -10328,31 +10328,31 @@ export default {
       if (!this.selectedClientId) {
         const msg = this.$t ? this.$t('Select_Customer') : 'Please select a customer before paying.';
         this.makeToast && this.makeToast('warning', msg, this.$t ? this.$t('Warning') : 'Warning');
-        return;
+        return false;
       }
       if (!this.sale || !this.sale.warehouse_id) {
         const msg = this.$t ? this.$t('SelectWarehouse') : 'Please select a warehouse before paying.';
         this.makeToast && this.makeToast('warning', msg, this.$t ? this.$t('Warning') : 'Warning');
-        return;
+        return false;
       }
       // Guard: batch validation — every batch-tracked line must have a complete, valid batch allocation.
       const gate = this.payNowBatchGate;
       if (gate && gate.blocked) {
         this.makeToast('danger', gate.reason, this.$t ? this.$t('Failed') : 'Failed');
-        return;
+        return false;
       }
       // Guard: stock validation before opening payment modal
       const stockCheck = this.verifyAllItemsInStock();
       if (!stockCheck.ok) {
         const msg = this.$t ? `${this.$t('InsufficientStock')} ${stockCheck.productName}` : `Insufficient stock for ${stockCheck.productName}`;
         this.makeToast('danger', msg, this.$t ? this.$t('Failed') : 'Failed');
-        return;
+        return false;
       }
       // Guard: total payable must not be negative (zero allowed)
       if (Number(this.GrandTotal) < 0) {
         const msg = this.$t ? `${this.$t('pos.Total_Payable')} cannot be negative` : 'Total Payable cannot be negative';
         this.makeToast('warning', msg, this.$t ? this.$t('Warning') : 'Warning');
-        return;
+        return false;
       }
       // Open modern payment modal with current sale data
       this.$refs.modernPaymentModal.openModal({
@@ -10360,6 +10360,7 @@ export default {
         reference: this.sale.Ref || "POS-" + new Date().getTime(),
         notes: this.selectedClientId ? `Payment for Customer #${this.selectedClientId}` : 'POS Payment'
       });
+      return true;
     },
 
     onPayPress(ctl) { if (this.openModernPaymentModal() !== false) ctl.play(); },
