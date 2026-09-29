@@ -361,7 +361,7 @@ export default {
 @media (max-width: 720px) { .pxpru__kpis { grid-template-columns: minmax(0, 1fr); } }
 
 .pxpru__sec { margin-bottom: var(--pxn-space-6); }
-.pxpru__sec ::v-deep .pxn-card__body { padding: 0; }
+.pxpru__sec :deep(.pxn-card__body){ padding: 0; }
 .pxpru__tablewrap { padding: var(--pxn-space-4) var(--pxn-space-5) var(--pxn-space-5); }
 
 .pxpru-tbl__wrap { overflow-x: auto; }

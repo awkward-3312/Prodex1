@@ -187,9 +187,9 @@ export default { components: { BForm, BAlert, BBadge, BButton, BCard, BCardText,
 
 <style scoped>
 .settings-form-card { border-radius: 12px; border: none; }
-.settings-form-card ::v-deep .card-header { background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-bottom: 2px solid #e9ecef; padding: 1.25rem 1.5rem; border-radius: 12px 12px 0 0; }
+.settings-form-card :deep(.card-header){ background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-bottom: 2px solid #e9ecef; padding: 1.25rem 1.5rem; border-radius: 12px 12px 0 0; }
 .form-group-modern { margin-bottom: 0; }
-.form-group-modern ::v-deep label { font-weight: 600; color: #495057; margin-bottom: 0.5rem; font-size: 14px; }
+.form-group-modern :deep(label){ font-weight: 600; color: #495057; margin-bottom: 0.5rem; font-size: 14px; }
 .input-icon-wrapper { position: relative; }
 .input-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #6c757d; z-index: 1; }
 .form-control-modern { padding-left: 40px; border-radius: 8px; border: 1px solid #dee2e6; transition: all 0.3s ease; height: 44px; }
@@ -203,7 +203,7 @@ export default { components: { BForm, BAlert, BBadge, BButton, BCard, BCardText,
 .btn-modern-outline:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(40, 167, 69, 0.2); }
 .sync-alert-modern { border-radius: 8px; border-left: 4px solid #667eea; background: #f8f9ff; padding: 1rem; }
 .guide-card { border-radius: 12px; border: none; }
-.guide-card ::v-deep .card-header { background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border-bottom: 2px solid #e9ecef; padding: 1.25rem 1.5rem; border-radius: 12px 12px 0 0; }
+.guide-card :deep(.card-header){ background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); border-bottom: 2px solid #e9ecef; padding: 1.25rem 1.5rem; border-radius: 12px 12px 0 0; }
 .guide-section { padding-bottom: 1rem; border-bottom: 1px solid #f0f0f0; }
 .guide-section:last-child { border-bottom: none; }
 .guide-title { font-weight: 700; color: #2d3748; margin-bottom: 0.75rem; font-size: 15px; display: flex; align-items: center; }

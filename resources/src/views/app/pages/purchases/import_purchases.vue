@@ -1446,30 +1446,30 @@ export default {
 }
 
 /* Make v-select and form controls feel consistent */
-/deep/ .vs__dropdown-toggle {
+:deep(.vs__dropdown-toggle){
   border-radius: 8px;
   border: 1px solid #e5e7eb;
   padding: 3px 4px;
   min-height: 38px;
 }
 
-/deep/ .form-control {
+:deep(.form-control){
   border-radius: 8px;
   border: 1px solid #e5e7eb;
 }
 
-/deep/ .form-control:focus {
+:deep(.form-control:focus){
   border-color: #7c3aed;
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
 }
 
-/deep/ .input-group-text {
+:deep(.input-group-text){
   border-radius: 0 8px 8px 0;
   background: #f9fafb;
   border-color: #e5e7eb;
 }
 
-/deep/ .form-group label {
+:deep(.form-group label){
   font-weight: 600;
   font-size: 13px;
   color: #374151;

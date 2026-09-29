@@ -398,5 +398,5 @@ export default {
 .pxcfg__alert code { font-family: var(--pxn-font-mono, monospace); font-size: 0.9em; }
 .pxcfg__alert ol { margin: var(--pxn-space-2) 0; padding-left: var(--pxn-space-6); }
 .pxcfg__tablewrap { margin-top: var(--pxn-space-4); }
-.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+.pxcfg__del :deep(.pxn-btn__icon){ color: var(--pxn-danger); }
 </style>

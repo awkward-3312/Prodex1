@@ -718,7 +718,7 @@ export default { components: { BCol, BRow, BModal },
 }
 
 /* Booking Detail Modal Responsive */
-::v-deep .booking-calendar-modal-wrapper {
+:deep(.booking-calendar-modal-wrapper){
   .modal-dialog {
     @media (max-width: 768px) {
       max-width: 100% !important;
@@ -764,7 +764,7 @@ export default { components: { BCol, BRow, BModal },
 
 /* Responsive columns in modal */
 @media (max-width: 768px) {
-  ::v-deep .booking-calendar-modal-wrapper {
+  :deep(.booking-calendar-modal-wrapper){
     .row {
       margin-left: -0.5rem;
       margin-right: -0.5rem;

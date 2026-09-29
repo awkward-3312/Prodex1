@@ -561,7 +561,7 @@ export default {
 @media (max-width: 1024px) { .pximps__grid { grid-template-columns: minmax(0, 1fr); } }
 .pximps__right { display: flex; flex-direction: column; gap: var(--pxn-space-5); min-width: 0; }
 .pximps__sec { }
-.pximps__sec ::v-deep .pxn-card__body { display: block; }
+.pximps__sec :deep(.pxn-card__body){ display: block; }
 .pximps__gap { margin-top: var(--pxn-space-5); }
 .pximps__grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--pxn-space-4) var(--pxn-space-5); }
 
@@ -585,7 +585,7 @@ export default {
 .pximps__panel { margin-top: var(--pxn-space-4); }
 .pximps__msglist { margin: 0; padding-left: var(--pxn-space-6); font-size: var(--pxn-fs-sm); }
 .pximps__tip { margin-top: var(--pxn-space-4); }
-.pximps__tip ::v-deep svg { vertical-align: -2px; margin-right: var(--pxn-space-2); }
+.pximps__tip :deep(svg){ vertical-align: -2px; margin-right: var(--pxn-space-2); }
 
 .pximps__preview { margin-top: var(--pxn-space-5); }
 .pximps__preview-head { display: flex; align-items: center; gap: var(--pxn-space-3); margin-bottom: var(--pxn-space-3); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }

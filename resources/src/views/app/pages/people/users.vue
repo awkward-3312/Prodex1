@@ -502,5 +502,5 @@ export default {
 @media (max-width: 560px) { .pxcfg__filters-grid { grid-template-columns: minmax(0, 1fr); } }
 .pxcfg__filters-act { display: flex; gap: var(--pxn-space-3); margin-top: var(--pxn-space-4); }
 .pxcfg__rowbtns { display: flex; gap: var(--pxn-space-2); justify-content: flex-end; }
-.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+.pxcfg__del :deep(.pxn-btn__icon){ color: var(--pxn-danger); }
 </style>

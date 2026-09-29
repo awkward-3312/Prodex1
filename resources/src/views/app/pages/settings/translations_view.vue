@@ -272,6 +272,6 @@ export default {
 .pxcfg__key { font-family: var(--pxn-font-mono, monospace); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-2); }
 .pxcfg__count { text-align: right; margin-top: var(--pxn-space-2); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 .pxcfg__rowbtns { display: flex; gap: var(--pxn-space-2); justify-content: flex-end; }
-.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+.pxcfg__del :deep(.pxn-btn__icon){ color: var(--pxn-danger); }
 .pxcfg__formgrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--pxn-space-4); }
 </style>

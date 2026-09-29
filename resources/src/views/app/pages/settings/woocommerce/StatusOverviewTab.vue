@@ -257,14 +257,14 @@ export default { components: { BBadge, BCard, BTable },
   border: none;
 }
 
-.logs-overview-card ::v-deep .card-header {
+.logs-overview-card :deep(.card-header){
   background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
   border-bottom: 2px solid #e9ecef;
   padding: 1.25rem 1.5rem;
   border-radius: 12px 12px 0 0;
 }
 
-.logs-table ::v-deep thead.logs-table-header th {
+.logs-table :deep(thead.logs-table-header th){
   background: #f8f9fa;
   font-weight: 700;
   color: #495057;
@@ -275,16 +275,16 @@ export default { components: { BBadge, BCard, BTable },
   padding: 1rem;
 }
 
-.logs-table ::v-deep tbody tr {
+.logs-table :deep(tbody tr){
   transition: all 0.2s ease;
 }
 
-.logs-table ::v-deep tbody tr:hover {
+.logs-table :deep(tbody tr:hover){
   background: #f8f9ff;
   transform: scale(1.01);
 }
 
-.logs-table ::v-deep tbody td {
+.logs-table :deep(tbody td){
   padding: 1rem;
   vertical-align: middle;
 }

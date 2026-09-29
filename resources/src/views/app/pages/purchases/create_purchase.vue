@@ -1593,7 +1593,7 @@ export default {
 .pxpuf__hint { margin-top: var(--pxn-space-2); font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 
 .pxpuf__chargerow { display: flex; align-items: center; gap: var(--pxn-space-2); margin-top: var(--pxn-space-2); }
-.pxpuf__chargerow > .pxn-input, .pxpuf__chargerow ::v-deep .pxn-field { flex: 1; }
+.pxpuf__chargerow > .pxn-input, .pxpuf__chargerow :deep(.pxn-field){ flex: 1; }
 .pxpuf__chargename { flex: 1; font-size: var(--pxn-fs-sm); color: var(--pxn-ink); }
 
 .pxpuf__totals { display: flex; justify-content: flex-end; }

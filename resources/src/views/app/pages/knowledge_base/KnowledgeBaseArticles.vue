@@ -171,5 +171,5 @@ export default {
 .pxkb__row-meta { display: flex; align-items: center; gap: var(--pxn-space-2); flex-wrap: wrap; margin-top: 3px; }
 .pxkb__row-group { font-size: var(--pxn-fs-xs, 0.8rem); color: var(--pxn-primary); background: var(--pxn-primary-soft, rgba(94,106,210,0.1)); padding: 2px 8px; border-radius: var(--pxn-radius-sm, 6px); }
 .pxkb__rowbtns { display: flex; gap: var(--pxn-space-1); justify-content: flex-end; }
-.pxkb__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+.pxkb__del :deep(.pxn-btn__icon){ color: var(--pxn-danger); }
 </style>

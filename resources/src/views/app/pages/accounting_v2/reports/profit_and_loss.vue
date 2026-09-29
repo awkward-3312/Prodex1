@@ -186,7 +186,7 @@ export default {
 @media (max-width: 720px) { .pxac__kpis--3 { grid-template-columns: minmax(0, 1fr); } }
 .pxac__filtercard { margin-top: var(--pxn-space-5); }
 .pxac__filterrow { display: flex; align-items: flex-end; gap: var(--pxn-space-5); flex-wrap: wrap; }
-.pxac__filterrow ::v-deep .pxn-field { min-width: 160px; }
+.pxac__filterrow :deep(.pxn-field){ min-width: 160px; }
 .pxac__tablewrap { margin-top: var(--pxn-space-5); }
 .pxac__pltotals { margin-top: var(--pxn-space-3); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); overflow: hidden; }
 .pxac__pltotal { display: flex; align-items: center; justify-content: space-between; gap: var(--pxn-space-4); padding: var(--pxn-space-3) var(--pxn-space-5); background: var(--pxn-surface-2); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); border-bottom: 1px solid var(--pxn-border); }

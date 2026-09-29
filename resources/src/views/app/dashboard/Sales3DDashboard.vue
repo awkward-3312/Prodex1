@@ -828,7 +828,7 @@ export default {
   position: relative;
 }
 
-.date-range-filter ::v-deep .vue-daterange-picker {
+.date-range-filter :deep(.vue-daterange-picker){
   width: 100% !important;
 }
 
@@ -870,11 +870,11 @@ export default {
 }
 
 /* vue-select on the gradient hero — white-on-glass */
-.warehouse-filter ::v-deep .v-select {
+.warehouse-filter :deep(.v-select){
   width: 100%;
   background: transparent !important;
 }
-.warehouse-filter ::v-deep .v-select .vs__dropdown-toggle {
+.warehouse-filter :deep(.v-select .vs__dropdown-toggle){
   background: rgba(255, 255, 255, 0.2) !important;
   border: none !important;
   border-radius: 8px !important;
@@ -886,26 +886,26 @@ export default {
   display: flex !important;
   align-items: center !important;
 }
-.warehouse-filter ::v-deep .v-select .vs__dropdown-toggle * {
+.warehouse-filter :deep(.v-select .vs__dropdown-toggle *){
   background: transparent !important;
 }
-.warehouse-filter ::v-deep .v-select .vs__dropdown-toggle:hover {
+.warehouse-filter :deep(.v-select .vs__dropdown-toggle:hover){
   background: rgba(255, 255, 255, 0.3) !important;
 }
-.warehouse-filter ::v-deep .v-select .vs__dropdown-toggle:focus,
-.warehouse-filter ::v-deep .v-select .vs__dropdown-toggle:active {
+.warehouse-filter :deep(.v-select .vs__dropdown-toggle:focus),
+.warehouse-filter :deep(.v-select .vs__dropdown-toggle:active){
   background: rgba(255, 255, 255, 0.3) !important;
   outline: none;
   box-shadow: none !important;
 }
-.warehouse-filter ::v-deep .v-select .vs__selected-options {
+.warehouse-filter :deep(.v-select .vs__selected-options){
   padding: 0 !important;
   margin: 0 !important;
   display: flex;
   align-items: center;
   flex: 1;
 }
-.warehouse-filter ::v-deep .v-select .vs__selected-options .vs__selected {
+.warehouse-filter :deep(.v-select .vs__selected-options .vs__selected){
   color: white !important;
   font-weight: 600 !important;
   font-size: 0.95rem !important;
@@ -919,13 +919,13 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.warehouse-filter ::v-deep .v-select .vs__selected-options .vs__selected i {
+.warehouse-filter :deep(.v-select .vs__selected-options .vs__selected i){
   color: white;
   margin-right: 0.5rem;
   flex-shrink: 0;
 }
-.warehouse-filter ::v-deep .v-select .vs__search,
-.warehouse-filter ::v-deep .v-select .vs__search:focus {
+.warehouse-filter :deep(.v-select .vs__search),
+.warehouse-filter :deep(.v-select .vs__search:focus){
   color: white !important;
   font-weight: 600 !important;
   font-size: 0.95rem !important;
@@ -937,22 +937,22 @@ export default {
   line-height: 1.5 !important;
   box-shadow: none !important;
 }
-.warehouse-filter ::v-deep .v-select .vs__search::placeholder {
+.warehouse-filter :deep(.v-select .vs__search::placeholder){
   color: rgba(255, 255, 255, 0.7) !important;
   font-weight: 600 !important;
 }
-.warehouse-filter ::v-deep .v-select .vs__actions {
+.warehouse-filter :deep(.v-select .vs__actions){
   padding: 0 !important;
   margin-left: 0.5rem;
 }
-.warehouse-filter ::v-deep .v-select .vs__clear {
+.warehouse-filter :deep(.v-select .vs__clear){
   fill: white !important;
   margin-right: 0.5rem;
 }
-.warehouse-filter ::v-deep .v-select .vs__open-indicator {
+.warehouse-filter :deep(.v-select .vs__open-indicator){
   fill: white !important;
 }
-.warehouse-filter ::v-deep .v-select .vs__dropdown-menu {
+.warehouse-filter :deep(.v-select .vs__dropdown-menu){
   z-index: 2056 !important;
   background: #ffffff !important;
   border-radius: 8px !important;
@@ -961,8 +961,8 @@ export default {
   margin-top: 0.5rem !important;
   padding: 4px 0 !important;
 }
-.warehouse-filter ::v-deep .v-select .vs__dropdown-menu .vs__dropdown-option,
-.warehouse-filter ::v-deep .v-select .vs__dropdown-menu li {
+.warehouse-filter :deep(.v-select .vs__dropdown-menu .vs__dropdown-option),
+.warehouse-filter :deep(.v-select .vs__dropdown-menu li){
   padding: 0.6rem 1rem !important;
   color: #1f2937 !important;
   background: #ffffff !important;
@@ -972,99 +972,99 @@ export default {
   align-items: center !important;
   cursor: pointer;
 }
-.warehouse-filter ::v-deep .v-select .vs__dropdown-menu .vs__dropdown-option i {
+.warehouse-filter :deep(.v-select .vs__dropdown-menu .vs__dropdown-option i){
   color: #1f2937 !important;
   margin-right: 0.5rem;
 }
-.warehouse-filter ::v-deep .v-select .vs__dropdown-menu .vs__dropdown-option--highlight,
-.warehouse-filter ::v-deep .v-select .vs__dropdown-menu .vs__dropdown-option--highlight * {
+.warehouse-filter :deep(.v-select .vs__dropdown-menu .vs__dropdown-option--highlight),
+.warehouse-filter :deep(.v-select .vs__dropdown-menu .vs__dropdown-option--highlight *){
   background: #8B5CF6 !important;
   color: #ffffff !important;
 }
-.warehouse-filter ::v-deep .v-select .vs__dropdown-menu .vs__no-options {
+.warehouse-filter :deep(.v-select .vs__dropdown-menu .vs__no-options){
   color: #64748b !important;
   background: #ffffff !important;
   padding: 0.6rem 1rem !important;
 }
 
-.date-range-filter ::v-deep .form-control.reportrange-text {
+.date-range-filter :deep(.form-control.reportrange-text){
   background: transparent !important;
   color: white !important;
   border: none !important;
   padding: 0 !important;
 }
-.date-range-filter ::v-deep .daterangepicker {
+.date-range-filter :deep(.daterangepicker){
   z-index: 2055 !important;
   color: #111827 !important;
 }
 
 /* Calendar dropdown — responsive layout matches main dashboard */
 @media (max-width: 767px) {
-  .date-range-filter ::v-deep .daterangepicker {
+  .date-range-filter :deep(.daterangepicker){
     left: 12px !important;
     right: 12px !important;
     width: calc(100% - 24px) !important;
     max-width: calc(100vw - 24px) !important;
   }
-  .date-range-filter ::v-deep .daterangepicker .calendars-container {
+  .date-range-filter :deep(.daterangepicker .calendars-container){
     display: flex !important;
     flex-direction: column !important;
   }
-  .date-range-filter ::v-deep .daterangepicker .drp-calendar {
+  .date-range-filter :deep(.daterangepicker .drp-calendar){
     float: none !important;
     width: 100% !important;
     padding: 10px !important;
   }
-  .date-range-filter ::v-deep .daterangepicker .drp-calendar.right {
+  .date-range-filter :deep(.daterangepicker .drp-calendar.right){
     display: none !important;
   }
-  .date-range-filter ::v-deep .daterangepicker .ranges {
+  .date-range-filter :deep(.daterangepicker .ranges){
     float: none !important;
     width: 100% !important;
     margin: 10px 0 0 0 !important;
     border-top: 1px solid #e5e7eb !important;
     padding-top: 10px !important;
   }
-  .date-range-filter ::v-deep .daterangepicker .ranges ul {
+  .date-range-filter :deep(.daterangepicker .ranges ul){
     width: 100% !important;
   }
-  .date-range-filter ::v-deep .daterangepicker .ranges li {
+  .date-range-filter :deep(.daterangepicker .ranges li){
     width: 100% !important;
     margin-bottom: 5px !important;
     text-align: center !important;
   }
-  .date-range-filter ::v-deep .daterangepicker .calendar-table {
+  .date-range-filter :deep(.daterangepicker .calendar-table){
     width: 100% !important;
   }
-  .date-range-filter ::v-deep .daterangepicker .calendar-table th,
-  .date-range-filter ::v-deep .daterangepicker .calendar-table td {
+  .date-range-filter :deep(.daterangepicker .calendar-table th),
+  .date-range-filter :deep(.daterangepicker .calendar-table td){
     padding: 6px !important;
     font-size: 0.875rem !important;
   }
-  .date-range-filter ::v-deep .daterangepicker .drp-buttons {
+  .date-range-filter :deep(.daterangepicker .drp-buttons){
     display: flex !important;
     flex-direction: column !important;
     gap: 8px !important;
     padding: 10px !important;
   }
-  .date-range-filter ::v-deep .daterangepicker .drp-buttons .btn {
+  .date-range-filter :deep(.daterangepicker .drp-buttons .btn){
     width: 100% !important;
     margin: 0 !important;
   }
 }
 @media (max-width: 576px) {
-  .date-range-filter ::v-deep .daterangepicker {
+  .date-range-filter :deep(.daterangepicker){
     left: 8px !important;
     right: 8px !important;
     width: calc(100% - 16px) !important;
     max-width: calc(100vw - 16px) !important;
   }
-  .date-range-filter ::v-deep .daterangepicker .calendar-table th,
-  .date-range-filter ::v-deep .daterangepicker .calendar-table td {
+  .date-range-filter :deep(.daterangepicker .calendar-table th),
+  .date-range-filter :deep(.daterangepicker .calendar-table td){
     padding: 4px !important;
     font-size: 0.75rem !important;
   }
-  .date-range-filter ::v-deep .daterangepicker .drp-calendar {
+  .date-range-filter :deep(.daterangepicker .drp-calendar){
     padding: 8px !important;
   }
 }

@@ -501,5 +501,5 @@ export default {
 .pxcr-detail__denomhead span:last-child, .pxcr-detail__denomrow span:nth-child(2), .pxcr-detail__denomrow strong { text-align: right; }
 .pxcr-detail__note { margin-top: var(--pxn-space-3); }
 .pxcr-detail__note p { margin: var(--pxn-space-1) 0 0; color: var(--pxn-ink-2); white-space: pre-wrap; }
-.pxcr ::v-deep .daterangepicker { z-index: 2055 !important; }
+.pxcr :deep(.daterangepicker){ z-index: 2055 !important; }
 </style>

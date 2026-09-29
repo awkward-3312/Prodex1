@@ -734,9 +734,9 @@ export default {
 @media (max-width: 620px) { .pxsd { padding: var(--pxn-space-6) var(--pxn-space-5); } }
 .pxsd__pad { padding: var(--pxn-space-6) 0; }
 .pxsd__card { margin-top: var(--pxn-space-5); }
-.pxsd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-8); }
-@media (max-width: 620px) { .pxsd__card ::v-deep .pxn-card__body { padding: var(--pxn-space-5); } }
-@media print { .pxsd { padding: 0; background: #fff; } .pxsd__card ::v-deep .pxn-card__body { padding: 0; } }
+.pxsd__card :deep(.pxn-card__body){ padding: var(--pxn-space-8); }
+@media (max-width: 620px) { .pxsd__card :deep(.pxn-card__body){ padding: var(--pxn-space-5); } }
+@media print { .pxsd { padding: 0; background: #fff; } .pxsd__card :deep(.pxn-card__body){ padding: 0; } }
 
 .pxsd__origin { font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
 .pxsd__origin a { color: var(--pxn-primary); font-weight: var(--pxn-fw-medium); text-decoration: none; }

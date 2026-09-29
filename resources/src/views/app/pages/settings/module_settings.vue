@@ -319,7 +319,7 @@ export default {
 @media (max-width: 560px) { .pxcfg__stats { grid-template-columns: minmax(0, 1fr); } }
 .pxcfg__subhead { margin: 0; font-size: var(--pxn-fs-md); font-weight: var(--pxn-fw-semibold); }
 .pxcfg__seg { display: flex; gap: var(--pxn-space-2); }
-.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+.pxcfg__del :deep(.pxn-btn__icon){ color: var(--pxn-danger); }
 
 .pxmod__drop {
   border: 1px dashed var(--pxn-border-strong, var(--pxn-border)); border-radius: var(--pxn-radius-lg);

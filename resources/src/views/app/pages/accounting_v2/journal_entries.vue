@@ -405,11 +405,11 @@ export default {
 .pxac__je-tbl td { padding: var(--pxn-space-2) var(--pxn-space-3); border-bottom: 1px solid var(--pxn-border); vertical-align: middle; }
 .pxac__je-tbl tr:last-child td { border-bottom: 0; }
 .pxac__je-tbl .is-right { text-align: right; }
-.pxac__je-tbl ::v-deep .pxn-input.is-right input,
-.pxac__je-tbl ::v-deep input.is-right { text-align: right; }
-.pxac__je-tbl ::v-deep .pxn-input[aria-invalid="true"],
-.pxac__je-tbl ::v-deep .vs__dropdown-toggle.is-invalid,
-.pxac__je-tbl ::v-deep .is-invalid .vs__dropdown-toggle { border-color: var(--pxn-danger); }
+.pxac__je-tbl :deep(.pxn-input.is-right input),
+.pxac__je-tbl :deep(input.is-right){ text-align: right; }
+.pxac__je-tbl :deep(.pxn-input[aria-invalid="true"]),
+.pxac__je-tbl :deep(.vs__dropdown-toggle.is-invalid),
+.pxac__je-tbl :deep(.is-invalid .vs__dropdown-toggle){ border-color: var(--pxn-danger); }
 .pxac__je-col-acct { width: 38%; }
 .pxac__je-col-x { width: 36px; }
 

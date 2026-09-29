@@ -533,7 +533,7 @@ export default {
 .pximp__lead { margin: var(--pxn-space-3) 0 var(--pxn-space-6); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-3); }
 
 .pximp__sec { margin-bottom: var(--pxn-space-6); }
-.pximp__sec ::v-deep .pxn-card__body { display: flex; flex-direction: column; gap: var(--pxn-space-5); }
+.pximp__sec :deep(.pxn-card__body){ display: flex; flex-direction: column; gap: var(--pxn-space-5); }
 
 .pximp-dz {
   border: 2px dashed var(--pxn-border-strong); border-radius: var(--pxn-radius-lg);
@@ -557,7 +557,7 @@ export default {
 .pximp-dz__filesize { font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 
 .pximp__example { border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface); }
-.pximp__example ::v-deep .pxn-card__body { display: block; padding: var(--pxn-space-5); }
+.pximp__example :deep(.pxn-card__body){ display: block; padding: var(--pxn-space-5); }
 .pximp__example-head { display: flex; align-items: center; gap: var(--pxn-space-2); font-size: var(--pxn-fs-sm); font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
 .pximp__example-p { margin: var(--pxn-space-3) 0; font-size: var(--pxn-fs-xs); color: var(--pxn-ink-3); }
 .pximp__req-badge {
@@ -593,5 +593,5 @@ export default {
 .pximp__chip.is-req { background: var(--pxn-success-soft); color: var(--pxn-success-ink); }
 .pximp__chip.is-opt { background: var(--pxn-surface-2); color: var(--pxn-ink-2); border: 1px solid var(--pxn-border); }
 
-.pximp__tip ::v-deep svg { vertical-align: -2px; margin-right: var(--pxn-space-2); }
+.pximp__tip :deep(svg){ vertical-align: -2px; margin-right: var(--pxn-space-2); }
 </style>

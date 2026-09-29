@@ -501,5 +501,5 @@ export default {
 .pxrl__tablewrap { margin-top: var(--pxn-space-5); }
 .pxrl__totalrow { display: flex; align-items: center; justify-content: flex-end; gap: var(--pxn-space-6); margin-top: var(--pxn-space-3); padding: var(--pxn-space-3) var(--pxn-space-5); border: 1px solid var(--pxn-border); border-radius: var(--pxn-radius-md); background: var(--pxn-surface-2); font-size: var(--pxn-fs-sm); color: var(--pxn-ink-2); flex-wrap: wrap; }
 .pxrl__totalrow > span:first-child { margin-right: auto; font-weight: var(--pxn-fw-semibold); color: var(--pxn-ink); }
-.pxrl ::v-deep .daterangepicker { z-index: 2055 !important; }
+.pxrl :deep(.daterangepicker){ z-index: 2055 !important; }
 </style>

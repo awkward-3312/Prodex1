@@ -736,7 +736,7 @@ export default { components: { BFormGroup, BFormInput, BButton, BCol, BRow, BMod
    BOOKING DETAIL MODAL
    ======================================== */
 
-::v-deep .booking-detail-modal-wrapper {
+:deep(.booking-detail-modal-wrapper){
   .modal-dialog {
     max-width: 900px !important;
     margin: 0.5rem !important;
@@ -1505,8 +1505,7 @@ export default { components: { BFormGroup, BFormInput, BButton, BCol, BRow, BMod
 }
 
 .modern-table {
-  ::v-deep {
-    .vgt-table {
+  :deep(.vgt-table) {
       border: none;
 
       thead {
@@ -1540,7 +1539,6 @@ export default { components: { BFormGroup, BFormInput, BButton, BCol, BRow, BMod
         }
       }
     }
-  }
 }
 
 .action-buttons-cell {
@@ -1637,14 +1635,11 @@ export default { components: { BFormGroup, BFormInput, BButton, BCol, BRow, BMod
 }
 
 .modern-sidebar {
-  ::v-deep {
-    .b-sidebar-header {
+  :deep(.b-sidebar-header) {
       padding: 1.5rem;
       border-bottom: 2px solid #f1f5f9;
-    }
   }
 }
-
 .sidebar-content {
   padding: 1.5rem;
 }
@@ -1652,13 +1647,11 @@ export default { components: { BFormGroup, BFormInput, BButton, BCol, BRow, BMod
 .modern-form-group {
   margin-bottom: 1.5rem;
 
-  ::v-deep {
-    label {
-      font-weight: 600;
-      color: #334155;
-      font-size: 0.875rem;
-      margin-bottom: 0.5rem;
-    }
+  :deep(label) {
+    font-weight: 600;
+    color: #334155;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
   }
 }
 
@@ -1675,18 +1668,16 @@ export default { components: { BFormGroup, BFormInput, BButton, BCol, BRow, BMod
 }
 
 .modern-select {
-  ::v-deep {
-    .vs__dropdown-toggle {
+  :deep(.vs__dropdown-toggle) {
       border-radius: 10px;
       border: 2px solid #e2e8f0;
       padding: 0.5rem 1rem;
     }
 
-    &.vs--open .vs__dropdown-toggle {
+    :deep(.vs--open .vs__dropdown-toggle) {
       border-color: #667eea;
       box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
-  }
 }
 
 .modern-btn {

@@ -276,7 +276,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   justify-content: center;
   flex-shrink: 0;
 }
-.tk-hero__icon >>> svg { width: 28px; height: 28px; }
+.tk-hero__icon :deep(svg){ width: 28px; height: 28px; }
 .tk-hero__title {
   margin: 0;
   font-size: 22px;
@@ -308,7 +308,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   color: #4a37d6;
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
 }
-.tk-hero__btn >>> svg { width: 18px; height: 18px; }
+.tk-hero__btn :deep(svg){ width: 18px; height: 18px; }
 .tk-hero__btn--sm { padding: 9px 16px; font-size: 13px; }
 
 /* Stat cards */
@@ -343,7 +343,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   justify-content: center;
   flex-shrink: 0;
 }
-.tk-stat__icon >>> svg { width: 24px; height: 24px; }
+.tk-stat__icon :deep(svg){ width: 24px; height: 24px; }
 .tk-stat__body { display: flex; flex-direction: column; line-height: 1.1; }
 .tk-stat__value { font-size: 26px; font-weight: 700; color: #2b3553; }
 .tk-stat__label { font-size: 13px; color: #8a94a6; margin-top: 2px; }
@@ -430,7 +430,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   transition: all 0.15s ease;
 }
 .tk-action:hover { background: var(--tk-primary); color: #fff; }
-.tk-action >>> svg { width: 18px; height: 18px; }
+.tk-action :deep(svg){ width: 18px; height: 18px; }
 
 /* Empty state */
 .tk-empty { text-align: center; padding: 50px 20px; }
@@ -445,7 +445,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   align-items: center;
   justify-content: center;
 }
-.tk-empty__icon >>> svg { width: 34px; height: 34px; }
+.tk-empty__icon :deep(svg){ width: 34px; height: 34px; }
 .tk-empty__title { color: #2b3553; font-weight: 600; margin-bottom: 6px; }
 .tk-empty__desc { color: #8a94a6; font-size: 14px; margin-bottom: 0; }
 </style>

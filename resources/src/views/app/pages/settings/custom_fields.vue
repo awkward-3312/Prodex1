@@ -393,5 +393,5 @@ export default {
 .pxcfg__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--pxn-space-4) var(--pxn-space-5); }
 @media (max-width: 560px) { .pxcfg__grid { grid-template-columns: minmax(0, 1fr); } }
 .pxcfg__rowbtns { display: flex; gap: var(--pxn-space-2); justify-content: flex-end; }
-.pxcfg__del ::v-deep .pxn-btn__icon { color: var(--pxn-danger); }
+.pxcfg__del :deep(.pxn-btn__icon){ color: var(--pxn-danger); }
 </style>

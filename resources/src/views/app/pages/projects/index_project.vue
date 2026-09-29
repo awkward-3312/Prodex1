@@ -1312,8 +1312,7 @@ export default { components: { BButton, BCol, BRow, BSidebar, BFormGroup, BFormI
 }
 
 .modern-table {
-  ::v-deep {
-    .vgt-table {
+  :deep(.vgt-table) {
       border: none;
       
       thead {
@@ -1347,7 +1346,6 @@ export default { components: { BButton, BCol, BRow, BSidebar, BFormGroup, BFormI
         }
       }
     }
-  }
 }
 
 .action-buttons-cell {
@@ -1775,8 +1773,7 @@ export default { components: { BButton, BCol, BRow, BSidebar, BFormGroup, BFormI
 // MODERN SIDEBAR
 // ============================================
 .modern-sidebar {
-  ::v-deep {
-    .b-sidebar-header {
+  :deep(.b-sidebar-header) {
       padding: 1.5rem;
       border-bottom: 2px solid #f1f5f9;
 
@@ -1789,18 +1786,16 @@ export default { components: { BButton, BCol, BRow, BSidebar, BFormGroup, BFormI
           opacity: 1;
         }
       }
-    }
+  }
 
-    // Remove Bootstrap focus ring for buttons inside the sidebar
-    .btn:focus,
-    .btn:active:focus,
-    .btn.focus {
+  // Remove Bootstrap focus ring for buttons inside the sidebar
+    :deep(.btn:focus),
+  :deep(.btn:active:focus),
+  :deep(.btn.focus) {
       outline: none !important;
       box-shadow: none !important;
-    }
   }
 }
-
 .sidebar-content {
   padding: 1.5rem;
 }
@@ -1808,13 +1803,11 @@ export default { components: { BButton, BCol, BRow, BSidebar, BFormGroup, BFormI
 .modern-form-group {
   margin-bottom: 1.5rem;
 
-  ::v-deep {
-    label {
-      font-weight: 600;
-      color: #334155;
-      font-size: 0.875rem;
-      margin-bottom: 0.5rem;
-    }
+  :deep(label) {
+    font-weight: 600;
+    color: #334155;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
   }
 }
 
@@ -1831,22 +1824,20 @@ export default { components: { BButton, BCol, BRow, BSidebar, BFormGroup, BFormI
 }
 
 .modern-select {
-  ::v-deep {
-    .vs__dropdown-toggle {
+  :deep(.vs__dropdown-toggle) {
       border-radius: 10px;
       border: 2px solid #e2e8f0;
       padding: 0.5rem 1rem;
     }
 
-    .vs__search {
+    :deep(.vs__search) {
       padding: 0.25rem 0;
     }
 
-    &.vs--open .vs__dropdown-toggle {
+    :deep(.vs--open .vs__dropdown-toggle) {
       border-color: #667eea;
       box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
-  }
 }
 
 .modern-btn {

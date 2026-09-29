@@ -274,7 +274,7 @@ export default { components: { BForm, BFormCheckbox, BBadge, BButton, BCard, BCo
   border: none;
 }
 
-.stores-card ::v-deep .card-header {
+.stores-card :deep(.card-header){
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   border-bottom: 2px solid #e9ecef;
   padding: 1.25rem 1.5rem;
