@@ -7,9 +7,7 @@
     <!-- Full Page Loading Overlay for PDF Download -->
     <div v-if="isPdfLoading" class="pdf-loading-overlay">
       <div class="pdf-loading-content">
-        <div class="pdf-spinner-wrapper">
-          <div class="pdf-spinner"></div>
-        </div>
+        <div class="pdf-spinner-wrapper"><px-loader size="md" :label="$t('Generating_PDF') || 'Generating PDF'" hide-label /></div>
         <h3 class="pdf-loading-title">{{ $t('Generating_PDF') || 'Generating PDF' }}</h3>
         <p class="pdf-loading-message">{{ $t('Please_wait') || 'Please wait while we prepare your document...' }}</p>
       </div>
@@ -421,6 +419,7 @@
 </template>
 
 <script>
+import PxLoader from "@/components/px-next/PxLoader.vue";
 import { modals, notifications } from "@/platform";
 import { vBTooltip, BSidebar, vBToggle, BModal, BButton, BCol, BRow, BFormGroup, BFormInput } from "@/platform/bootstrap";
 import NProgress from "nprogress";
