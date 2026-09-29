@@ -593,28 +593,9 @@
         </div>
     </footer>
 
-    <div class="l5-cookie" id="cookieConsent">
-        <h4>{{ __('landing.cookie_banner_title') }}</h4>
-        <p>
-            {{ __('landing.cookie_banner_text') }}
-            <a href="{{ route('central.privacy-policy') }}#cookies">{{ __('landing.privacy_policy') }}</a>
-        </p>
-        <div class="l5-cookie__actions">
-            <button type="button" class="l5-cookie__go" id="cookieAcceptBtn">{{ __('landing.cookie_accept_all') }}</button>
-            <button type="button" id="cookieRejectBtn">{{ __('landing.cookie_reject_all') }}</button>
-            <button type="button" id="cookieCustomizeBtn">{{ __('landing.cookie_customize') }}</button>
-        </div>
-        <div id="cookieCustomize">
-            <p>{{ __('landing.cookie_analytics') }}</p>
-            <label>
-                <input type="checkbox" id="cookieAnalytics"> {{ __('landing.cookie_analytics') }}
-            </label>
-            <label>
-                <input type="checkbox" id="cookieMarketing"> {{ __('landing.cookie_marketing') }}
-            </label>
-            <button type="button" class="l5-cookie__go" id="cookieSaveBtn">{{ __('landing.cookie_save_preferences') }}</button>
-        </div>
-    </div>
+    {{-- Consentimiento de cookies: implementación única (assets_super/js/prodex-consent.js) --}}
+    @include('central.partials.analytics')
+
 
     <script src="{{ asset('assets_super/js/landing-five.js') }}"></script>
 </body>
