@@ -50,15 +50,17 @@ export default {
     listeners() { return forwardListeners(this.$attrs); },
     plainAttrs() { return forwardPlainAttrs(this.$attrs); },
     onChange(e) {
+      const checkedNow = e.target.checked;
+      e.target.checked = this.isChecked;
       let next;
       if (Array.isArray(this.modelValue)) {
         next = this.modelValue.slice();
         const i = next.indexOf(this.nativeValue);
-        e.target.checked ? (i === -1 && next.push(this.nativeValue)) : (i > -1 && next.splice(i, 1));
+        checkedNow ? (i === -1 && next.push(this.nativeValue)) : (i > -1 && next.splice(i, 1));
       } else if (this.type === "radio") {
         next = this.nativeValue;
       } else {
-        next = e.target.checked;
+        next = checkedNow;
       }
       this.$emit("update:modelValue", next);
       this.$emit("change", next);
