@@ -215,10 +215,16 @@ class LandingPrimeContractTest extends TestCase
         $this->assertStringContainsString("url('/erp-honduras')", $b);
     }
 
-    public function test_blade_keeps_conversions_and_cookie_banner(): void
+    public function test_blade_keeps_conversions_and_shared_cookie_consent(): void
     {
         $b = $this->read('resources/views/central/landing-prime.blade.php');
-        $this->assertStringContainsString('id="lpCookie"', $b);
+        $this->assertStringContainsString("@include('central.partials.analytics')", $b);
+        $this->assertStringContainsString('id="lpCookiePrefs"', $b);
+        $consent = $this->read('resources/views/central/partials/analytics.blade.php');
+        $this->assertStringContainsString('prodex-consent.css', $consent);
+        $this->assertStringContainsString('prodex-consent.js', $consent);
+        $this->assertStringContainsString('data-consent-version=', $consent);
+        $this->assertStringContainsString('id: "pxcConsent", role: "dialog"', $this->read('public/assets_super/js/prodex-consent.js'));
         $this->assertStringContainsString("route('central.locale'", $b);           // switch de idioma
         $this->assertStringContainsString('show_sales_floating_button', $b);        // botón flotante WhatsApp
         $this->assertStringContainsString("route('central.privacy-policy')", $b);

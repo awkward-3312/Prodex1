@@ -332,8 +332,8 @@
     /* ── Cookie consent ───────────────────────────────────────────
        Ownership moved to public/assets_super/js/prodex-consent.js
        (window.ProdexConsent): it persists the decision, gates Google
-       Analytics behind the "analytics" category and wires the #lpCookie
-       banner + the footer "Preferencias de cookies" link. Kept a thin
+       Analytics behind the "analytics" category and wires the shared
+       #pxcConsent banner + the footer "Preferencias de cookies" link. Kept a thin
        back-compat shim so any old caller of window.lpReopenCookies() still
        re-opens the preferences dialog. ── */
     window.lpReopenCookies = function () {
