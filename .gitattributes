@@ -1,1 +1,5 @@
 *.zip filter=lfs diff=lfs merge=lfs -text
+resources/views/central/landing-three.blade.php whitespace=cr-at-eol
+resources/views/central/landing-three.before-hero.blade.php whitespace=cr-at-eol
+resources/views/central/landing-four.blade.php whitespace=cr-at-eol
+resources/views/central/landing-six.blade.php whitespace=cr-at-eol
