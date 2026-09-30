@@ -31,7 +31,7 @@
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: #8b5cf6;
+    background: var(--brand-accent);
     display: inline-block;
     animation: loader-dots 1.2s ease-in-out infinite;
     -webkit-animation: loader-dots 1.2s ease-in-out infinite;
