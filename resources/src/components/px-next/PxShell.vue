@@ -403,7 +403,8 @@ export default {
         !this.brandLogoBroken && this.currentUser && this.currentUser.logo
           ? this.currentUser.logo
           : "logo-default.png";
-      return this.$imgUrl("settings", logo);
+      const src = this.$imgUrl("settings", logo);
+      return src.includes('/images/brand-assets/') ? window.__brandSymbol : src;
     },
 
     // ---- Selector de alcance de sucursal --------------------------------

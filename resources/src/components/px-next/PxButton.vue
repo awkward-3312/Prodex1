@@ -86,8 +86,8 @@ export default {
   background: var(--pxn-primary);
   color: var(--pxn-primary-contrast);
 }
-.pxn-btn--primary:hover:not([disabled]):not([aria-disabled="true"]) { background: var(--pxn-primary-hover); }
-.pxn-btn--primary:active:not([disabled]) { background: var(--pxn-primary-active); }
+.pxn-btn--primary:hover:not([disabled]):not([aria-disabled="true"]) { background: var(--pxn-primary-hover); box-shadow: inset 0 -2px 0 var(--brand-accent); }
+.pxn-btn--primary:active:not([disabled]) { background: var(--pxn-primary-active); box-shadow: inset 0 0 0 2px var(--brand-accent); }
 
 /* secondary — neutral outline */
 .pxn-btn--secondary {

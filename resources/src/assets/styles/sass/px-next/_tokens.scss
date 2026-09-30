@@ -28,10 +28,10 @@
   --pxn-border-inverse:  rgba(255, 255, 255, 0.12);
 
   // Ink
-  --pxn-ink:          #161b24;   // primary text + display numerals
+  --pxn-ink:          var(--prodex-ink);   // primary text + display numerals
   --pxn-ink-2:        #57606f;   // secondary text / labels
   --pxn-ink-3:        #838d9b;   // captions / meta / placeholder
-  --pxn-ink-disabled: #aeb4be;
+  --pxn-ink-disabled: var(--pxn-ink-2);
   --pxn-ink-inverse:  #ffffff;
 
   // ---------------------------------------------------------------------------
@@ -39,18 +39,18 @@
   // Tints/shades are computed from it with color-mix so any tenant hue works.
   // Fallback keeps the playground legible if the runtime var is absent.
   // ---------------------------------------------------------------------------
-  --pxn-primary:          var(--primary-color, #6d28d9);
-  --pxn-primary-contrast: #ffffff;
+  --pxn-primary:          var(--primary-color, var(--prodex-ink));
+  --pxn-primary-contrast: var(--primary-contrast, var(--prodex-white));
 
-  --pxn-primary-hover:  color-mix(in srgb, var(--pxn-primary) 86%, #000);
-  --pxn-primary-active: color-mix(in srgb, var(--pxn-primary) 74%, #000);
+  --pxn-primary-hover:  var(--primary-color-darker);
+  --pxn-primary-active: var(--primary-color-darker);
   --pxn-primary-border: color-mix(in srgb, var(--pxn-primary) 34%, #fff);
-  --pxn-primary-soft:   color-mix(in srgb, var(--pxn-primary) 12%, #fff);
-  --pxn-primary-softer: color-mix(in srgb, var(--pxn-primary)  7%, #fff);
-  --pxn-primary-ink:    color-mix(in srgb, var(--pxn-primary) 72%, #000);
+  --pxn-primary-soft:   var(--primary-color-soft);
+  --pxn-primary-softer: color-mix(in srgb, var(--brand-accent) 7%, #fff);
+  --pxn-primary-ink:    var(--primary-text, var(--prodex-ink));
 
-  --pxn-focus-ring:     color-mix(in srgb, var(--pxn-primary) 42%, transparent);
-  --pxn-selected-bg:    color-mix(in srgb, var(--pxn-primary)  9%, #fff);
+  --pxn-focus-ring:     var(--brand-focus);
+  --pxn-selected-bg:    var(--primary-color-soft);
   --pxn-selected-border:color-mix(in srgb, var(--pxn-primary) 40%, #fff);
 
   // ---------------------------------------------------------------------------

@@ -15,12 +15,10 @@
               alt="logo" 
               class="logo-image"
             />
-            <div v-else class="logo-placeholder">
-              {{ (currentUser && currentUser.company) ? currentUser.company[0] : 'S' }}
-            </div>
+            <img v-else :src="$imgUrl('settings', 'logo-default.png')" alt="PRODEX" class="logo-image" />
           </div>
           <div class="company-name" v-if="!isCollapsed && currentUser && !currentUser.hide_site_name">
-            {{ currentUser.company || 'Stocky' }}
+            {{ currentUser.company || 'PRODEX' }}
           </div>
         </div>
       </div>
@@ -2260,7 +2258,7 @@ export default {
 
 .nav-link:hover {
   background: #f7f7f7;
-  color: #663399;
+  color: var(--primary-color);
 }
 
 .nav-icon {
@@ -2326,14 +2324,14 @@ export default {
   transform: translateY(-50%);
   width: 3px;
   height: 0;
-  background: #663399;
+  background: var(--primary-color);
   border-radius: 0 2px 2px 0;
   transition: height 0.3s;
 }
 
 .submenu-link:hover {
   background: rgba(102, 51, 153, 0.08);
-  color: #663399;
+  color: var(--primary-color);
   padding-left: 16px;
 }
 
@@ -2342,7 +2340,7 @@ export default {
 }
 
 .submenu-link.router-link-active {
-  color: #663399;
+  color: var(--primary-color);
   font-weight: 600;
   background: rgba(102, 51, 153, 0.1);
   padding-left: 16px;
@@ -2379,13 +2377,13 @@ export default {
 }
 
 .nested-link:hover {
-  color: #663399;
+  color: var(--primary-color);
   background: rgba(102, 51, 153, 0.05);
   padding-left: 16px;
 }
 
 .nested-link.router-link-active {
-  color: #663399;
+  color: var(--primary-color);
   background: rgba(102, 51, 153, 0.1);
   font-weight: 600;
   padding-left: 16px;
@@ -2544,5 +2542,4 @@ html[dir="rtl"] .submenu-arrow {
   }
 }
 </style>
-
 

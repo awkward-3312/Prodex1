@@ -1,4 +1,7 @@
-const DEFAULT_PRIMARY_COLOR = '#663399';
+import brand from '../../../brand/prodex.json';
+import { contrast, contrastText } from '../../utils/brand-colors.mjs';
+
+const DEFAULT_PRIMARY_COLOR = brand.colors.ink;
 
 function readStoredPrimaryColor() {
   try {
@@ -32,9 +35,15 @@ function rgbaFromHex(hex, alpha) {
 
 export function applyPrimaryColor(color) {
   if (typeof document === 'undefined') return;
-  const darker = shade(color, -0.15);
-  const lighter = shade(color, 0.15);
-  const soft = rgbaFromHex(color, 0.12);
+  if (!/^#([0-9a-f]{3}){1,2}$/i.test(color)) color = DEFAULT_PRIMARY_COLOR;
+  const foreground = contrastText(color, brand.colors);
+  const textColor = contrast(color, brand.colors.white) >= 4.5 ? color : brand.colors.ink;
+  const official = color.toLowerCase() === DEFAULT_PRIMARY_COLOR.toLowerCase();
+  const accent = official ? brand.colors.aqua : color;
+  const darker = official || foreground !== brand.colors.white ? color : shade(color, -0.15);
+  const textHover = foreground === brand.colors.white ? darker : brand.colors.ink;
+  const lighter = official ? color : shade(color, 0.15);
+  const soft = rgbaFromHex(accent, 0.12);
 
   const css = `
     :root {
@@ -42,13 +51,17 @@ export function applyPrimaryColor(color) {
       --primary-color-darker: ${darker};
       --primary-color-lighter: ${lighter};
       --primary-color-soft: ${soft};
+      --brand-accent: ${accent};
+      --brand-focus: ${textColor};
+      --primary-contrast: ${foreground};
+      --primary-text: ${textColor};
     }
 
     /* Text / background / border utilities */
-    .text-primary, a.text-primary { color: ${color} !important; }
-    .bg-primary { background-color: ${color} !important; color: #fff !important; }
+    .text-primary, a.text-primary { color: ${textColor} !important; }
+    .bg-primary { background-color: ${color} !important; color: ${foreground} !important; }
     .border-primary { border-color: ${color} !important; }
-    .badge-primary { background-color: ${color} !important; color: #fff !important; }
+    .badge-primary { background-color: ${color} !important; color: ${foreground} !important; }
 
     /* Buttons */
     .btn-primary,
@@ -60,10 +73,10 @@ export function applyPrimaryColor(color) {
     .btn-check:focus + .btn-primary {
       background-color: ${color} !important;
       border-color: ${color} !important;
-      color: #fff !important;
+      color: ${foreground} !important;
     }
-    .btn-primary:hover { background-color: ${darker} !important; border-color: ${darker} !important; color: #fff !important; }
-    .btn-outline-primary { color: ${color} !important; border-color: ${color} !important; }
+    .btn-primary:hover { background-color: ${darker} !important; border-color: ${darker} !important; color: ${foreground} !important; }
+    .btn-outline-primary { color: ${textColor} !important; border-color: ${color} !important; }
     .btn-outline-primary:hover,
     .btn-outline-primary:not(:disabled):not(.disabled).active,
     .btn-outline-primary:not(:disabled):not(.disabled):active,
@@ -71,12 +84,12 @@ export function applyPrimaryColor(color) {
     .btn-check:active + .btn-outline-primary {
       background-color: ${color} !important;
       border-color: ${color} !important;
-      color: #fff !important;
+      color: ${foreground} !important;
     }
 
     /* Links */
-    a { color: ${color}; }
-    a:hover { color: ${darker}; }
+    a { color: ${textColor}; }
+    a:hover { color: ${textHover}; }
 
     /* Form controls */
     .form-control:focus { border-color: ${lighter} !important; box-shadow: 0 0 0 0.2rem ${soft} !important; }
@@ -93,23 +106,23 @@ export function applyPrimaryColor(color) {
     .radio.radio-primary input:checked ~ .checkmark::after { background-color: ${color} !important; }
 
     /* Pagination */
-    .page-item.active .page-link { background-color: ${color} !important; border-color: ${color} !important; color: #fff !important; }
-    .page-link { color: ${color} !important; }
-    .page-link:hover { color: ${darker} !important; }
+    .page-item.active .page-link { background-color: ${color} !important; border-color: ${color} !important; color: ${foreground} !important; }
+    .page-link { color: ${textColor} !important; }
+    .page-link:hover { color: ${textHover} !important; }
 
     /* Nav pills / tabs */
-    .nav-pills .nav-link.active, .nav-pills .show > .nav-link { background-color: ${color} !important; color: #fff !important; }
-    .nav-tabs .nav-link.active { border-bottom-color: ${color} !important; color: ${color} !important; }
+    .nav-pills .nav-link.active, .nav-pills .show > .nav-link { background-color: ${color} !important; color: ${foreground} !important; }
+    .nav-tabs .nav-link.active { border-bottom-color: ${color} !important; color: ${textColor} !important; }
     .nav-tabs .nav-link:hover { border-bottom-color: ${color}; }
 
     /* Dropdown */
-    .dropdown-item.active, .dropdown-item:active { background-color: ${color} !important; color: #fff !important; }
+    .dropdown-item.active, .dropdown-item:active { background-color: ${color} !important; color: ${foreground} !important; }
     .dropdown-menu-end .dropdown-item:hover { background-color: ${soft} !important; }
 
     /* Progress / spinners / loaders */
-    .progress-bar { background-color: ${color} !important; }
-    .spinner-border, .spinner-border.text-primary,
-    .spinner-grow, .spinner-grow.text-primary { color: ${color} !important; }
+    .progress-bar:not(.bg-success):not(.bg-danger):not(.bg-warning):not(.bg-info) { color: ${brand.colors.ink}; background-color: ${accent} !important; }
+    .spinner-border:not([class*="text-"]), .spinner-border.text-primary,
+    .spinner-grow:not([class*="text-"]), .spinner-grow.text-primary { color: ${textColor} !important; }
     .module-loader .spinner, .module-loader .loader { border-top-color: ${color} !important; border-left-color: ${color} !important; }
     /* Pre-Vue master loader (from /css/master.css) */
     .loading {
@@ -122,7 +135,7 @@ export function applyPrimaryColor(color) {
       border-top-color: ${color} !important;
     }
     /* NProgress top bar + spinner */
-    #nprogress .bar { background: ${color} !important; }
+    #nprogress .bar { background: ${accent} !important; border-bottom: 1px solid ${color}; }
     #nprogress .peg { box-shadow: 0 0 10px ${color}, 0 0 5px ${color} !important; }
     #nprogress .spinner-icon { border-top-color: ${color} !important; border-left-color: ${color} !important; }
     /* Custom .spinner-primary / .spinner-bubble-primary / .loader-bubble-primary */
@@ -130,7 +143,7 @@ export function applyPrimaryColor(color) {
       background: linear-gradient(to right, ${color} 10%, rgba(255,255,255,0) 42%) !important;
     }
     .spinner-primary:before { background: ${color} !important; }
-    .spinner-bubble-primary, .loader-bubble-primary { color: ${color} !important; }
+    .spinner-bubble-primary, .loader-bubble-primary { color: ${textColor} !important; }
     .spinner-glow-primary { background: ${rgbaFromHex(color, 0.45)} !important; }
 
     /* ============ GENERIC .nav-item.active (any sidebar wrapper) ============ */
@@ -138,8 +151,8 @@ export function applyPrimaryColor(color) {
     .nav-item.active > .nav-link,
     .nav-item.active > .nav-item-hold,
     .nav-item.active > a {
-      background: linear-gradient(135deg, ${lighter} 0%, ${color} 100%) !important;
-      color: #fff !important;
+      background: ${color} !important;
+      color: ${foreground} !important;
     }
     .nav-item.active > .nav-link .nav-icon,
     .nav-item.active > .nav-link .nav-text,
@@ -151,18 +164,18 @@ export function applyPrimaryColor(color) {
     .nav-item.active > a .nav-icon,
     .nav-item.active > a .nav-text,
     .nav-item.active > a .feather {
-      color: #fff !important;
+      color: ${foreground} !important;
     }
 
     /* ============ SIDEBAR (large) ============ */
     .layout-sidebar-large .sidebar-left .navigation-left .nav-item:hover,
     .layout-sidebar-large .sidebar-left .navigation-left .nav-item:hover .nav-item-hold {
-      color: ${color} !important;
+      color: ${textColor} !important;
     }
     .layout-sidebar-large .sidebar-left .navigation-left .nav-item.active > .nav-item-hold,
     .layout-sidebar-large .sidebar-left .navigation-left .nav-item.active > .nav-link,
     .layout-sidebar-large .sidebar-left .navigation-left .nav-item.active > a {
-      background: linear-gradient(135deg, ${lighter} 0%, ${color} 100%) !important;
+      background: ${color} !important;
     }
     .layout-sidebar-large .sidebar-left .navigation-left .nav-item.active,
     .layout-sidebar-large .sidebar-left .navigation-left .nav-item.active .nav-item-hold,
@@ -170,7 +183,7 @@ export function applyPrimaryColor(color) {
     .layout-sidebar-large .sidebar-left .navigation-left .nav-item.active .nav-text,
     .layout-sidebar-large .sidebar-left .navigation-left .nav-item.active .feather,
     .layout-sidebar-large .sidebar-left .navigation-left .nav-item.active a {
-      color: #fff !important;
+      color: ${foreground} !important;
     }
     .layout-sidebar-large .sidebar-left .navigation-left .nav-item.active .triangle {
       border-color: transparent transparent #fff transparent !important;
@@ -179,7 +192,7 @@ export function applyPrimaryColor(color) {
     .layout-sidebar-large .sidebar-left-secondary .childNav li.nav-item a.open .nav-icon,
     .layout-sidebar-large .sidebar-left-secondary .childNav li.nav-item a.router-link-active,
     .layout-sidebar-large .sidebar-left-secondary .childNav li.nav-item a.router-link-active .nav-icon {
-      color: ${color} !important;
+      color: ${textColor} !important;
     }
     .layout-sidebar-large .sidebar-left-secondary .childNav li.nav-item a.open,
     .layout-sidebar-large .sidebar-left-secondary .childNav li.nav-item a.router-link-active {
@@ -187,7 +200,7 @@ export function applyPrimaryColor(color) {
     }
     .layout-sidebar-large .sidebar-left-secondary .childNav li.nav-item a:hover {
       background: ${soft} !important;
-      color: ${color} !important;
+      color: ${textColor} !important;
     }
 
     /* ============ SIDEBAR (compact) ============ */
@@ -196,7 +209,7 @@ export function applyPrimaryColor(color) {
     .layout-sidebar-compact .sidebar-left .navigation-left .nav-item.active i,
     .layout-sidebar-compact .side-content-wrap .sidebar-left ul.ul-list-1 li.active > a,
     .layout-sidebar-compact .side-content-wrap .sidebar-left ul.ul-list-1 li a.router-link-active {
-      color: ${color} !important;
+      color: ${textColor} !important;
     }
     .layout-sidebar-compact .sidebar-left .navigation-left .nav-item.active::before,
     .layout-sidebar-compact .sidebar-left .navigation-left .nav-item:hover::before {
@@ -207,11 +220,11 @@ export function applyPrimaryColor(color) {
     .main-header .menu ul.menu li.nav-item.active > a,
     .main-header .menu ul.menu li.nav-item:hover > a,
     .main-header .header-part-right .user.dropdown .dropdown-toggle:hover,
-    .main-header .header-icon:hover { color: ${color} !important; }
+    .main-header .header-icon:hover { color: ${textColor} !important; }
 
     /* ============ HEADER SEARCH / ICONS ============ */
     .main-header .search-bar input:focus { border-color: ${color} !important; }
-    .main-header .header-icon:hover { color: ${color} !important; }
+    .main-header .header-icon:hover { color: ${textColor} !important; }
 
     /* ============ CARDS / DASHBOARD ============ */
     .card .card-title,
@@ -219,16 +232,16 @@ export function applyPrimaryColor(color) {
     .card .card-header .card-title { color: inherit; }
     .card.o-hidden .card-header.text-primary,
     .card .icon-primary,
-    .card .text-primary { color: ${color} !important; }
+    .card .text-primary { color: ${textColor} !important; }
     .card.bg-primary, .card.o-hidden.bg-primary,
-    .widget-title.bg-primary { background-color: ${color} !important; color: #fff !important; }
-    .icon-box.bg-primary, .icon-box .icon.bg-primary { background-color: ${color} !important; color: #fff !important; }
+    .widget-title.bg-primary { background-color: ${color} !important; color: ${foreground} !important; }
+    .icon-box.bg-primary, .icon-box .icon.bg-primary { background-color: ${color} !important; color: ${foreground} !important; }
 
     /* ============ TABS ============ */
     .nav.nav-tabs .nav-item .nav-link.active {
       border-bottom: 2px solid ${color} !important;
       background: ${soft} !important;
-      color: ${color} !important;
+      color: ${textColor} !important;
     }
 
     /* ============ CALENDAR / EVENTS ============ */
@@ -240,11 +253,11 @@ export function applyPrimaryColor(color) {
     .vs__dropdown-option--highlight i,
     .vs__dropdown-option--selected i {
       background: ${color} !important;
-      color: #fff !important;
+      color: ${foreground} !important;
     }
     .vs__dropdown-option:hover {
       background: ${soft} !important;
-      color: ${color} !important;
+      color: ${textColor} !important;
     }
     .v-select.vs--open .vs__dropdown-toggle,
     .vs__dropdown-toggle:focus-within {
@@ -253,7 +266,7 @@ export function applyPrimaryColor(color) {
     }
 
     /* ============ TAGS / CHIPS ============ */
-    .ti-tag, .vue-tags-input .ti-tag { background: ${color} !important; color: #fff !important; }
+    .ti-tag, .vue-tags-input .ti-tag { background: ${color} !important; color: ${foreground} !important; }
     .ti-tag:hover { background: ${darker} !important; }
 
     /* ============ SLIDER (noUiSlider) ============ */
@@ -262,35 +275,35 @@ export function applyPrimaryColor(color) {
 
     /* ============ INBOX / OTHER VIEWS ============ */
     .email-list .email-item.active,
-    .email-list .email-item.unread .from { color: ${color} !important; }
+    .email-list .email-item.unread .from { color: ${textColor} !important; }
 
     /* ============ ALERTS (primary) ============ */
     .alert-primary {
       background-color: ${soft} !important;
       border-color: ${color} !important;
-      color: ${darker} !important;
+      color: ${textHover} !important;
     }
     .close:focus { box-shadow: 0 0 0 0.2rem ${rgbaFromHex(color, 0.5)} !important; }
 
     /* ============ CUSTOMIZER ============ */
-    .customizer .handle { background: ${color} !important; color: #fff !important; }
-    .customizer .card-header p { color: ${color}; }
+    .customizer .handle { background: ${color} !important; color: ${foreground} !important; }
+    .customizer .card-header p { color: ${textColor}; }
     .customizer .layout-option.active { border-color: ${color} !important; background: ${soft} !important; }
     .customizer .layout-option.active .option-label,
-    .customizer .layout-option .option-label i { color: ${color} !important; }
+    .customizer .layout-option .option-label i { color: ${textColor} !important; }
 
     /* ============ VERTICAL SIDEBAR (custom) ============ */
     .vertical-sidebar-wrapper .nav-link:hover {
-      color: ${color} !important;
+      color: ${textColor} !important;
     }
     .vertical-sidebar-wrapper .nav-item.active > .nav-link {
-      background: linear-gradient(135deg, ${lighter} 0%, ${color} 100%) !important;
-      color: #fff !important;
+      background: ${color} !important;
+      color: ${foreground} !important;
     }
     .vertical-sidebar-wrapper .nav-item.active > .nav-link .nav-icon,
     .vertical-sidebar-wrapper .nav-item.active > .nav-link .nav-text,
     .vertical-sidebar-wrapper .nav-item.active > .nav-link .submenu-arrow {
-      color: #fff !important;
+      color: ${foreground} !important;
     }
     .vertical-sidebar-wrapper .submenu-link::before,
     .vertical-sidebar-wrapper .nested-submenu {
@@ -302,38 +315,38 @@ export function applyPrimaryColor(color) {
     }
     .vertical-sidebar-wrapper .submenu-link:hover {
       background: ${rgbaFromHex(color, 0.08)} !important;
-      color: ${color} !important;
+      color: ${textColor} !important;
     }
     .vertical-sidebar-wrapper .submenu-link.router-link-active {
-      color: ${color} !important;
+      color: ${textColor} !important;
       background: ${rgbaFromHex(color, 0.1)} !important;
     }
     .vertical-sidebar-wrapper .nested-link:hover {
-      color: ${color} !important;
+      color: ${textColor} !important;
       background: ${rgbaFromHex(color, 0.05)} !important;
     }
     .vertical-sidebar-wrapper .nested-link.router-link-active {
-      color: ${color} !important;
+      color: ${textColor} !important;
       background: ${rgbaFromHex(color, 0.1)} !important;
     }
     .vertical-sidebar-wrapper .logo-placeholder {
-      background: linear-gradient(135deg, ${lighter} 0%, ${color} 100%) !important;
+      background: ${color} !important;
     }
 
     /* ============ DASHBOARD STATIC / PAGE ROOT ============ */
     .dashboard-page-root .dashboard-header,
     .dashboard-static .dashboard-header {
-      background: linear-gradient(135deg, ${lighter} 0%, ${color} 100%) !important;
+      background: ${color} !important;
     }
     .dashboard-static .sales-card .stat-card-icon,
     .dashboard-static .invoices-card .stat-card-icon {
-      background: linear-gradient(135deg, ${color} 0%, ${lighter} 100%) !important;
+      background: ${color} !important;
     }
-    .dashboard-static .stat-card-link { color: ${color} !important; }
-    .dashboard-static .stat-card-link:hover { color: ${darker} !important; }
+    .dashboard-static .stat-card-link { color: ${textColor} !important; }
+    .dashboard-static .stat-card-link:hover { color: ${textHover} !important; }
     .dashboard-static .date-picker-btn:hover {
       border-color: ${color} !important;
-      color: ${color} !important;
+      color: ${textColor} !important;
     }
     .dashboard-static .quick-wrap .btn:hover {
       box-shadow: 0 4px 8px ${rgbaFromHex(color, 0.25)} !important;
@@ -341,18 +354,39 @@ export function applyPrimaryColor(color) {
     .dashboard-static .warehouse-filter .vs__dropdown-option--highlight,
     .dashboard-static .warehouse-filter .vs__dropdown-option--highlight i {
       background: ${color} !important;
-      color: #fff !important;
+      color: ${foreground} !important;
     }
     .dashboard-page-root a,
     .dashboard-page-root .text-primary,
     .dashboard-static a:not(.btn),
-    .dashboard-static .text-primary { color: ${color} !important; }
+    .dashboard-static .text-primary { color: ${textColor} !important; }
     .dashboard-page-root .bg-primary,
-    .dashboard-static .bg-primary { background-color: ${color} !important; color: #fff !important; }
+    .dashboard-static .bg-primary { background-color: ${color} !important; color: ${foreground} !important; }
 
+    /* Aqua is a selection accent with Ink text; status colors stay independent. */
+    .btn-primary:focus-visible, .btn-outline-primary:focus-visible,
+    .page-link:focus-visible, .nav-link:focus-visible, .dropdown-item:focus-visible {
+      outline: 2px solid var(--brand-focus); outline-offset: 3px;
+      box-shadow: 0 0 0 2px ${accent} !important;
+    }
+    .btn-primary:hover:not(:disabled):not(.disabled) {
+      box-shadow: inset 0 -3px 0 ${accent};
+    }
+    .form-control:focus, .form-select:focus, .vs__dropdown-toggle:focus-within {
+      border-color: var(--brand-focus) !important;
+      box-shadow: 0 0 0 3px ${soft} !important;
+    }
+    .form-control.is-invalid:focus, .form-select.is-invalid:focus {
+      border-color: var(--px-danger) !important;
+    }
+    .form-control.is-valid:focus, .form-select.is-valid:focus {
+      border-color: var(--px-success) !important;
+    }
+    .btn .spinner-border, .btn .spinner-grow { color: currentColor !important; }
+    .nav-tabs .nav-link.active { border-bottom-color: ${accent} !important; }
     /* ============ MISC ACCENTS ============ */
-    ::selection { background: ${color}; color: #fff; }
-    .breadcrumb-item.active { color: ${color}; }
+    ::selection { background: ${accent}; color: ${contrastText(accent, brand.colors)}; }
+    .breadcrumb-item.active { color: ${textColor}; }
     hr.divider-primary { border-top-color: ${color} !important; }
   `;
 
