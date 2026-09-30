@@ -29,6 +29,7 @@ class TenantNoImagePlaceholderUpdaterTest extends TestCase
             $result = $updater->sync($official, $tenants);
             $this->assertCount(2, $result['updated']);
             $this->assertSame(hash_file('sha256', $official), hash_file('sha256', $tenants.'/alpha/products/no-image.png'));
+            $this->assertSame(0644, fileperms($tenants.'/alpha/products/no-image.png') & 0777);
             $this->assertSame('custom image', file_get_contents($tenants.'/alpha/brands/no-image.png'));
 
             $again = $updater->sync($official, $tenants);

@@ -54,7 +54,9 @@ final class TenantNoImagePlaceholderUpdater
                         throw new RuntimeException("Cannot stage placeholder: {$destination}");
                     }
                     try {
-                        if (! copy($source, $temporary) || ! rename($temporary, $destination)) {
+                        if (! copy($source, $temporary)
+                            || ! chmod($temporary, 0644)
+                            || ! rename($temporary, $destination)) {
                             throw new RuntimeException("Cannot update placeholder: {$destination}");
                         }
                     } finally {
