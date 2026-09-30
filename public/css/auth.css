@@ -232,7 +232,12 @@
 
 @media (max-width: 1024px) {
   .auth-page {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .auth-page .auth-panel-inner form,
+  .auth-page .field,
+  .auth-page .input-shell {
+    min-width: 0;
   }
   .auth-hero {
     display: none;
