@@ -2,7 +2,7 @@
 @php
     $isRtl = in_array(app()->getLocale(), ['ar', 'he', 'fa', 'ur']);
     $generalSettings = \App\Models\Central\GeneralSetting::instance();
-    $appName = $generalSettings->app_name ?: 'Stocky';
+    $appName = $generalSettings->app_name ?: 'PRODEX';
     $logoUrl = $generalSettings->getLogoUrl();
 
     $l3HeroVisible = $hero && ($hero->is_active ?? true);
@@ -48,6 +48,7 @@
       @if($isRtl) dir="rtl" @endif>
 
 <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
@@ -71,7 +72,7 @@
         @endif
     @else
         <title>{{ $appName }}</title>
-        <link rel="icon" href="{{ asset('images/super/settings/favicon.ico') }}">
+        <link rel="icon" href="{{ asset('favicon.ico') }}">
     @endif
 
     <script src="{{ asset('assets_super/js/tailwindcss.js') }}"></script>
@@ -128,7 +129,7 @@
         }
 
         .l3-gradient-text {
-            background: linear-gradient(90deg, #4f46e5, #2563eb, #06b6d4);
+            background: linear-gradient(90deg, var(--prodex-ink), var(--prodex-aqua));
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;

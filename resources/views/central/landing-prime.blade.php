@@ -47,6 +47,7 @@
 @endphp
 <html lang="{{ app()->getLocale() }}" class="scroll-smooth" @if($isRtl) dir="rtl" @endif>
 <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 

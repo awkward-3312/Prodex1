@@ -68,6 +68,7 @@
 <!doctype html>
 <html lang="{{ str_replace('_','-', app()->getLocale() ?? 'en') }}" dir="{{ $isRtl ? 'rtl' : 'ltr' }}">
 <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
   <meta charset="utf-8" />
   <title>{{ $title }}</title>
   <meta name="description" content="{{ $desc }}" />

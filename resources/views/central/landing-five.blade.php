@@ -2,11 +2,12 @@
 @php
     $isRtl = in_array(app()->getLocale(), ['ar', 'he', 'fa', 'ur']);
     $generalSettings = \App\Models\Central\GeneralSetting::instance();
-    $appName = $generalSettings->app_name ?: 'Stocky';
+    $appName = $generalSettings->app_name ?: 'PRODEX';
     $logoUrl = $generalSettings->getLogoUrl();
 @endphp
 <html lang="{{ app()->getLocale() }}" @if($isRtl) dir="rtl" @endif>
 <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light">
@@ -26,7 +27,7 @@
         @endif
     @else
         <title>{{ $appName }}</title>
-        <link rel="icon" href="{{ asset('images/super/settings/favicon.ico') }}">
+        <link rel="icon" href="{{ asset('favicon.ico') }}">
     @endif
     <link href="{{ asset('assets_super/css/dm-sans.css') }}" rel="stylesheet">
     <link href="{{ asset('assets_super/css/jetbrains-mono.css') }}" rel="stylesheet">
@@ -153,7 +154,7 @@
                         </linearGradient>
                         <linearGradient id="l5PipeSoft" x1="40" y1="120" x2="780" y2="200">
                             <stop offset="0%" stop-color="#1273eb" stop-opacity="0.35"/>
-                            <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.25"/>
+                            <stop offset="100%" stop-color="var(--prodex-aqua)" stop-opacity="0.25"/>
                         </linearGradient>
                     </defs>
                     <path d="M 32 246 C 120 88 200 72 288 168 C 352 232 392 228 448 198 C 512 164 568 172 628 188 C 688 204 732 188 788 158" stroke="url(#l5PipeSoft)" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>

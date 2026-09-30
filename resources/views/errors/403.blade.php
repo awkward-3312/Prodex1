@@ -20,7 +20,7 @@
             <g transform="translate(100,100)" class="pencil__rotate">
                 <g fill="none">
                     <circle transform="rotate(-90)" stroke-dashoffset="402" stroke-dasharray="402.12 402.12" stroke-width="30" stroke="#12467a" r="64" class="pencil__body1"></circle>
-                    <circle transform="rotate(-90)" stroke-dashoffset="465" stroke-dasharray="464.96 464.96" stroke-width="10" stroke="#06b6d4" r="74" class="pencil__body2"></circle>
+                    <circle transform="rotate(-90)" stroke-dashoffset="465" stroke-dasharray="464.96 464.96" stroke-width="10" stroke="var(--prodex-aqua)" r="74" class="pencil__body2"></circle>
                     <circle transform="rotate(-90)" stroke-dashoffset="339" stroke-dasharray="339.29 339.29" stroke-width="10" stroke="#0b1f3a" r="54" class="pencil__body3"></circle>
                 </g>
                 <g transform="rotate(-90) translate(49,0)" class="pencil__eraser">

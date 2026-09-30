@@ -1,6 +1,6 @@
 @php
     $generalSettings = \App\Models\Central\GeneralSetting::instance();
-    $appName = $generalSettings->app_name ?: 'Stocky';
+    $appName = $generalSettings->app_name ?: 'PRODEX';
     $logoUrl = $generalSettings->getLogoUrl();
     $faviconUrl = $generalSettings->getFaviconUrl();
     $assetVersion = time();
@@ -9,12 +9,13 @@
 <!DOCTYPE html>
 <html lang="{{ app()->getLocale() }}">
 <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'Super Admin') — {{ $appName }}</title>
-    <link rel="icon" href="{{ $faviconUrl ?: asset('images/super/settings/favicon.ico') }}?v={{ $assetVersion }}" type="image/x-icon">
-    <link rel="shortcut icon" href="{{ $faviconUrl ?: asset('images/super/settings/favicon.ico') }}?v={{ $assetVersion }}">
+    <link rel="icon" href="{{ $faviconUrl ?: asset('favicon.ico') }}?v={{ $assetVersion }}" type="image/x-icon">
+    <link rel="shortcut icon" href="{{ $faviconUrl ?: asset('favicon.ico') }}?v={{ $assetVersion }}">
     <link href="{{ asset('assets_super/css/plus-jakarta-sans.css') }}?v={{ $assetVersion }}" rel="stylesheet">
     <link href="{{ asset('assets_super/css/bootstrap.min.css') }}?v={{ $assetVersion }}" rel="stylesheet">
     <link href="{{ asset('assets_super/css/bootstrap-icons.min.css') }}?v={{ $assetVersion }}" rel="stylesheet">
@@ -647,10 +648,10 @@
                 <p class="super-customizer-section-title">Primary Color</p>
                 <p class="super-customizer-section-help">Pick a preset or choose any custom color. Changes apply instantly and are remembered on this browser.</p>
                 <div class="super-customizer-swatches" id="superCustomizerSwatches">
-                    <button type="button" class="super-customizer-swatch" data-color="#018A00" style="background:#018A00" aria-label="Green"></button>
+                    <button type="button" class="super-customizer-swatch" data-color="{{ config('brand.colors.ink') }}" style="background:var(--prodex-ink)" aria-label="PRODEX Ink"></button>
                     <button type="button" class="super-customizer-swatch" data-color="#6366f1" style="background:#6366f1" aria-label="Indigo"></button>
                     <button type="button" class="super-customizer-swatch" data-color="#3b82f6" style="background:#3b82f6" aria-label="Blue"></button>
-                    <button type="button" class="super-customizer-swatch" data-color="#06b6d4" style="background:#06b6d4" aria-label="Cyan"></button>
+                    <button type="button" class="super-customizer-swatch" data-color="{{ config('brand.colors.aqua') }}" style="background:var(--prodex-aqua)" aria-label="PRODEX Aqua"></button>
                     <button type="button" class="super-customizer-swatch" data-color="#14b8a6" style="background:#14b8a6" aria-label="Teal"></button>
                     <button type="button" class="super-customizer-swatch" data-color="#8b5cf6" style="background:#8b5cf6" aria-label="Purple"></button>
                     <button type="button" class="super-customizer-swatch" data-color="#ec4899" style="background:#ec4899" aria-label="Pink"></button>
@@ -665,8 +666,8 @@
             <div class="super-customizer-section">
                 <p class="super-customizer-section-title">Custom Color</p>
                 <div class="super-customizer-picker-row">
-                    <input type="color" id="superCustomizerColorInput" value="#018A00" aria-label="Pick a custom color">
-                    <input type="text" id="superCustomizerHexInput" value="#018A00" maxlength="7" aria-label="Hex color value">
+                    <input type="color" id="superCustomizerColorInput" value="{{ config('brand.colors.ink') }}" aria-label="Pick a custom color">
+                    <input type="text" id="superCustomizerHexInput" value="{{ config('brand.colors.ink') }}" maxlength="7" aria-label="Hex color value">
                 </div>
                 <div class="super-customizer-actions">
                     <button type="button" class="super-customizer-btn super-customizer-btn-secondary" id="superCustomizerReset">Reset to default</button>

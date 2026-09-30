@@ -6,13 +6,14 @@
 @endphp
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="{{ config('seo.theme_color', '#0B1220') }}">
     <title>@yield('title') — {{ $appName }}</title>
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/social/favicon-32x32.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/brand-assets/icons/icon-32.png') }}">
     <style>
         *,*::before,*::after{box-sizing:border-box}
         :root{--ink:#0F172A;--ink-2:#475569;--ink-3:#64748B;--line:#E7EAF0;--brand:#4F46E5;--bg:#F7F9FC}
@@ -43,7 +44,7 @@
            compartida entre variantes (404 espacial, 403 pencil); cada variante (`.card--space`,
            `.card--pencil`) solo aporta su propia paleta/fondo — así 404 y 403 comparten
            tipografía/spacing/botones sin compartir ilustración ni layout de fondo. */
-        :root{--pxerr-navy:#081428;--pxerr-navy-2:#0f2a4a;--pxerr-cyan:#06b6d4;--pxerr-star:#eef4ff}
+        :root{--pxerr-navy:var(--prodex-ink);--pxerr-navy-2:var(--prodex-ink);--pxerr-cyan:var(--prodex-aqua);--pxerr-star:#eef4ff}
         .wrap{padding:24px}
         .card{position:relative;overflow:hidden;max-width:1200px;min-height:min(640px,calc(100vh - 48px));
             display:flex;align-items:center;text-align:left;border-radius:16px}

@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="es">
 <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,7 +9,7 @@
 
     <link rel="stylesheet" href="/assets_setup/css/bootstrap.css">
     <link href="{{ asset('assets_super/css/quicksand.css') }}" rel="stylesheet">
-    <link rel="icon" href="/assets_setup/favicon.ico">
+    <link rel="icon" href="{{ asset('favicon.ico') }}">
     <link rel="stylesheet" href="/assets_setup/css/style.css">
     <link rel="stylesheet" href="/assets_setup/css/setup.css">
     <link rel="stylesheet" href="/assets_setup/css/fontawesome.min.css">

@@ -1,6 +1,7 @@
 @php
     /*
-     | Single source of truth for public-page <head> metadata:
+     | Single source of truth for public-page <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}"> metadata:
      | description, canonical, Open Graph, Twitter, favicons, theme-color,
      | JSON-LD. Each page may override by defining these before the @include:
      |
@@ -82,9 +83,8 @@
     <link rel="apple-touch-icon" href="{{ asset($seo->favicon) }}">
 @else
     <link rel="icon" href="{{ asset('favicon.ico') }}" sizes="any">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/social/favicon-32x32.png') }}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('images/social/favicon-16x16.png') }}">
-    <link rel="apple-touch-icon" href="{{ asset('images/social/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/brand-assets/icons/icon-32.png') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/brand-assets/icons/icon-180.png') }}">
 @endif
 
 <script type="application/ld+json">

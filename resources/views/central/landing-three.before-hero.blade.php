@@ -2,7 +2,7 @@
 @php
     $isRtl = in_array(app()->getLocale(), ['ar', 'he', 'fa', 'ur']);
     $generalSettings = \App\Models\Central\GeneralSetting::instance();
-    $appName = $generalSettings->app_name ?: 'Stocky';
+    $appName = $generalSettings->app_name ?: 'PRODEX';
     $logoUrl = $generalSettings->getLogoUrl();
 @endphp
 <html lang="{{ app()->getLocale() }}" class="scroll-smooth" @if($isRtl) dir="rtl" @endif>
@@ -25,7 +25,7 @@
         @endif
     @else
         <title>{{ $appName }}</title>
-        <link rel="icon" href="{{ asset('images/super/settings/favicon.ico') }}">
+        <link rel="icon" href="{{ asset('favicon.ico') }}">
     @endif
     <script src="{{ asset('assets_super/js/tailwindcss.js') }}"></script>
     <link href="{{ asset('assets_super/css/inter.css') }}" rel="stylesheet">

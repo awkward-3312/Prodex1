@@ -157,7 +157,7 @@ class SupportTicketNotificationService
             $variables = [
                 '{{user_name}}'      => $ticket->opened_by_name ?? $ticket->tenantName(),
                 '{{user_email}}'     => $recipient,
-                '{{app_name}}'       => config('app.name', 'Stocky'),
+                '{{app_name}}'       => config('app.name', 'PRODEX'),
                 '{{app_url}}'        => config('app.url', 'http://localhost'),
                 '{{ticket_number}}'  => $ticket->ticket_number,
                 '{{ticket_subject}}' => $ticket->subject,
@@ -224,7 +224,7 @@ class SupportTicketNotificationService
         string $cta,
         ?string $heading = null
     ): string {
-        $appName = e(config('app.name', 'Stocky'));
+        $appName = e(config('app.name', 'PRODEX'));
         $heading = e($heading ?? 'Support Ticket Update');
         $intro   = e($intro);
         $number  = e($ticket->ticket_number);

@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="es">
   <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
     <meta charset="utf-8" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width,initial-scale=1.0" />
     <link rel="stylesheet" href="/css/master.css">
     <link rel="stylesheet" href="{{ global_asset('css/auth.css') }}">
-    <link rel="icon" href="{{ global_asset(upload_path('settings') . '/' . ($app_settings->favicon ?? 'favicon.ico')) }}">
+    <link rel="icon" href="{{ \App\Support\PlatformBrand::tenantUrl($app_settings->favicon ?? null, 'icon') }}">
     <title>{{ $app_settings->app_name ?? 'PRODEX' }}</title>
   </head>
   <body class="text-left">
@@ -17,7 +18,7 @@
     <div class="auth-wrapper auth-card-narrow">
       <div class="auth-card">
         <div class="auth-brand">
-          <img src="{{ global_asset(upload_path('settings') . '/' . ($app_settings->logo ?? 'logo-default.png')) }}" alt="PRODEX" />
+          <img src="{{ \App\Support\PlatformBrand::tenantUrl($app_settings->logo ?? null) }}" alt="PRODEX" />
         </div>
         @if ($errors->any())
         <div class="auth-alert error">

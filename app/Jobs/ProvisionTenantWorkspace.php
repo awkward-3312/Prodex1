@@ -519,6 +519,9 @@ class ProvisionTenantWorkspace implements ShouldQueue
             $copiedLogo = $destination . DIRECTORY_SEPARATOR . 'settings' . DIRECTORY_SEPARATOR . 'logo-default.png';
             $source = is_file($copiedLogo) ? $copiedLogo : null;
         }
+        if ($source && in_array(hash_file('sha256', $source), config('brand-legacy.hashes', []), true)) {
+            $source = public_path(\App\Support\PlatformBrand::path('icon'));
+        }
 
         try {
             \App\Services\PwaIconService::generate($source, $destination);

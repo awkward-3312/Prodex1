@@ -43,10 +43,10 @@ if (!function_exists('pwa_icon_url')) {
         $relative = upload_path('pwa') . '/pwa-icon-' . $size . '.png';
         $absolute = public_path($relative);
 
-        if (is_file($absolute)) {
+        if (is_file($absolute) && ! \App\Support\PlatformBrand::isLegacy($relative)) {
             return global_asset($relative) . '?v=' . filemtime($absolute);
         }
 
-        return '/pwa_images/pwa-icon-' . $size . '.png';
+        return global_asset('images/brand-assets/icons/icon-' . $size . '.png');
     }
 }

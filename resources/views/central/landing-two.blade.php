@@ -2,7 +2,7 @@
 @php
     $isRtl = in_array(app()->getLocale(), ['ar', 'he', 'fa', 'ur']);
     $generalSettings = \App\Models\Central\GeneralSetting::instance();
-    $appName = $generalSettings->app_name ?: 'Stocky';
+    $appName = $generalSettings->app_name ?: 'PRODEX';
     $logoUrl = $generalSettings->getLogoUrl();
     $salesWhatsappRaw = $footer->sales_whatsapp_number ?? $footer->contact_phone ?? null;
     $salesWhatsappDigits = $salesWhatsappRaw ? preg_replace('/\D+/', '', $salesWhatsappRaw) : null;
@@ -17,6 +17,7 @@
 @endphp
 <html lang="{{ app()->getLocale() }}" @if($isRtl) dir="rtl" @endif>
 <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     @if($seo)
@@ -35,7 +36,7 @@
         @endif
     @else
         <title>{{ $appName }}</title>
-        <link rel="icon" href="{{ asset('images/super/settings/favicon.ico') }}">
+        <link rel="icon" href="{{ asset('favicon.ico') }}">
     @endif
     <link href="{{ asset('assets_super/css/inter.css') }}" rel="stylesheet">
     <link href="{{ asset('assets_super/css/instrument-serif.css') }}" rel="stylesheet">

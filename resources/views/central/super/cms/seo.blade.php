@@ -27,7 +27,7 @@
 
                     <div class="form-group mb-4">
                         <label class="form-label">{{ __('super.seo.meta_title') }}</label>
-                        <input type="text" name="meta_title" class="form-control" value="{{ old('meta_title', $seo->meta_title) }}" placeholder="Stocky SaaS — Inventory & POS" maxlength="70">
+                        <input type="text" name="meta_title" class="form-control" value="{{ old('meta_title', $seo->meta_title) }}" placeholder="PRODEX — Gestión empresarial" maxlength="70">
                         <p class="form-hint">{{ __('super.seo.title_hint') }}: <span id="titleCount">{{ strlen($seo->meta_title ?? '') }}</span>/70</p>
                     </div>
 
@@ -39,7 +39,7 @@
 
                     <div class="form-group mb-4">
                         <label class="form-label">{{ __('super.seo.meta_keywords') }}</label>
-                        <input type="text" name="meta_keywords" class="form-control" value="{{ old('meta_keywords', $seo->meta_keywords) }}" placeholder="inventory, pos, saas, stocky">
+                        <input type="text" name="meta_keywords" class="form-control" value="{{ old('meta_keywords', $seo->meta_keywords) }}" placeholder="inventario, punto de venta, PRODEX">
                         <p class="form-hint">{{ __('super.seo.keywords_hint') }}</p>
                     </div>
 

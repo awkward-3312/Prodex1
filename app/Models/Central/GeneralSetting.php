@@ -343,20 +343,12 @@ class GeneralSetting extends Model
 
     public function getLogoUrl(): ?string
     {
-        if ($this->logo_path) {
-            return asset($this->logo_path);
-        }
-
-        return null;
+        return global_asset(\App\Support\PlatformBrand::resolvePath($this->logo_path));
     }
 
     public function getFaviconUrl(): ?string
     {
-        if ($this->favicon_path) {
-            return asset($this->favicon_path);
-        }
-
-        return null;
+        return global_asset(\App\Support\PlatformBrand::resolvePath($this->favicon_path, 'icon'));
     }
 
     public function getTenantLogoUrl(): ?string

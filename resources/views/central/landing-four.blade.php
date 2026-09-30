@@ -2,11 +2,13 @@
 @php
     $isRtl = in_array(app()->getLocale(), ['ar', 'he', 'fa', 'ur']);
     $generalSettings = \App\Models\Central\GeneralSetting::instance();
-    $appName = $generalSettings->app_name ?: 'Stocky';
+    $appName = $generalSettings->app_name ?: 'PRODEX';
     $logoUrl = $generalSettings->getLogoUrl();
+    if ($logoUrl === \App\Support\PlatformBrand::url()) $logoUrl = \App\Support\PlatformBrand::url('white');
 @endphp
 <html lang="{{ app()->getLocale() }}" @if($isRtl) dir="rtl" @endif>
 <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="dark">
@@ -26,7 +28,7 @@
         @endif
     @else
         <title>{{ $appName }}</title>
-        <link rel="icon" href="{{ asset('images/super/settings/favicon.ico') }}">
+        <link rel="icon" href="{{ asset('favicon.ico') }}">
     @endif
     <link href="{{ asset('assets_super/css/ibm-plex-sans.css') }}" rel="stylesheet">
     <link href="{{ asset('assets_super/css/outfit.css') }}" rel="stylesheet">
