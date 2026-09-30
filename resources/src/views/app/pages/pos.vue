@@ -9,7 +9,7 @@
       <!-- Brand block (28x28 logo only on mobile; register info follows as a sibling) -->
       <div class="pos-shell-brand-block" style="display: flex; align-items: center; gap: 10px; padding-right: 12px; border-right: 1px solid #e6e6ec; height: 32px;">
         <div style="width: 28px; height: 28px; border-radius: 8px; background: transparent; display: grid; place-items: center; color: var(--ink); font-weight: 700; font-size: 13px; font-family: var(--font-mono); overflow: hidden; flex-shrink: 0;">
-          <img v-if="currentUser && currentUser.logo" :src="$imgUrl('settings', currentUser.logo)" alt="logo" style="width: 100%; height: 100%; object-fit: cover;" />
+          <img v-if="currentUser && currentUser.logo" :src="$imgUrl('settings', currentUser.logo)" alt="logo" style="width: 100%; height: 100%; object-fit: contain;" />
           <span v-else>{{ (currentUser && currentUser.company) ? (currentUser.company[0] || 'P') : 'P' }}</span>
         </div>
       </div>
@@ -1190,7 +1190,7 @@
             <div v-if="currentReceiptLayout === 1">
               <div class="info">
                 <div class="invoice_logo text-center mb-2">
-                  <img v-show="pos_settings.show_logo !== 0" :src="$imgUrl('settings', invoice_pos.setting.logo)" alt :width="pos_settings.logo_size || 60" :height="pos_settings.logo_size || 60">
+                  <img v-show="pos_settings.show_logo !== 0" :src="$imgUrl('settings', invoice_pos.setting.logo)" alt :width="pos_settings.logo_size || 60" :height="pos_settings.logo_size || 60" style="object-fit: contain">
                 </div>
                 <p>
                   <span v-show="pos_settings.show_store_name !== 0"><strong>{{invoice_pos.setting.CompanyName}}</strong><br></span>
@@ -1367,7 +1367,7 @@
             <div v-else-if="currentReceiptLayout === 2">
               <div class="info text-center">
                 <div class="invoice_logo mb-1">
-                  <img v-show="pos_settings.show_logo !== 0" :src="$imgUrl('settings', invoice_pos.setting.logo)" alt :width="pos_settings.logo_size || 60" :height="pos_settings.logo_size || 60">
+                  <img v-show="pos_settings.show_logo !== 0" :src="$imgUrl('settings', invoice_pos.setting.logo)" alt :width="pos_settings.logo_size || 60" :height="pos_settings.logo_size || 60" style="object-fit: contain">
                 </div>
                 <div>
                   <div v-show="pos_settings.show_store_name !== 0">{{invoice_pos.setting.CompanyName}}</div>
@@ -1581,7 +1581,7 @@
                     <span v-show="pos_settings.show_email">{{invoice_pos.setting.email}}</span>
                   </div>
                   <div class="invoice_logo text-center mb-2" v-show="pos_settings.show_logo !== 0">
-                    <img :src="$imgUrl('settings', invoice_pos.setting.logo)" alt :width="pos_settings.logo_size || 60" :height="pos_settings.logo_size || 60">
+                    <img :src="$imgUrl('settings', invoice_pos.setting.logo)" alt :width="pos_settings.logo_size || 60" :height="pos_settings.logo_size || 60" style="object-fit: contain">
                   </div>
                 </div>
                 <div class="mt-2" style="font-size:11px;">
@@ -1763,7 +1763,7 @@
             <div v-else-if="currentReceiptLayout === 4" class="receipt-layout-4">
               <div class="info text-center">
                 <div class="invoice_logo mb-2" v-show="pos_settings.show_logo !== 0">
-                  <img :src="$imgUrl('settings', invoice_pos.setting.logo)" alt :width="pos_settings.logo_size || 60" :height="pos_settings.logo_size || 60">
+                  <img :src="$imgUrl('settings', invoice_pos.setting.logo)" alt :width="pos_settings.logo_size || 60" :height="pos_settings.logo_size || 60" style="object-fit: contain">
                 </div>
                 <div>
                   <strong style="font-size:13px;">{{invoice_pos.setting.company_name_ar}}</strong><br>
@@ -1960,7 +1960,7 @@
             <div v-else-if="currentReceiptLayout === 5" class="receipt-layout-5">
               <div class="info text-center mb-2">
                 <div class="invoice_logo mb-2" v-show="pos_settings.show_logo !== 0">
-                  <img :src="$imgUrl('settings', invoice_pos.setting.logo)" alt :width="pos_settings.logo_size || 60" :height="pos_settings.logo_size || 60">
+                  <img :src="$imgUrl('settings', invoice_pos.setting.logo)" alt :width="pos_settings.logo_size || 60" :height="pos_settings.logo_size || 60" style="object-fit: contain">
                 </div>
                 <div class="minimal-store-name" v-show="pos_settings.show_store_name !== 0">{{invoice_pos.setting.CompanyName}}</div>
                 <div class="minimal-contact" v-if="invoice_pos.setting.CompanyAdress || invoice_pos.setting.CompanyPhone">
@@ -15430,7 +15430,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .premium-payment-modal {
-  --color-primary: #667eea;
+  --color-primary: var(--primary-color);
   --color-secondary: #764ba2;
   --color-success: #10b981;
   --color-danger: #ef4444;

@@ -2630,10 +2630,10 @@ export default { directives: { 'b-tooltip': vBTooltip },
      Add Product page; both use the .product-create-page namespace).
      ----------------------------------------------------------- */
   .product-create-page {
-    --pc-primary: #6366f1;
-    --pc-primary-strong: #4f46e5;
-    --pc-primary-soft: #eef2ff;
-    --pc-accent: #8b5cf6;
+    --pc-primary: var(--primary-color);
+    --pc-primary-strong: var(--primary-color-darker);
+    --pc-primary-soft: var(--primary-color-soft);
+    --pc-accent: var(--prodex-ink);
     --pc-success: #10b981;
     --pc-warn: #f59e0b;
     --pc-danger: #ef4444;
@@ -2664,10 +2664,10 @@ export default { directives: { 'b-tooltip': vBTooltip },
     margin-bottom: 1.75rem;
     border-radius: var(--pc-radius-lg);
     background:
-      radial-gradient(circle at 0% 0%, rgba(139, 92, 246, 0.10), transparent 55%),
-      radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.12), transparent 55%),
+      radial-gradient(circle at 0% 0%, rgba(var(--prodex-aqua-rgb), 0.10), transparent 55%),
+      radial-gradient(circle at 100% 100%, rgba(var(--prodex-aqua-rgb), 0.12), transparent 55%),
       linear-gradient(135deg, #ffffff 0%, #f8faff 100%);
-    border: 1px solid rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(var(--prodex-aqua-rgb), 0.12);
     box-shadow: var(--pc-shadow);
     overflow: hidden;
   }
@@ -2678,7 +2678,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
     inset: auto -40px -60px auto;
     width: 240px;
     height: 240px;
-    background: radial-gradient(circle, rgba(99, 102, 241, 0.18), transparent 70%);
+    background: radial-gradient(circle, rgba(var(--prodex-aqua-rgb), 0.18), transparent 70%);
     pointer-events: none;
   }
 
@@ -2747,13 +2747,13 @@ export default { directives: { 'b-tooltip': vBTooltip },
   .product-create-page .hero-btn--primary {
     background: linear-gradient(135deg, var(--pc-primary) 0%, var(--pc-primary-strong) 100%);
     border-color: transparent;
-    box-shadow: 0 6px 18px rgba(99, 102, 241, 0.28);
+    box-shadow: 0 6px 18px rgba(var(--prodex-aqua-rgb), 0.28);
   }
 
   .product-create-page .hero-btn--primary:hover,
   .product-create-page .hero-btn--primary:focus {
-    background: linear-gradient(135deg, var(--pc-primary-strong) 0%, #4338ca 100%);
-    box-shadow: 0 8px 22px rgba(99, 102, 241, 0.36);
+    background: linear-gradient(135deg, var(--pc-primary-strong) 0%, var(--primary-color-darker) 100%);
+    box-shadow: 0 8px 22px rgba(var(--prodex-aqua-rgb), 0.36);
   }
 
   .product-create-page .hero-btn svg {
@@ -2875,7 +2875,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   .product-create-page .pill--type {
     background: var(--pc-primary-soft);
     color: var(--pc-primary-strong);
-    border-color: rgba(99, 102, 241, 0.25);
+    border-color: rgba(var(--prodex-aqua-rgb), 0.25);
   }
 
   .product-create-page .pill--success {
@@ -3032,12 +3032,12 @@ export default { directives: { 'b-tooltip': vBTooltip },
   .product-create-page .form-action-bar__buttons .btn-primary {
     background: linear-gradient(135deg, var(--pc-primary) 0%, var(--pc-primary-strong) 100%);
     border-color: transparent;
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.28);
+    box-shadow: 0 4px 14px rgba(var(--prodex-aqua-rgb), 0.28);
   }
 
   .product-create-page .form-action-bar__buttons .btn-primary:hover,
   .product-create-page .form-action-bar__buttons .btn-primary:focus {
-    background: linear-gradient(135deg, var(--pc-primary-strong) 0%, #4338ca 100%);
+    background: linear-gradient(135deg, var(--pc-primary-strong) 0%, var(--primary-color-darker) 100%);
   }
 
   .product-create-page .form-action-bar__buttons .btn-primary svg {
@@ -3352,7 +3352,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
 
   .product-create-page .section-card:hover {
     box-shadow: var(--pc-shadow);
-    border-color: rgba(99, 102, 241, 0.18);
+    border-color: rgba(var(--prodex-aqua-rgb), 0.18);
   }
 
   .product-create-page .section-card:hover::before,
@@ -3377,7 +3377,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   .product-create-page .form-select:focus,
   .product-create-page textarea.form-control:focus {
     border-color: var(--pc-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+    box-shadow: 0 0 0 3px rgba(var(--prodex-aqua-rgb), 0.14);
   }
 
   .product-create-page .form-control-modern {
@@ -3390,7 +3390,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
 
   .product-create-page .form-control-modern:focus {
     border-color: var(--pc-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+    box-shadow: 0 0 0 3px rgba(var(--prodex-aqua-rgb), 0.14);
   }
 
   .product-create-page .form-group label {
@@ -3431,7 +3431,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   .product-create-page .label-help-icon:focus {
     color: var(--pc-primary-strong);
     background: var(--pc-primary-soft);
-    border-color: rgba(99, 102, 241, 0.35);
+    border-color: rgba(var(--prodex-aqua-rgb), 0.35);
     outline: none;
     transform: translateY(-1px);
   }
@@ -3447,7 +3447,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   .product-create-page .v-select.vs--open .vs__dropdown-toggle,
   .product-create-page .v-select:focus-within .vs__dropdown-toggle {
     border-color: var(--pc-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+    box-shadow: 0 0 0 3px rgba(var(--prodex-aqua-rgb), 0.14);
   }
 
   .form-control-file {
@@ -3485,7 +3485,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
 
   .modern-input-group:focus-within {
     border-color: var(--pc-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+    box-shadow: 0 0 0 3px rgba(var(--prodex-aqua-rgb), 0.14);
   }
 
   .modern-input-group .form-control {
@@ -3595,7 +3595,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
     background: linear-gradient(135deg, #f5f7ff 0%, #eef2ff 100%);
     padding: 1rem;
     border-radius: 12px;
-    border: 1px solid rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(var(--prodex-aqua-rgb), 0.15);
   }
 
   /* ===== Combo Section ===== */
@@ -3622,7 +3622,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   .product-create-page .autocomplete-input:focus {
     outline: none;
     border-color: var(--pc-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+    box-shadow: 0 0 0 3px rgba(var(--prodex-aqua-rgb), 0.14);
   }
 
   .autocomplete-result-list {
@@ -3675,7 +3675,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
     background: linear-gradient(135deg, #f5f7ff 0%, #eef2ff 100%);
     padding: 1rem 1.25rem;
     border-radius: 12px;
-    border: 1px solid rgba(99, 102, 241, 0.15);
+    border: 1px solid rgba(var(--prodex-aqua-rgb), 0.15);
     border-left: 4px solid var(--pc-primary);
   }
 
@@ -3717,7 +3717,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   }
 
   .product-create-page .options-grid .form-group:hover {
-    border-color: rgba(99, 102, 241, 0.3);
+    border-color: rgba(var(--prodex-aqua-rgb), 0.3);
     background: #f5f7ff;
   }
 
@@ -3805,7 +3805,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   }
 
   .product-create-page .input-group:focus-within {
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+    box-shadow: 0 0 0 3px rgba(var(--prodex-aqua-rgb), 0.14);
   }
 
   /* Don't double-up the focus ring inside the group. */
@@ -3867,10 +3867,10 @@ export default { directives: { 'b-tooltip': vBTooltip },
      that hard-code hex values instead of using the vars.
      ----------------------------------------------------------- */
   .dark-theme .product-create-page {
-    --pc-primary:        #818cf8;
-    --pc-primary-strong: #a78bfa;
-    --pc-primary-soft:   rgba(129, 140, 248, 0.16);
-    --pc-accent:         #c4b5fd;
+    --pc-primary: var(--primary-color);
+    --pc-primary-strong: var(--primary-color-darker);
+    --pc-primary-soft: var(--primary-color-soft);
+    --pc-accent: var(--prodex-ink);
     --pc-success:        #34d399;
     --pc-warn:           #fbbf24;
     --pc-danger:         #f87171;
@@ -3890,8 +3890,8 @@ export default { directives: { 'b-tooltip': vBTooltip },
   /* Hero — replace the white gradient + faint indigo glow */
   .dark-theme .product-create-page .page-hero {
     background:
-      radial-gradient(circle at 0% 0%, rgba(139, 92, 246, 0.18), transparent 55%),
-      radial-gradient(circle at 100% 100%, rgba(99, 102, 241, 0.18), transparent 55%),
+      radial-gradient(circle at 0% 0%, rgba(var(--prodex-aqua-rgb), 0.18), transparent 55%),
+      radial-gradient(circle at 100% 100%, rgba(var(--prodex-aqua-rgb), 0.18), transparent 55%),
       linear-gradient(135deg, #202020 0%, #1a1a1a 100%);
     border-color: rgba(129, 140, 248, 0.25);
   }

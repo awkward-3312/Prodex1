@@ -1,12 +1,12 @@
 /* PRODEX — consentimiento de cookies (sitio público)
-   Todo vive bajo `.pxc`; la paleta se define una sola vez aquí (navy y cyan de PRODEX). */
+   Todo vive bajo `.pxc`; los tokens se derivan de la paleta oficial compartida. */
 
 .pxc {
-    --pxc-ink: #0f2a4a;          /* navy PRODEX: títulos, botón primario */
+    --pxc-ink: var(--prodex-ink);          /* navy PRODEX: títulos, botón primario */
     --pxc-text: #475569;
-    --pxc-line: rgba(15, 42, 74, 0.12);
-    --pxc-accent: #06b6d4;       /* cyan PRODEX (no se usa para texto: contraste insuficiente sobre blanco) */
-    --pxc-accent-strong: #0891b2;/* variante con ≥3:1 sobre blanco para controles y foco */
+    --pxc-line: rgba(var(--prodex-ink-rgb), 0.12);
+    --pxc-accent: var(--prodex-aqua);       /* cyan PRODEX (no se usa para texto: contraste insuficiente sobre blanco) */
+    --pxc-accent-strong: var(--prodex-ink);/* variante con ≥3:1 sobre blanco para controles y foco */
     --pxc-surface: #ffffff;
     --pxc-muted: #f1f5f9;
 
@@ -23,7 +23,7 @@
     color: var(--pxc-text);
     border: 1px solid var(--pxc-line);
     border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(15, 42, 74, 0.14);
+    box-shadow: 0 12px 32px rgba(var(--prodex-ink-rgb), 0.14);
     font: 400 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     opacity: 0;
     transform: translateY(8px);

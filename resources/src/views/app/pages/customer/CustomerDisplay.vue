@@ -102,6 +102,7 @@
 </template>
 
 <script>
+import brand from "../../../../../brand/prodex.json";
 
 export default {
   name: 'CustomerDisplay',
@@ -112,7 +113,7 @@ export default {
     const screenId = (params && params.get('screen')) || '1';
     return {
       screenId,
-      logo: window.__APP_LOGO__ || '/images/logo.png',
+      logo: window.__APP_LOGO__ || '/' + brand.assets.logo,
       currency: '',
       items: [],
       discount: 0,

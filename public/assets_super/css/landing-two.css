@@ -1,12 +1,12 @@
 /* Landing v2 — overrides .landing-v2 (loads after landing.css) */
 
 .landing-v2 {
-    --primary: #0d9488;
-    --primary-dark: #0f766e;
-    --primary-light: #2dd4bf;
-    --primary-bg: #ecfdf5;
-    --accent: #c2410c;
-    --accent-light: #fed7aa;
+    --primary: var(--prodex-ink);
+    --primary-dark: var(--prodex-ink);
+    --primary-light: var(--prodex-ink);
+    --primary-bg: var(--primary-color-soft);
+    --accent: var(--prodex-ink);
+    --accent-light: var(--prodex-aqua);
     --dark: #0c1222;
     --dark-700: #151b2e;
     --muted: #5c6578;
@@ -85,7 +85,7 @@
 
 @media (hover: hover) and (pointer: fine) {
     .landing-v2 .nav-btn-primary:hover {
-        background: linear-gradient(165deg, #14b8a6 0%, var(--primary-dark) 100%);
+        background: linear-gradient(165deg, var(--prodex-ink) 0%, var(--primary-dark) 100%);
         border-color: transparent;
         color: #fff !important;
         transform: translateY(-1px);
@@ -100,17 +100,17 @@
 }
 
 .landing-v2 .btn-cta:hover {
-    background: linear-gradient(165deg, #14b8a6 0%, #0d9488 100%);
+    background: linear-gradient(165deg, var(--prodex-ink) 0%, #0d9488 100%);
     box-shadow: 0 8px 24px rgba(13, 148, 136, .38);
 }
 
 .landing-v2 .btn-cta-accent {
-    background: linear-gradient(165deg, var(--accent) 0%, #9a3412 100%);
+    background: linear-gradient(165deg, var(--accent) 0%, var(--prodex-ink) 100%);
     box-shadow: 0 4px 14px rgba(194, 65, 12, .28);
 }
 
 .landing-v2 .btn-cta-accent:hover {
-    background: linear-gradient(165deg, #ea580c 0%, var(--accent) 100%);
+    background: linear-gradient(165deg, var(--prodex-ink) 0%, var(--accent) 100%);
     box-shadow: 0 8px 22px rgba(194, 65, 12, .35);
 }
 
@@ -317,7 +317,7 @@
 }
 
 .landing-v2 .pricing-tier--featured .pricing-tier__cta:hover {
-    background: linear-gradient(165deg, #14b8a6 0%, var(--primary-dark) 100%);
+    background: linear-gradient(165deg, var(--prodex-ink) 0%, var(--primary-dark) 100%);
     border-color: transparent;
     color: #fff;
 }

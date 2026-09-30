@@ -16,7 +16,7 @@
           <g transform="translate(100,100)" class="pencil__rotate">
             <g fill="none">
               <circle transform="rotate(-90)" stroke-dashoffset="402" stroke-dasharray="402.12 402.12" stroke-width="30" stroke="#12467a" r="64" class="pencil__body1"></circle>
-              <circle transform="rotate(-90)" stroke-dashoffset="465" stroke-dasharray="464.96 464.96" stroke-width="10" stroke="#06b6d4" r="74" class="pencil__body2"></circle>
+              <circle transform="rotate(-90)" stroke-dashoffset="465" stroke-dasharray="464.96 464.96" stroke-width="10" stroke="var(--prodex-aqua)" r="74" class="pencil__body2"></circle>
               <circle transform="rotate(-90)" stroke-dashoffset="339" stroke-dasharray="339.29 339.29" stroke-width="10" stroke="#0b1f3a" r="54" class="pencil__body3"></circle>
             </g>
             <g transform="rotate(-90) translate(49,0)" class="pencil__eraser">
@@ -128,7 +128,7 @@ export default {
   position: absolute;
   inset: 8%;
   border-radius: 50%;
-  background: radial-gradient(circle, color-mix(in srgb, var(--pxn-primary) 16%, transparent) 0%, color-mix(in srgb, #0f2a4a 10%, transparent) 55%, transparent 78%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--pxn-primary) 16%, transparent) 0%, color-mix(in srgb, var(--prodex-ink) 10%, transparent) 55%, transparent 78%);
 }
 
 .pencil {
@@ -215,7 +215,7 @@ export default {
   font-weight: var(--pxn-fw-bold);
   line-height: .9;
   letter-spacing: -0.03em;
-  background: linear-gradient(180deg, #0f2a4a 0%, var(--pxn-primary) 130%);
+  background: linear-gradient(180deg, var(--prodex-ink) 0%, var(--pxn-primary) 130%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

@@ -41,6 +41,7 @@ function logoUrl(responseData, invoiceSettings, posSettings) {
   if (!setting(invoiceSettings, 'show_logo', true) || !setting(posSettings, 'show_logo', true)) return '';
   const logo = responseData && responseData.setting ? responseData.setting.logo : '';
   if (!logo) return '';
+  if (window.__brandDefaults?.[logo]) return window.__brandDefaults[logo];
   const base = String(window.__uploadPath || 'images').replace(/^\/+|\/+$/g, '');
   return '/' + base + '/settings/' + encodeURIComponent(logo);
 }

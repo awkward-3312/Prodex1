@@ -1,12 +1,12 @@
 /* Landing */
 
 :root {
-    --primary: #6366f1;
-    --primary-dark: #4f46e5;
-    --primary-light: #818cf8;
-    --primary-bg: #eef2ff;
-    --accent: #f97316;
-    --accent-light: #fed7aa;
+    --primary: var(--prodex-ink);
+    --primary-dark: var(--prodex-ink);
+    --primary-light: var(--prodex-ink);
+    --primary-bg: var(--primary-color-soft);
+    --accent: var(--prodex-ink);
+    --accent-light: var(--prodex-aqua);
     --dark: #0f172a;
     --dark-700: #1e293b;
     --muted: #64748b;
@@ -215,19 +215,19 @@ body {
     padding: .55rem 1.35rem; border-radius: 10px; border: none;
     font-size: .88rem; text-decoration: none; display: inline-flex;
     align-items: center; gap: .4rem;
-    box-shadow: 0 2px 8px rgba(99,102,241,.3);
+    box-shadow: 0 2px 8px rgba(var(--prodex-aqua-rgb),.3);
     transition: all var(--transition);
 }
 .btn-cta:hover {
     background: var(--primary-dark); transform: translateY(-1px);
-    box-shadow: 0 4px 16px rgba(99,102,241,.4); color: #fff !important;
+    box-shadow: 0 4px 16px rgba(var(--prodex-aqua-rgb),.4); color: #fff !important;
 }
 .btn-cta-lg { padding: .85rem 2rem; font-size: 1.05rem; border-radius: 12px; }
 .btn-cta-accent {
-    background: var(--accent); box-shadow: 0 2px 8px rgba(249,115,22,.3);
+    background: var(--accent); box-shadow: 0 2px 8px rgba(var(--prodex-ink-rgb),.3);
 }
 .btn-cta-accent:hover {
-    background: #ea580c; box-shadow: 0 4px 16px rgba(249,115,22,.4);
+    background: var(--prodex-ink); box-shadow: 0 4px 16px rgba(var(--prodex-ink-rgb),.4);
 }
 .btn-cta-outline {
     background: transparent; color: var(--primary) !important;
@@ -235,7 +235,7 @@ body {
 }
 .btn-cta-outline:hover {
     background: var(--primary); color: #fff !important;
-    box-shadow: 0 4px 16px rgba(99,102,241,.3);
+    box-shadow: 0 4px 16px rgba(var(--prodex-aqua-rgb),.3);
 }
 .btn-outline-landing {
     background: #fff; color: var(--dark) !important; font-weight: 600;
@@ -2447,7 +2447,7 @@ a.landing-footer__contact-item:focus-visible {
 }
 .cb-btn-customize {
     background: transparent; color: var(--primary);
-    border-color: rgba(99,102,241,.2);
+    border-color: rgba(var(--prodex-aqua-rgb),.2);
 }
 .cb-btn-customize:hover {
     background: var(--primary-bg); border-color: var(--primary);

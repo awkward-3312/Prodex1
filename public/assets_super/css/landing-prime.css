@@ -5,25 +5,25 @@
    ========================================================================== */
 
 :root {
-    --lp-ink:        #0F172A;
+    --lp-ink: var(--prodex-ink);
     --lp-ink-2:      #334155;
     --lp-ink-3:      #5A6B85;   /* AA sobre blanco y sobre #F8FAFC */
     --lp-line:       #E7EAF0;
     --lp-line-soft:  #EEF1F6;
     --lp-bg:         #FFFFFF;
     --lp-bg-2:       #F7F9FC;
-    --lp-brand:      #4F46E5;
-    --lp-brand-ink:  #3730A3;
-    --lp-brand-050:  #EEF0FF;
-    --lp-accent:     #2563EB;
+    --lp-brand: var(--prodex-ink);
+    --lp-brand-ink: var(--prodex-ink);
+    --lp-brand-050: var(--primary-color-soft);
+    --lp-accent: var(--prodex-ink);
     /* Firma visual PRODEX — "aurora" tecnológica. Sólo en puntos de impacto. */
-    --lp-aurora-1:   #1D4ED8;   /* azul profundo */
-    --lp-aurora-2:   #4F46E5;   /* indigo */
-    --lp-aurora-3:   #22D3EE;   /* cyan / turquesa */
+    --lp-aurora-1: var(--prodex-ink);   /* azul profundo */
+    --lp-aurora-2: var(--prodex-ink);   /* indigo */
+    --lp-aurora-3: var(--prodex-aqua);   /* cyan / turquesa */
     --lp-ink-950:    #0B1220;   /* superficie profunda para el cierre */
-    --lp-navy:       #16233F;   /* confianza — texto/acentos oscuros */
-    --lp-orange:     #E15A00;   /* acento comercial estratégico (AA con blanco) */
-    --lp-orange-050: #FFF2E8;
+    --lp-navy: var(--prodex-ink);   /* confianza — texto/acentos oscuros */
+    --lp-orange: var(--prodex-ink);   /* acento comercial estratégico (AA con blanco) */
+    --lp-orange-050: var(--primary-color-soft);
     /* Personalidad por plan: icono · borde · precio · CTA · detalles (NO la card entera) */
     --lp-plan-1:     #0E9CB8;   /* Emprendedor — cyan/turquesa (AA) */
     --lp-plan-1-050: #E4FAFE;

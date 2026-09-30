@@ -3,20 +3,17 @@
    ============================================================ */
 
 :root {
-    /* PRODEX brand — indigo/cyan (matches the public site's --primary/--primary-dark
-       in assets_super/css/landing.css; the auth pages previously shipped a
-       leftover green token here while focus rings/hover tints already used
-       indigo rgba(99,102,241,...) — this restores one consistent palette). */
-    --color-primary: #4F46E5;
-    --color-primary-dark: #4338CA;
-    --color-primary-rgb: 79, 70, 229;
-    --color-accent-cyan: #06B6D4;
+    /* Platform defaults share the official palette; status colors remain separate. */
+    --color-primary: var(--prodex-ink);
+    --color-primary-dark: var(--prodex-ink);
+    --color-primary-rgb: var(--prodex-ink-rgb);
+    --color-accent-cyan: var(--prodex-aqua);
     --color-dark: #0f172a;
     --color-muted: #64748b;
     --color-surface: #f8fafc;
     --color-border: #e2e8f0;
-    --gradient-hero: linear-gradient(135deg, #4338CA 0%, #0891B2 100%);
-    --gradient-mesh: linear-gradient(135deg, #4338CA 0%, #0891B2 100%);
+    --gradient-hero: linear-gradient(135deg, var(--prodex-ink) 0%, var(--prodex-ink) 100%);
+    --gradient-mesh: linear-gradient(135deg, var(--prodex-ink) 0%, var(--prodex-ink) 100%);
     --radius: 12px;
     --radius-lg: 20px;
     --shadow-card: 0 25px 50px -12px rgba(15, 23, 42, 0.15);

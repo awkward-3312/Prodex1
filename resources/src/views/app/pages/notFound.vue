@@ -126,8 +126,8 @@ export default {
 
 .pxerr-hero {
   --pxerr-navy: #081428;
-  --pxerr-navy-2: #0f2a4a;
-  --pxerr-cyan: #06b6d4;
+  --pxerr-navy-2: var(--prodex-ink);
+  --pxerr-cyan: var(--prodex-aqua);
   --pxerr-star: #eef4ff;
   position: relative;
   overflow: hidden;

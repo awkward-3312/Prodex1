@@ -2606,11 +2606,11 @@ html[dir="rtl"] .stat-card-icon {
   }
 
   .dashboard-page-root .mobile-tabbar__item--active {
-    color: #6d28d9;
+    color: var(--primary-color);
   }
 
   .dashboard-page-root .mobile-tabbar__item--active i {
-    color: #6d28d9;
+    color: var(--primary-color);
   }
 
   .dashboard-page-root .mobile-tabbar__item:active {

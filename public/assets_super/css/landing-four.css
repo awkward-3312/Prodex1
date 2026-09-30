@@ -11,10 +11,10 @@
     --l4-text-soft: #e4e4e7;
     --l4-muted: #a1a1aa;
     --l4-muted-dim: #71717a;
-    --l4-accent: #2dd4bf;
-    --l4-accent-hover: #5eead4;
-    --l4-accent-muted: rgba(45, 212, 191, 0.14);
-    --l4-glow: rgba(45, 212, 191, 0.35);
+    --l4-accent: var(--prodex-aqua);
+    --l4-accent-hover: var(--prodex-aqua);
+    --l4-accent-muted: var(--primary-color-soft);
+    --l4-glow: rgba(var(--prodex-aqua-rgb), .35);
     --l4-max: 1120px;
     --l4-radius: 14px;
     --l4-radius-lg: 20px;
@@ -114,7 +114,6 @@ body.l4-body {
     width: 100%;
     height: 100%;
     object-fit: contain;
-    filter: brightness(1.05);
 }
 .l4-nav-desktop {
     display: none;
@@ -1263,3 +1262,7 @@ body.l4-body {
         transition: none;
     }
 }
+
+/* Official and configured logos retain their intrinsic proportions. */
+.l4-brand__mark:has(img) { width: auto; height: 36px; background: transparent; border: 0; box-shadow: none; overflow: visible; }
+.l4-brand__mark img { width: auto; height: 36px; max-width: 160px; object-fit: contain; filter: none; }

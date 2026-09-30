@@ -635,7 +635,7 @@ export default { components: { BFormDatepicker, BFormSelect, BBadge, BButton, BT
   align-items: center;
   justify-content: center;
   color: #fff;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: var(--primary-color);
   box-shadow: 0 8px 20px -6px rgba(99, 102, 241, 0.6);
 }
 .kh-title h1 {
@@ -754,7 +754,7 @@ export default { components: { BFormDatepicker, BFormSelect, BBadge, BButton, BT
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .kt-search input:focus {
-  border-color: #6366f1;
+  border-color: var(--brand-focus);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 .kt-date { max-width: 190px; }
@@ -946,7 +946,7 @@ export default { components: { BFormDatepicker, BFormSelect, BBadge, BButton, BT
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .dispatch-select:focus {
-  border-color: #6366f1;
+  border-color: var(--brand-focus);
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
 }
 .dispatch-select:disabled { opacity: 0.6; cursor: not-allowed; }

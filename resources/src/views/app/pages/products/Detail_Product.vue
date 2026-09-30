@@ -45,7 +45,7 @@
         <div
           class="pd-hero"
           :style="{
-            background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+            background: 'var(--primary-color)',
             borderRadius: '16px',
             padding: '28px',
             color: '#fff',
@@ -423,7 +423,7 @@
                       borderRadius: '8px',
                       overflow: 'hidden',
                       cursor: 'pointer',
-                      border: activeImageIndex === idx ? '2px solid #4f46e5' : '2px solid transparent',
+                      border: activeImageIndex === idx ? '2px solid var(--primary-color)' : '2px solid transparent',
                       boxShadow: activeImageIndex === idx ? '0 2px 8px rgba(79,70,229,0.25)' : '0 1px 3px rgba(0,0,0,0.05)',
                       transition: 'all 0.2s'
                     }"
@@ -849,7 +849,7 @@ export default {
         backBtnColor:     '#475569',
         backBtnBorder:    '#cbd5e1',
         backBtnHoverBg:   '#fff',
-        backBtnHoverFg:   '#4f46e5'
+        backBtnHoverFg:   'var(--primary-color)'
       };
     },
 
@@ -957,7 +957,7 @@ export default {
     },
     printBtnStyle() {
       return {
-        background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)',
+        background: 'var(--primary-color)',
         color: '#fff',
         border: 'none',
         padding: '10px 20px',

@@ -144,7 +144,7 @@ export default { components: { BFormInput, BButton, BCard, BFormGroup },
 <style scoped>
 .attendance-identity-card { border: 1px solid #e4eaf1; border-radius: 12px; }
 .attendance-identity-heading { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 18px; }
-.attendance-identity-icon { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; border-radius: 10px; background: #eef9fb; color: var(--primary-color,#38bfd3); }
+.attendance-identity-icon { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; flex: 0 0 auto; border-radius: 10px; background: #eef9fb; color: var(--primary-color, var(--prodex-ink)); }
 .attendance-identity-heading h6 { margin: 1px 0 4px; font-size: 14px; font-weight: 700; color: #18212f; }
 .attendance-identity-heading p { margin: 0; color: #667085; font-size: 11px; line-height: 1.5; }
 .attendance-identity-list { margin-bottom: 16px; }

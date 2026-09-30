@@ -242,7 +242,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
 
 <style scoped>
 .tickets-page {
-  --tk-primary: #5e72e4;
+  --tk-primary: var(--primary-color);
   --tk-warning: #fb6340;
   --tk-success: #2dce89;
   --tk-muted: #8898aa;
@@ -257,8 +257,8 @@ export default { directives: { 'b-tooltip': vBTooltip },
   flex-wrap: wrap;
   padding: 26px 30px;
   border-radius: 18px;
-  background: linear-gradient(120deg, #4254e8 0%, #6a3df0 60%, #8a4ff0 100%);
-  box-shadow: 0 12px 30px rgba(80, 70, 220, 0.28);
+  background: var(--prodex-ink);
+  box-shadow: 0 12px 30px rgba(var(--prodex-ink-rgb), 0.28);
   color: #fff;
 }
 .tk-hero__text {
@@ -349,7 +349,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
 .tk-stat__label { font-size: 13px; color: #8a94a6; margin-top: 2px; }
 
 .tk-stat--primary { color: var(--tk-primary); }
-.tk-stat--primary .tk-stat__icon { background: rgba(94, 114, 228, 0.12); color: var(--tk-primary); }
+.tk-stat--primary .tk-stat__icon { background: rgba(var(--prodex-aqua-rgb), 0.12); color: var(--tk-primary); }
 .tk-stat--warning { color: var(--tk-warning); }
 .tk-stat--warning .tk-stat__icon { background: rgba(251, 99, 64, 0.12); color: var(--tk-warning); }
 .tk-stat--success { color: var(--tk-success); }
@@ -425,7 +425,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   width: 34px;
   height: 34px;
   border-radius: 9px;
-  background: rgba(94, 114, 228, 0.1);
+  background: rgba(var(--prodex-aqua-rgb), 0.1);
   color: var(--tk-primary);
   transition: all 0.15s ease;
 }
@@ -439,7 +439,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
   height: 72px;
   margin: 0 auto 16px;
   border-radius: 50%;
-  background: rgba(94, 114, 228, 0.1);
+  background: rgba(var(--prodex-aqua-rgb), 0.1);
   color: var(--tk-primary);
   display: flex;
   align-items: center;
