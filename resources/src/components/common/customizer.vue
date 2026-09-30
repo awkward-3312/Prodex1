@@ -247,7 +247,7 @@ export default { directives: { 'b-popover': vBPopover },
 
 .layout-option.active {
   border-color: var(--primary-color);
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(var(--prodex-aqua-rgb), 0.1) 0%, rgba(var(--prodex-ink-rgb), 0.06) 100%);
 }
 
 .layout-option input[type="radio"] {
@@ -283,13 +283,13 @@ body.dark-theme .layout-option {
 }
 
 body.dark-theme .layout-option:hover {
-  border-color: #764ba2;
-  background: rgba(118, 75, 162, 0.1);
+  border-color: var(--brand-accent);
+  background: rgba(var(--prodex-aqua-rgb), 0.1);
 }
 
 body.dark-theme .layout-option.active {
-  border-color: #764ba2;
-  background: rgba(118, 75, 162, 0.2);
+  border-color: var(--brand-accent);
+  background: rgba(var(--prodex-aqua-rgb), 0.2);
 }
 
 body.dark-theme .option-label {

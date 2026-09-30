@@ -177,10 +177,10 @@ test.describe('Vue Router 4 — tenant (usuario administrador) @smoke', () => {
       document.querySelector('#app').__vue_app__.config.globalProperties.$router.push({ name: 'not_authorize' });
     });
     await expect(page).toHaveURL(/\/not_authorize$/);
-    await expect(page.locator('body')).toContainText(/usted no está autorizado/i);
+    await expect(page.getByRole('heading', { name: 'Acceso denegado' })).toBeVisible();
     await page.reload();
     await waitForApp(page);
-    await expect(page.locator('body')).toContainText(/usted no está autorizado/i);
+    await expect(page.getByRole('heading', { name: 'Acceso denegado' })).toBeVisible();
   });
 
   test('cambio de idioma en una pantalla no pierde la ruta y la navegación posterior sigue funcionando', async ({ page }) => {
@@ -205,7 +205,7 @@ test.describe('Vue Router 4 — usuario restringido @smoke', () => {
     for (const url of ['/app/products/list', '/app/pos', '/app/settings/system_settings']) {
       await page.goto(url);
       await waitForApp(page);
-      await expect(page.locator('body'), url).toContainText(/usted no está autorizado/i);
+      await expect(page.getByRole('heading', { name: 'Acceso denegado' }), url).toBeVisible();
     }
     await page.goto('/app/no-existe-restringido');
     await waitForApp(page);
@@ -218,7 +218,7 @@ test.describe('Vue Router 4 — usuario restringido @smoke', () => {
     await waitForApp(page);
     // En carga directa los permisos aún no están hidratados y el guard es optimista (→ /app/pos, que aplica su propio bloqueo);
     // con permisos cargados devuelve { name: 'index_sales' }. En ambos casos el formulario retirado no se renderiza.
-    await expect(page.locator('body')).toContainText(/usted no está autorizado/i, { timeout: 20_000 });
+    await expect(page.getByRole('heading', { name: 'Acceso denegado' })).toBeVisible({ timeout: 20_000 });
     expect(new URL(page.url()).pathname).toMatch(/\/(app\/pos|app\/sales\/list|not_authorize)$/);
     await expect(page.locator('body')).not.toContainText(/Nueva venta/);
   });

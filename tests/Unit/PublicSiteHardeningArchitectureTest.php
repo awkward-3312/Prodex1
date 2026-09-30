@@ -185,14 +185,15 @@ class PublicSiteHardeningArchitectureTest extends TestCase
     public function test_cookie_banner_is_reachable_by_keyboard_and_screen_readers(): void
     {
         $view = $this->read('resources/views/central/landing-prime.blade.php');
-        $this->assertMatchesRegularExpression('/id="lpCookie"[^>]*role="dialog"/s', $view);
-        $this->assertStringContainsString('aria-labelledby="lpCookieTitle"', $view);
         $this->assertStringContainsString('id="lpCookiePrefs"', $view); // footer re-open trigger
 
         $js = $this->read('public/assets_super/js/prodex-consent.js');
+        $this->assertStringContainsString('id: "pxcConsent", role: "dialog"', $js);
+        $this->assertStringContainsString('"aria-labelledby": titleId', $js);
         $this->assertStringContainsString('openPreferences', $js);
         $this->assertStringContainsString('"Escape"', $js);
-        $this->assertStringContainsString('e.key === "Tab"', $js);
+        $this->assertStringContainsString('e.key !== "Escape"', $js);
+        $this->assertStringContainsString('if (f) f.focus()', $js);
     }
 
     // 6 / 7 — SEO meta on every indexable public page ---------------------
@@ -223,7 +224,11 @@ class PublicSiteHardeningArchitectureTest extends TestCase
         foreach ($pages as $slug) {
             $html = $this->read("public/{$slug}/index.html");
             $this->assertStringContainsString('rel="canonical"', $html, $slug);
-            $this->assertStringContainsString('prodex-og.png', $html, $slug);
+            $this->assertStringContainsString('prodex-app-icon-1024.png', $html, $slug);
+            $this->assertStringContainsString('og:image:width" content="1024"', $html, $slug);
+            $this->assertStringContainsString('og:image:height" content="1024"', $html, $slug);
+            $this->assertStringContainsString('/css/prodex-brand.css', $html, $slug);
+            $this->assertStringNotContainsString('images/social/prodex-og.png', $html, $slug);
             $this->assertStringContainsString('twitter:card" content="summary_large_image"', $html, $slug);
             $this->assertStringContainsString('apple-touch-icon', $html, $slug);
             $this->assertStringContainsString('prodex-consent.js', $html, $slug);
@@ -236,17 +241,17 @@ class PublicSiteHardeningArchitectureTest extends TestCase
 
     public function test_brand_social_image_and_favicons_exist_with_right_dimensions(): void
     {
-        $og = $this->root().'/public/images/social/prodex-og.png';
+        $og = $this->root().'/public/images/brand-assets/prodex-app-icon-1024.png';
         $this->assertFileExists($og);
         [$w, $h] = getimagesize($og);
-        $this->assertSame(1200, $w);
-        $this->assertSame(630, $h);
+        $this->assertSame(1024, $w);
+        $this->assertSame(1024, $h);
 
-        foreach (['favicon-16x16.png' => 16, 'favicon-32x32.png' => 32, 'apple-touch-icon.png' => 180] as $file => $size) {
-            $path = $this->root()."/public/images/social/{$file}";
+        foreach ([16, 32, 180] as $size) {
+            $path = $this->root()."/public/images/brand-assets/icons/icon-{$size}.png";
             $this->assertFileExists($path);
             [$fw] = getimagesize($path);
-            $this->assertSame($size, $fw, $file);
+            $this->assertSame($size, $fw);
         }
         $this->assertGreaterThan(0, filesize($this->root().'/public/favicon.ico'), 'root favicon.ico must not be empty');
     }

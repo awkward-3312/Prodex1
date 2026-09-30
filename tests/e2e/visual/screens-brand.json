@@ -1,0 +1,17 @@
+[
+  { "name": "login", "url": "/login", "user": "none" },
+  { "name": "dashboard", "url": "/app/dashboard" },
+  { "name": "inventario", "url": "/app/products/list" },
+  { "name": "formulario-producto", "url": "/app/products/store-classic" },
+  { "name": "ventas", "url": "/app/sales/list" },
+  { "name": "compras", "url": "/app/purchases/list" },
+  { "name": "rrhh", "url": "/app/hrm/employees/list" },
+  { "name": "plan", "url": "/app/billing/current-plan" },
+  { "name": "cambio-plan", "url": "/app/billing/change-plan" },
+  { "name": "historial-facturacion", "url": "/app/billing/history" },
+  { "name": "soporte", "url": "/app/support/tickets" },
+  { "name": "soporte-formulario", "url": "/app/support/tickets/create" },
+  { "name": "modal", "url": "/app/meeting/meetings", "click": "nueva|new|crear|add|programar", "waitFor": ".modal.show" },
+  { "name": "pos", "url": "/app/pos" },
+  { "name": "error", "url": "/app/no-existe-brand" }
+]

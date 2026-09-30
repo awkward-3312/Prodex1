@@ -10750,13 +10750,13 @@ export default {
 
 .pos-codecanyon .pos-shell-resizer:hover::before,
 .pos-codecanyon .pos-shell-resizer.is-active::before {
-  background: #bdb6e8;
+  background: var(--brand-accent);
 }
 
 .pos-codecanyon .pos-shell-resizer:hover > span,
 .pos-codecanyon .pos-shell-resizer.is-active > span {
   opacity: 1;
-  background: #6f53d9;
+  background: var(--pxn-primary);
 }
 
 .pos-codecanyon .pos-shell-resizer-vertical {
@@ -10800,8 +10800,8 @@ $color-text-primary: #1a1a2e;
 $color-text-secondary: #6b7280;
 $color-text-tertiary: #9ca3af;
 $color-border-light: #e5e7eb;
-$color-gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-$color-gradient-hover: linear-gradient(135deg, #5568d3 0%, #69408f 100%);
+$color-gradient-primary: var(--pxn-primary);
+$color-gradient-hover: var(--pxn-primary-hover);
 $color-success: #10b981;
 $color-warning: #f59e0b;
 $color-danger: #ef4444;
@@ -10956,7 +10956,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       &:focus {
         outline: none;
         background: white;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        box-shadow: 0 0 0 3px rgba(var(--prodex-ink-rgb), 0.1);
       }
     }
 
@@ -11012,7 +11012,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: $color-bg-light;
 }
 .pos-autocomplete-item:active {
-  background: rgba(102, 126, 234, 0.08);
+  background: rgba(var(--prodex-ink-rgb), 0.08);
 }
 
 .header-right {
@@ -11064,12 +11064,12 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
 .register-status .register-toggle-btn:hover {
   background: white;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.08);
+  box-shadow: 0 0 0 3px rgba(var(--prodex-ink-rgb), 0.08);
 }
 
 .register-status .register-toggle-btn:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+  box-shadow: 0 0 0 3px rgba(var(--prodex-ink-rgb), 0.12);
 }
 
 /* POS only: v-select one-line + ellipsis (selected value + search on one line) */
@@ -11166,7 +11166,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-weight: 600;
   color: white;
   font-size: $font-size-sm;
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
+  box-shadow: 0 2px 8px rgba(var(--prodex-ink-rgb), 0.25);
   cursor: pointer;
   transition: $transition-fast;
   flex-shrink: 0;
@@ -11241,7 +11241,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-radius: 20px;
     font-size: 12px;
     font-weight: 600;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 2px 8px rgba(var(--prodex-ink-rgb), 0.2);
   }
 
   .filter-section {
@@ -11269,7 +11269,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   &:focus {
     outline: none;
     background: white;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    box-shadow: 0 0 0 3px rgba(var(--prodex-ink-rgb), 0.1);
   }
 
   &::placeholder {
@@ -11328,9 +11328,9 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     "batches batches";
 
   &:hover {
-    border-color: #667eea;
+    border-color: var(--pxn-primary);
     background: white;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+    box-shadow: 0 2px 8px rgba(var(--prodex-ink-rgb), 0.1);
   }
 
   .item-header {
@@ -11372,9 +11372,9 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
       &:hover {
-        border-color: #667eea;
-        background: rgba(102, 126, 234, 0.06);
-        color: #667eea;
+        border-color: var(--pxn-primary);
+        background: rgba(var(--prodex-ink-rgb), 0.06);
+        color: var(--pxn-primary);
         transform: scale(1.05);
       }
 
@@ -11586,8 +11586,8 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       outline: none;
 
       &:hover {
-        border-color: #667eea;
-        background: rgba(102, 126, 234, 0.05);
+        border-color: var(--pxn-primary);
+        background: rgba(var(--prodex-ink-rgb), 0.05);
       }
 
       &:focus,
@@ -11617,7 +11617,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       &:focus {
         outline: none;
         background: white;
-        box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        box-shadow: 0 0 0 2px rgba(var(--prodex-ink-rgb), 0.1);
       }
     }
   }
@@ -11761,9 +11761,9 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         text-align: center;
         
         &:hover {
-          border-color: #667eea;
-          background: rgba(102, 126, 234, 0.06);
-          color: #667eea;
+          border-color: var(--pxn-primary);
+          background: rgba(var(--prodex-ink-rgb), 0.06);
+          color: var(--pxn-primary);
         }
         
         &:active {
@@ -11773,7 +11773,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         &:focus,
         &:focus-visible {
           outline: none;
-          box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+          box-shadow: 0 0 0 2px rgba(var(--prodex-ink-rgb), 0.2);
         }
       }
     }
@@ -12021,8 +12021,8 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   margin-top: -16px;
   margin-left: -16px;
   border-radius: 50%;
-  border: 3px solid rgba(102, 126, 234, 0.25);
-  border-top-color: #667eea;
+  border: 3px solid rgba(var(--prodex-ink-rgb), 0.25);
+  border-top-color: var(--pxn-primary);
   animation: spinner-rotate 0.8s linear infinite;
 }
 
@@ -12052,11 +12052,11 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   &:hover {
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.05);
+    border-color: var(--pxn-primary);
+    background: rgba(var(--prodex-ink-rgb), 0.05);
 
     svg {
-      color: #667eea;
+      color: var(--pxn-primary);
     }
   }
 
@@ -12094,8 +12094,8 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   height: 100%;
 
   &:hover {
-    border-color: #667eea;
-    box-shadow: 0 12px 32px rgba(102, 126, 234, 0.15);
+    border-color: var(--pxn-primary);
+    box-shadow: 0 12px 32px rgba(var(--prodex-ink-rgb), 0.15);
     transform: translateY(-6px);
 
     .add-to-cart-btn {
@@ -12108,7 +12108,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   width: 100%;
   height: 140px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(var(--prodex-ink-rgb), 0.05) 0%, rgba(var(--prodex-aqua-rgb), 0.05) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12125,7 +12125,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   .product-image-placeholder {
     font-size: 48px;
     font-weight: 700;
-    color: rgba(102, 126, 234, 0.2);
+    color: rgba(var(--prodex-ink-rgb), 0.2);
   }
 
   .discount-badge {
@@ -12202,8 +12202,8 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       width: 32px;
       height: 32px;
       border: none;
-      background: rgba(102, 126, 234, 0.1);
-      color: #667eea;
+      background: rgba(var(--prodex-ink-rgb), 0.1);
+      color: var(--pxn-primary);
       border-radius: $radius-sm;
       cursor: pointer;
       display: flex;
@@ -12219,7 +12219,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
 
       &:hover:not(:disabled) {
-        background: rgba(102, 126, 234, 0.2);
+        background: rgba(var(--prodex-ink-rgb), 0.2);
       }
 
       &:disabled {
@@ -12330,9 +12330,9 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   color: $color-text-secondary;
 
   &:hover {
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.05);
-    color: #667eea;
+    border-color: var(--pxn-primary);
+    background: rgba(var(--prodex-ink-rgb), 0.05);
+    color: var(--pxn-primary);
   }
 }
 
@@ -12358,9 +12358,9 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   &:hover {
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.05);
-    color: #667eea;
+    border-color: var(--pxn-primary);
+    background: rgba(var(--prodex-ink-rgb), 0.05);
+    color: var(--pxn-primary);
   }
 
   &:focus,
@@ -12399,13 +12399,13 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 .action-btn-primary {
   background: $color-gradient-primary;
   color: white;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.25);
+  box-shadow: 0 4px 16px rgba(var(--prodex-ink-rgb), 0.25);
   flex: 1;
   max-width: 300px;
   justify-content: center;
 
   &:hover:not(:disabled) {
-    box-shadow: 0 6px 24px rgba(102, 126, 234, 0.35);
+    box-shadow: 0 6px 24px rgba(var(--prodex-ink-rgb), 0.35);
     background: $color-gradient-hover;
   }
 
@@ -12443,8 +12443,8 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: left;
 }
 .lang-item:hover {
-  border-color: #667eea;
-  background: rgba(102, 126, 234, 0.06);
+  border-color: var(--pxn-primary);
+  background: rgba(var(--prodex-ink-rgb), 0.06);
 }
 .lang-item .flag-icon { width: 20px; height: 14px; object-fit: cover; }
 .lang-item .title-lang { font-size: 12px; color: $color-text-primary; }
@@ -14485,7 +14485,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   gap: 4px;
   padding: 0 20px;
   border-radius: $radius-md;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  background: linear-gradient(135deg, rgba(var(--prodex-ink-rgb), 0.08) 0%, rgba(var(--prodex-aqua-rgb), 0.08) 100%);
   padding: 12px 20px;
 }
 
@@ -14508,8 +14508,8 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
 }
 .convert-points-btn:hover {
-  border-color: #667eea;
-  background: rgba(102,126,234,.06);
+  border-color: var(--pxn-primary);
+  background: rgba(var(--prodex-ink-rgb), .06);
 }
 .convert-points-btn.converted {
   border: 1px solid #9CA3AF;
@@ -14561,7 +14561,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-weight: 700;
   cursor: pointer;
 }
-.convert-btn:hover { border-color: #667eea; background: rgba(102,126,234,.06); }
+.convert-btn:hover { border-color: var(--pxn-primary); background: rgba(var(--prodex-ink-rgb), .06); }
 .convert-btn.converted { border-color: #9CA3AF; color: #6B7280; }
 .convert-btn:focus,
 .convert-btn:active,
@@ -14641,9 +14641,9 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   &:hover:not(:disabled) {
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.05);
-    color: #667eea;
+    border-color: var(--pxn-primary);
+    background: rgba(var(--prodex-ink-rgb), 0.05);
+    color: var(--pxn-primary);
   }
 
   &:disabled {
@@ -14696,16 +14696,16 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   justify-content: center;
 
   &:hover {
-    border-color: #667eea;
-    background: rgba(102, 126, 234, 0.05);
-    color: #667eea;
+    border-color: var(--pxn-primary);
+    background: rgba(var(--prodex-ink-rgb), 0.05);
+    color: var(--pxn-primary);
   }
 
   &.active {
     background: $color-gradient-primary;
     color: white;
     border-color: transparent;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.25);
+    box-shadow: 0 2px 8px rgba(var(--prodex-ink-rgb), 0.25);
   }
 }
 
@@ -15431,7 +15431,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
 .premium-payment-modal {
   --color-primary: var(--primary-color);
-  --color-secondary: #764ba2;
+  --color-secondary: var(--pxn-primary);
   --color-success: #10b981;
   --color-danger: #ef4444;
   --color-warning: #f59e0b;
@@ -15458,7 +15458,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   padding: 28px 32px;
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-secondary) 100%);
   color: white;
-  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+  box-shadow: 0 8px 24px rgba(var(--prodex-ink-rgb), 0.2);
 }
 
 .checkout-header-content {
@@ -15585,7 +15585,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   justify-content: space-between;
   align-items: center;
   padding: 12px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  background: linear-gradient(135deg, rgba(var(--prodex-ink-rgb), 0.1) 0%, rgba(var(--prodex-aqua-rgb), 0.1) 100%);
   border-radius: 8px;
 }
 
@@ -15704,12 +15704,12 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover {
     border-color: var(--color-primary);
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.04) 0%, rgba(118, 75, 162, 0.04) 100%);
+    background: linear-gradient(135deg, rgba(var(--prodex-ink-rgb), 0.04) 0%, rgba(var(--prodex-aqua-rgb), 0.04) 100%);
   }
 
   &.active {
     border-color: var(--color-primary);
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    background: linear-gradient(135deg, rgba(var(--prodex-ink-rgb), 0.1) 0%, rgba(var(--prodex-aqua-rgb), 0.1) 100%);
     color: var(--color-primary);
   }
 }
@@ -15786,7 +15786,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 14px;
 
   &:focus {
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    box-shadow: 0 0 0 3px rgba(var(--prodex-ink-rgb), 0.1);
   }
 }
 
@@ -15843,7 +15843,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-color: var(--color-primary);
     background: white;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+    box-shadow: 0 4px 12px rgba(var(--prodex-ink-rgb), 0.1);
   }
 
   &:active {
@@ -15887,12 +15887,12 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:hover {
     border-color: var(--color-primary);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+    box-shadow: 0 4px 12px rgba(var(--prodex-ink-rgb), 0.1);
   }
 
   &.selected {
     border-color: var(--color-primary);
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    background: linear-gradient(135deg, rgba(var(--prodex-ink-rgb), 0.05) 0%, rgba(var(--prodex-aqua-rgb), 0.05) 100%);
   }
 }
 
@@ -15972,7 +15972,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
   &:focus {
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    box-shadow: 0 0 0 3px rgba(var(--prodex-ink-rgb), 0.1);
   }
 }
 
@@ -16345,7 +16345,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   width: 32px;
   height: 32px;
   border-radius: 99px;
-  background: linear-gradient(135deg, var(--accent), #b65cd6);
+  background: var(--pxn-primary);
   color: #fff;
   display: inline-flex;
   align-items: center;
@@ -18087,7 +18087,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   .pos-codecanyon .pos-shell-action-btn,
   .pos-codecanyon .pos-shell-pay-btn,
   .pos-codecanyon .pos-shell-icon-btn {
-    -webkit-tap-highlight-color: rgba(111, 83, 217, 0.15);
+    -webkit-tap-highlight-color: rgba(var(--prodex-aqua-rgb), 0.15);
   }
 }
 
@@ -18542,7 +18542,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     gap: 8px !important;
   }
 
-  /* --- Mobile Pay Now button (inside cart, full-width purple) --- */
+  /* --- Mobile Pay Now button (inside cart) --- */
   .pos-codecanyon .pos-shell-mobile-pay-btn {
     display: flex;
     align-items: center;
@@ -18552,18 +18552,22 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     margin: 8px;
     height: 48px;
     padding: 0 18px;
-    background: #6f53d9;
-    color: #ffffff;
+    background: var(--pxn-primary);
+    color: var(--pxn-primary-contrast);
     border: 0;
     border-radius: 12px;
     font-size: 15px;
     font-weight: 600;
     cursor: pointer;
-    box-shadow: 0 4px 14px rgba(111, 83, 217, 0.32);
+    box-shadow: 0 4px 14px rgba(var(--prodex-ink-rgb), 0.22);
     transition: all 120ms ease;
   }
   .pos-codecanyon .pos-shell-mobile-pay-btn:disabled {
-    opacity: 0.5;
+    opacity: 1;
+    background: var(--pxn-surface-3);
+    color: var(--pxn-ink-2);
+    border: 1px solid var(--pxn-border);
+    box-shadow: none;
     cursor: not-allowed;
   }
   .pos-codecanyon .pos-shell-mobile-pay-btn-amount {
@@ -18611,7 +18615,7 @@ $transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     font-weight: 500;
     cursor: pointer;
     font-family: inherit;
-    -webkit-tap-highlight-color: rgba(111, 83, 217, 0.18);
+    -webkit-tap-highlight-color: rgba(var(--prodex-aqua-rgb), 0.18);
     touch-action: manipulation;
   }
   .pos-codecanyon .pos-shell-mobile-tab > * {

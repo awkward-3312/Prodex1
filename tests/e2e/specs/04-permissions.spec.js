@@ -17,7 +17,8 @@ test.describe('Permisos restringidos @smoke', () => {
       await page.goto(route);
       await waitForApp(page);
       await expect(page).toHaveURL(/not_authorize/);
-      await expect(page.locator('body')).toContainText(/usted no está autorizado/);
+      await expect(page.getByRole('heading', { name: 'Acceso denegado' })).toBeVisible();
+      await expect(page.locator('body')).toContainText('Tu cuenta no tiene permiso para acceder a esta sección.');
     });
   }
 
