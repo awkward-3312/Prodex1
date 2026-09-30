@@ -21,7 +21,9 @@
         "test:e2e:routes": "node tests/e2e/routes/route-snapshot.js --check",
         "test:e2e:compat-warnings": "node tests/e2e/scripts/compat-warnings-report.js",
         "test:e2e:routes:update": "node tests/e2e/routes/route-snapshot.js --update",
-        "e2e:setup": "bash tests/e2e/scripts/setup.sh"
+        "e2e:setup": "bash tests/e2e/scripts/setup.sh",
+        "brand:generate": "node scripts/generate-brand.mjs",
+        "brand:check": "node scripts/generate-brand.mjs --check"
     },
     "dependencies": {
         "@alpinejs/collapse": "^3.15.11",
