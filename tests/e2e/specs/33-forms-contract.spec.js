@@ -184,7 +184,7 @@ const SCENARIOS = {
   'form: Enter y botón submit emiten UN submit cada uno': { tpl: '<div><b-form @submit.prevent="ev(\'submit\', 1)"><b-form-input v-model="v" class="i"></b-form-input><b-button type="submit" class="b">ok</b-button></b-form></div>', data: { v: '' }, actions: async (p) => { await root(p).locator('.i').click(); await p.keyboard.press('Enter'); await root(p).locator('.b').click(); } },
 };
 
-test.describe('Contrato de formularios (grabado de BootstrapVue 2) @smoke', () => {
+test.describe('Contrato de formularios (grabado de BootstrapVue 2) @smoke @instrumentation', () => {
   test.beforeEach(async ({ page }) => open(page));
 
   for (const [name, sc] of Object.entries(SCENARIOS)) {

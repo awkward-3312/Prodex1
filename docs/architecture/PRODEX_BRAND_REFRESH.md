@@ -29,6 +29,16 @@ Los cinco PNG en `public/images/brand-assets` son copias exactas de los original
 - Los CSS de temas históricos (`lite-purple`, `dark-purple`, `lite-blue`) permanecen en el árbol porque no son entradas activas de las vistas auditadas; no se borran sin confirmar dependencias externas. El tema oscuro preexistente conserva reglas históricas, pero no se añadió un modo nuevo. Los colores de categorías, gráficos (incluido Sales3D) e indicadores de estado siguen siendo semánticos, no tokens de marca.
 - La suite E2E de componentes (`/app/_ui?probe=ui`) requiere el bundle de desarrollo: la ruta de sonda se elimina explícitamente del bundle de producción. La verificación de producción se hace por compilación y por pruebas de marca sobre páginas reales.
 
+## Cierre del release gate: instrumentación y placeholders
+
+La ruta `/app/_ui` se registra únicamente cuando `NODE_ENV !== production`. En esa vista, `window.__pxProbe` monta componentes de prueba y permite inspeccionar sus estados y eventos; `window.__pxCutover` comprueba las reglas Bootstrap 5 y sus estilos calculados. Ninguna página de usuario depende de esas variables. Las suites 32, 33 y 34, más dos casos de la 36, son instrumentación de desarrollo. La suite completa mezclaba esos casos con las pruebas de producto y el release gate la ejecutó contra el bundle de producción; por eso los 99 casos esperaban variables que deliberadamente no existen allí.
+
+`npm run test:e2e:instrumentation` ejecuta esos casos contra un bundle de desarrollo. `npm run test:e2e:production` ejecuta los casos de producto contra el bundle de producción. Ambos comandos incluyen el proyecto compartido de autenticación de Playwright; las pruebas con `@instrumentation` no están omitidas ni eliminadas. `npm run test:e2e` sigue ejecutando la suite completa en CI, que compila en modo desarrollo. El release gate local debe compilar cada bundle antes de su suite correspondiente y usar el tenant demo aislado.
+
+Los cinco `images/tenant-default/*/no-image.png` ahora contienen exactamente el nuevo placeholder de plataforma. El provisionamiento nuevo ya copia esa plantilla a rutas por tenant. Las URLs existentes resuelven `images/tenants/{id}/{carpeta}/no-image.png`, por lo que centralizar el archivo implicaría cambiar contratos de URL y resolución de almacenamiento. La migración `2026_09_30_000001` actualiza las copias existentes solo si su SHA-256 coincide con uno de los dos placeholders heredados conocidos. Ignora cualquier archivo personalizado, ausente o enlazado; puede repetirse sin alterar archivos ya actualizados. `php artisan prodex:sync-no-image --dry-run` audita el resultado y el comando sin esa opción permite volver a aplicarlo si aparecen workspaces heredados después de la migración.
+
+En el CSS central servido directamente, los controles primarios y sus estados claros/oscuros usan `--color-primary` y sus tonos derivados, que respetan la elección del personalizador. Permanecen los violetas de categorías CMS, indicadores de aprovisionamiento, seguridad/base de datos, avatares y pasos manuales, además de colores de código e información que no son marca principal.
+
 ## Resultado de la validación local
 
 - `npm run production`: compilación correcta. `npm run brand:check` y `git diff --check`: correctos.

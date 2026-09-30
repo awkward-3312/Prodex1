@@ -41,7 +41,7 @@ const methods = {
   putErrors: 'function () { this.$refs.obs.setErrors({ campo: ["Servidor dice no"] }) }',
 };
 
-test.describe('Validación con los controles de BootstrapVueNext @smoke', () => {
+test.describe('Validación con los controles de BootstrapVueNext @smoke @instrumentation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/app/_ui?probe=ui');
     await waitForApp(page);
