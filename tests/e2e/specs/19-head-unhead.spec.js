@@ -153,7 +153,7 @@ test.describe('Head con Unhead — usuario restringido (403) @smoke', () => {
   test('403: la pantalla de acceso denegado fija su título', async ({ page }) => {
     await page.goto('/app/products/list');
     await waitForApp(page);
-    await expect(page.locator('body')).toContainText(/usted no está autorizado/i);
+    await expect(page.getByRole('heading', { name: 'Acceso denegado' })).toBeVisible();
     await expect(page).toHaveTitle(/403/);
   });
 });

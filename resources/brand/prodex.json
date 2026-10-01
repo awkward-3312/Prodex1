@@ -1,0 +1,15 @@
+{
+  "colors": {
+    "ink": "#142B3A",
+    "aqua": "#22D6C5",
+    "white": "#FFFFFF",
+    "black": "#000000"
+  },
+  "assets": {
+    "logo": "images/brand-assets/prodex-logo-color-4096.png",
+    "white": "images/brand-assets/prodex-logo-white-4096.png",
+    "black": "images/brand-assets/prodex-logo-black-4096.png",
+    "symbol": "images/brand-assets/prodex-symbol-color-2048.png",
+    "icon": "images/brand-assets/prodex-app-icon-1024.png"
+  }
+}

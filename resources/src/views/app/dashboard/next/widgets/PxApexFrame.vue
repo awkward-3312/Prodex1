@@ -44,7 +44,7 @@ function cssVar(name, fallback) {
 // Slot 1 = acento del tenant (--primary-color, doble indirección poco fiable
 // vía getComputedStyle → se lee directo). Slots 2–8 son hex literales.
 function chartRamp() {
-  const primary = cssVar("--primary-color", "#6d28d9");
+  const primary = cssVar("--primary-color", cssVar("--prodex-ink"));
   const fb = ["#3d4859", "#2e7d5b", "#b9761c", "#b23a5b", "#6a7f2e", "#8a5a44", "#b0568f"];
   const tail = fb.map((f, i) => cssVar(`--pxn-chart-${i + 2}`, f) || f);
   return [primary, ...tail];

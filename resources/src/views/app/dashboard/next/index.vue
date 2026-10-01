@@ -286,7 +286,7 @@ function cssVar(name, fallback) {
 // Slot 1 = acento del tenant; 2–8 hex literales de _tokens.scss.
 const CHART_FALLBACK = ["#3d4859", "#2e7d5b", "#b9761c", "#b23a5b", "#6a7f2e", "#8a5a44", "#b0568f"];
 function chartRamp() {
-  const primary = cssVar("--primary-color", "#6d28d9");
+  const primary = cssVar("--primary-color", cssVar("--prodex-ink"));
   return [primary, ...CHART_FALLBACK.map((f, i) => cssVar(`--pxn-chart-${i + 2}`, f) || f)];
 }
 
@@ -438,7 +438,7 @@ export default {
       const a = this.adapted;
       const days = (a && (a.salesSeries.days.length ? a.salesSeries.days : a.purchasesSeries.days)) || [];
       return {
-        colors: [cssVar("--primary-color", "#6d28d9"), cssVar("--pxn-chart-muted", "#8a93a3")],
+        colors: [cssVar("--primary-color", cssVar("--prodex-ink")), cssVar("--pxn-chart-muted", "#8a93a3")],
         plotOptions: { bar: { columnWidth: days.length > 20 ? "80%" : "55%" } },
         xaxis: { categories: this.shortDays(days), tickAmount: Math.min(days.length, 10) }
       };

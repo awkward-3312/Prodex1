@@ -30,7 +30,7 @@ const LAYOUT_BV2 = require('../data/bv2-layout-markup.json');
 const BS5_CLASS = { 'no-gutters': 'g-0', 'btn-block': 'd-block w-100', 'badge-pill': 'rounded-pill', 'thead-light': 'table-light', 'thead-dark': 'table-dark' };
 const bs5 = (html) => html.replace(/class="([^"]*)"/g, (m, c) => `class="${c.split(/\s+/).filter(Boolean).flatMap((t) => (BS5_CLASS[t] || t).split(' ')).sort().join(' ')}"`);
 
-test.describe('Layout y primitives: mismo DOM que BootstrapVue 2 @smoke', () => {
+test.describe('Layout y primitives: mismo DOM que BootstrapVue 2 @smoke @instrumentation', () => {
   test.beforeEach(async ({ page }) => open(page));
 
   const SAME = {
@@ -100,7 +100,7 @@ test.describe('Layout y primitives: mismo DOM que BootstrapVue 2 @smoke', () => 
   });
 });
 
-test.describe('Comportamiento idéntico en BV2 y BVN: una sola emisión @smoke', () => {
+test.describe('Comportamiento idéntico en BV2 y BVN: una sola emisión @smoke @instrumentation', () => {
   test.beforeEach(async ({ page }) => open(page));
 
   test('botón: un clic = una acción; deshabilitado no actúa; submit una vez; .stop no llega al padre', async ({ page }) => {
@@ -321,7 +321,7 @@ test.describe('Comportamiento idéntico en BV2 y BVN: una sola emisión @smoke',
   });
 });
 
-test.describe('Responsive, RTL y móvil @smoke', () => {
+test.describe('Responsive, RTL y móvil @smoke @instrumentation', () => {
   test('grid: col-md-6 se apila en móvil y comparte fila en escritorio', async ({ page }) => {
     await open(page);
     await mount(page, '<b-row><b-col md="6" class="c1">a</b-col><b-col md="6" class="c2">b</b-col></b-row>', { bvn: true });

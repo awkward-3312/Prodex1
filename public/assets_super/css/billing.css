@@ -4,9 +4,9 @@
 
 /* ── Variables & Base ───────────────────────────────── */
 :root {
-    --primary: #6366f1;
-    --primary-dark: #4f46e5;
-    --primary-light: #eef2ff;
+    --primary: var(--prodex-ink);
+    --primary-dark: var(--prodex-ink);
+    --primary-light: var(--primary-color-soft);
     --surface: #ffffff;
     --bg: #f8fafc;
     --text: #1e293b;
@@ -71,7 +71,7 @@ body {
 }
 .billing-user .avatar {
     width: 34px; height: 34px; border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), #818cf8);
+    background: linear-gradient(135deg, var(--primary), var(--prodex-ink));
     display: flex; align-items: center; justify-content: center;
     color: #fff; font-weight: 700; font-size: 0.82rem;
 }

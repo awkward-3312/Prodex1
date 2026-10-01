@@ -137,7 +137,10 @@ app.component('v-select', vSelect);
 // instancia de Vue). El código nuevo importa `events` desde "@/platform".
 window.Fire = events;
 app.config.globalProperties.$uploadPath = window.__uploadPath || 'images';
-app.config.globalProperties.$imgUrl = function(subfolder, filename) { return '/' + this.$uploadPath + '/' + subfolder + '/' + filename; };
+app.config.globalProperties.$imgUrl = function(subfolder, filename) {
+  if (subfolder === 'settings' && window.__brandDefaults?.[filename]) return window.__brandDefaults[filename];
+  return '/' + this.$uploadPath + '/' + subfolder + '/' + filename;
+};
 import Breadcumb from "./components/breadcumb";
 app.component("breadcumb", Breadcumb);
 // `Vue.config.silent`/`productionTip`/`devtools` (Vue 2) no existen en Vue 3: no tienen equivalente real en

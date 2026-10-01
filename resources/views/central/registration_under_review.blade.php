@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-@php $appName = \App\Models\Central\GeneralSetting::instance()->app_name ?: 'Stocky'; @endphp
+@php $appName = \App\Models\Central\GeneralSetting::instance()->app_name ?: 'PRODEX'; @endphp
 <html lang="en">
 <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ __('central.RegistrationUnderReview') }} — {{ $appName }}</title>
-    <link rel="icon" href="{{ asset('images/super/settings/favicon.ico') }}">
+    <link rel="icon" href="{{ asset('favicon.ico') }}">
     <link href="{{ asset('assets_super/css/plus-jakarta-sans.css') }}" rel="stylesheet">
     <link href="{{ asset('assets_super/css/bootstrap-icons.min.css') }}" rel="stylesheet">
     <link href="{{ asset('assets_super/css/status-pages.css') }}" rel="stylesheet">

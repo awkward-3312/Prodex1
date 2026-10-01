@@ -1,0 +1,17 @@
+/* Generated from resources/brand/prodex.json; do not edit. */
+:root {
+  --prodex-ink: #142B3A;
+  --prodex-aqua: #22D6C5;
+  --prodex-white: #FFFFFF;
+  --prodex-black: #000000;
+  --prodex-ink-rgb: 20, 43, 58;
+  --prodex-aqua-rgb: 34, 214, 197;
+  --primary-color: var(--prodex-ink);
+  --primary-color-darker: var(--prodex-ink);
+  --primary-color-soft: rgba(var(--prodex-aqua-rgb), .12);
+  --primary-color-lighter: var(--prodex-ink);
+  --primary-contrast: var(--prodex-white);
+  --primary-text: var(--prodex-ink);
+  --brand-accent: var(--prodex-aqua);
+  --brand-focus: var(--prodex-ink);
+}

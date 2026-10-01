@@ -177,7 +177,7 @@ class Tenant extends BaseTenant implements TenantWithDatabase
             return global_asset($general->tenant_logo_path);
         }
 
-        return global_asset('images/tenant-default/settings/logo-default.png');
+        return \App\Support\PlatformBrand::url();
     }
 
     public function hasCustomLoginLogo(): bool

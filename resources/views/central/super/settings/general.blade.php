@@ -92,7 +92,7 @@
                         name="app_name"
                         class="form-control @error('app_name') is-invalid @enderror"
                         value="{{ old('app_name', $setting->app_name) }}"
-                        placeholder="e.g. Stocky"
+                        placeholder="p. ej. PRODEX"
                         required
                     >
                     @error('app_name')
@@ -702,7 +702,7 @@
                                 name="tenant_footer_text"
                                 class="form-control @error('tenant_footer_text') is-invalid @enderror"
                                 value="{{ old('tenant_footer_text', $setting->tenant_footer_text) }}"
-                                placeholder="e.g. Stocky - Ultimate Inventory With POS"
+                                placeholder="p. ej. PRODEX - Gestión empresarial"
                             >
                             <p class="form-hint mt-1">{{ __('super.general_settings.tenant_footer_text_hint') }}</p>
                             @error('tenant_footer_text')

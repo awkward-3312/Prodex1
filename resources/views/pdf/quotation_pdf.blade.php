@@ -43,7 +43,7 @@
                     if (!empty($setting['logo'])) {
                         // Tenant-aware upload location (images/tenants/{id}/settings or images/super/settings),
                         // falling back to the legacy shared path for old files like logo-default.png.
-                        $logoPath = upload_public_path('settings/'.$setting['logo']);
+                        $logoPath = public_path(\App\Support\PlatformBrand::resolvePath(upload_path('settings').'/'.$setting['logo']));
                         if (!is_file($logoPath)) {
                             $logoPath = public_path('images/'.$setting['logo']);
                         }

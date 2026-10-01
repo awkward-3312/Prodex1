@@ -16,12 +16,16 @@
         "production": "mix --production",
         "test:frontend": "node --test tests/frontend/*.test.mjs",
         "test:e2e": "playwright test --config tests/e2e/playwright.config.js",
+        "test:e2e:instrumentation": "playwright test --config tests/e2e/playwright.config.js --grep @instrumentation",
+        "test:e2e:production": "playwright test --config tests/e2e/playwright.config.js --grep-invert @instrumentation",
         "test:e2e:smoke": "playwright test --config tests/e2e/playwright.config.js --grep @smoke",
         "test:e2e:headed": "playwright test --config tests/e2e/playwright.config.js --headed",
         "test:e2e:routes": "node tests/e2e/routes/route-snapshot.js --check",
         "test:e2e:compat-warnings": "node tests/e2e/scripts/compat-warnings-report.js",
         "test:e2e:routes:update": "node tests/e2e/routes/route-snapshot.js --update",
-        "e2e:setup": "bash tests/e2e/scripts/setup.sh"
+        "e2e:setup": "bash tests/e2e/scripts/setup.sh",
+        "brand:generate": "node scripts/generate-brand.mjs",
+        "brand:check": "node scripts/generate-brand.mjs --check"
     },
     "dependencies": {
         "@alpinejs/collapse": "^3.15.11",

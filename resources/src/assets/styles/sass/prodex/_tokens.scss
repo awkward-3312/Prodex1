@@ -3,9 +3,10 @@
 // so tenant appearance customization keeps working.
 
 :root {
-  --px-primary: var(--primary-color, #663399);
-  --px-primary-hover: var(--primary-color-darker, #562b82);
-  --px-primary-soft: var(--primary-color-soft, rgba(102, 51, 153, 0.12));
+  --px-primary-text: var(--primary-text, var(--prodex-ink));
+  --px-primary: var(--primary-color, var(--prodex-ink));
+  --px-primary-hover: var(--primary-color-darker, var(--prodex-ink));
+  --px-primary-soft: var(--primary-color-soft, rgba(var(--prodex-aqua-rgb), 0.12));
 
   --px-bg: #f8fafc;
   --px-surface: #ffffff;
@@ -14,10 +15,10 @@
   --px-border: #e2e8f0;
   --px-border-strong: #cbd5e1;
 
-  --px-text: #0f172a;
+  --px-text: var(--prodex-ink);
   --px-text-secondary: #475569;
   --px-text-muted: #64748b;
-  --px-text-disabled: #94a3b8;
+  --px-text-disabled: var(--px-text-muted);
 
   --px-success: #16a34a;
   --px-warning: #d97706;

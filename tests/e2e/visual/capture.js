@@ -41,6 +41,8 @@ const VIEWPORTS = [
   ['rtl', { width: 1440, height: 900 }, true],
   ['movil', { width: 390, height: 844 }, false],
 ];
+// Optional tablet coverage reuses exactly the same real-page capture flow.
+if (process.env.VISUAL_TABLET === '1') VIEWPORTS.push(['tablet', { width: 768, height: 1024 }, false]);
 
 (async () => {
   const browser = await chromium.launch();

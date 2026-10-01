@@ -42,7 +42,7 @@
 
     $logoSrc = null;
     if ($showLogo && !empty($setting['logo'])) {
-        $logoPath = upload_public_path('settings/'.$setting['logo']);
+        $logoPath = public_path(\App\Support\PlatformBrand::resolvePath(upload_path('settings').'/'.$setting['logo']));
         if (!is_file($logoPath)) $logoPath = public_path('images/'.$setting['logo']);
         if (is_file($logoPath) && is_readable($logoPath)) {
             $rawLogo = @file_get_contents($logoPath);

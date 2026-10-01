@@ -1,19 +1,27 @@
 {
-  "name": "Stocky Customer Display",
-  "short_name": "Display",
-  "description": "Customer-facing POS display",
+  "name": "PRODEX Pantalla de cliente",
+  "short_name": "Pantalla",
+  "description": "Pantalla de cliente",
   "start_url": "/customer-display",
   "scope": "/customer-display",
   "display": "fullscreen",
   "orientation": "landscape",
   "background_color": "#0b0c10",
-  "theme_color": "#0b0c10",
-  "lang": "en",
+  "theme_color": "#142B3A",
+  "lang": "es-HN",
   "dir": "ltr",
   "icons": [
-    { "src": "/pwa_images/pwa-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/pwa_images/pwa-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/pwa_images/pwa-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
-    { "src": "/pwa_images/pwa-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/images/brand-assets/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/images/brand-assets/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
   ]
 }

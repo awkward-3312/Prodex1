@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Pantalla del cliente | PRODEX</title>
-    <link rel="icon" href="{{ global_asset(upload_path('settings') . '/' . (($app_settings->favicon ?? null) ?: 'favicon.ico')) }}">
+    <link rel="icon" href="{{ global_asset(\App\Support\PlatformBrand::resolvePath(upload_path('settings') . '/' . (($app_settings->favicon ?? null) ?: 'favicon.ico'), 'icon')) }}">
     <link rel="manifest" href="/pwa/customer-display.webmanifest">
-    <meta name="theme-color" content="#0b0c10">
+    <meta name="theme-color" content="{{ config('brand.colors.ink') }}">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Pantalla del cliente">
@@ -36,7 +37,7 @@
 <body>
   <div id="customer-display" class="cd-root"></div>
   <script>
-    window.__APP_LOGO__ = '{{ global_asset(upload_path('settings') . '/' . (($app_settings->logo ?? null) ?: 'logo-default.png')) }}';
+    window.__APP_LOGO__ = '{{ \App\Support\PlatformBrand::tenantUrl($app_settings->logo ?? null) }}';
   </script>
   <script src="/js/customer-display.min.js"></script>
   <script>

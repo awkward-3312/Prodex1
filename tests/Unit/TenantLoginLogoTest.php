@@ -34,6 +34,6 @@ class TenantLoginLogoTest extends TestCase
         $tenant = Tenant::create(['id' => 'tenant-c']);
 
         $this->assertFalse($tenant->hasCustomLoginLogo());
-        $this->assertStringContainsString('images/tenant-default/settings/logo-default.png', $tenant->loginLogoUrl());
+        $this->assertStringContainsString('images/brand-assets/prodex-logo-color-4096.png', $tenant->loginLogoUrl());
     }
 }

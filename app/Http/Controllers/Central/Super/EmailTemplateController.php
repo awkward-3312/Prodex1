@@ -140,7 +140,7 @@ class EmailTemplateController extends Controller
         $html = $template->render($this->getSampleVariables(), $locale);
 
         $faviconUrl = GeneralSetting::instance()->getFaviconUrl()
-            ?: asset('images/super/settings/favicon.ico');
+            ?: asset('favicon.ico');
         $faviconTag = '<link rel="icon" href="' . e($faviconUrl) . '" type="image/x-icon">';
 
         if (stripos($html, '</head>') !== false) {

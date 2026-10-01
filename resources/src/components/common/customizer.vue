@@ -136,6 +136,7 @@
 </template>
 
 <script>
+import brand from "../../../brand/prodex.json";
 import { vBPopover } from "@/platform/bootstrap";
 import { notifications } from "@/platform";
 import { mapGetters, mapActions } from "vuex";
@@ -146,7 +147,8 @@ export default { directives: { 'b-popover': vBPopover },
       isOpen: false,
       languages: [],
       presetColors: [
-        '#663399',
+        brand.colors.ink,
+        brand.colors.aqua,
         '#2f47c2',
         '#0f9d58',
         '#e91e63',
@@ -162,7 +164,7 @@ export default { directives: { 'b-popover': vBPopover },
     ...mapGetters("config", ["getThemeMode", "getPrimaryColor"]),
     ...mapGetters(["getcompactLeftSideBarBgColor", "getAvailableLanguages", "getSidebarLayout"]),
     currentPrimaryColor() {
-      return this.getPrimaryColor || '#663399';
+      return this.getPrimaryColor || brand.colors.ink;
     },
   },
 
@@ -239,13 +241,13 @@ export default { directives: { 'b-popover': vBPopover },
 }
 
 .layout-option:hover {
-  border-color: #663399;
+  border-color: var(--primary-color);
   background: #f7f7f7;
 }
 
 .layout-option.active {
-  border-color: #663399;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border-color: var(--primary-color);
+  background: linear-gradient(135deg, rgba(var(--prodex-aqua-rgb), 0.1) 0%, rgba(var(--prodex-ink-rgb), 0.06) 100%);
 }
 
 .layout-option input[type="radio"] {
@@ -266,11 +268,11 @@ export default { directives: { 'b-popover': vBPopover },
 
 .option-label i {
   font-size: 20px;
-  color: #663399;
+  color: var(--primary-color);
 }
 
 .layout-option.active .option-label {
-  color: #663399;
+  color: var(--primary-color);
   font-weight: 600;
 }
 
@@ -281,13 +283,13 @@ body.dark-theme .layout-option {
 }
 
 body.dark-theme .layout-option:hover {
-  border-color: #764ba2;
-  background: rgba(118, 75, 162, 0.1);
+  border-color: var(--brand-accent);
+  background: rgba(var(--prodex-aqua-rgb), 0.1);
 }
 
 body.dark-theme .layout-option.active {
-  border-color: #764ba2;
-  background: rgba(118, 75, 162, 0.2);
+  border-color: var(--brand-accent);
+  background: rgba(var(--prodex-aqua-rgb), 0.2);
 }
 
 body.dark-theme .option-label {

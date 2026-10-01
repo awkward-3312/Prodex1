@@ -107,11 +107,14 @@ test.describe('Bootstrap 5 + BootstrapVueNext @smoke', () => {
     if (alerts.length) expect(alerts.every((c) => /\balert-(primary|secondary|info|success|warning|danger|light|dark)\b/.test(c))).toBe(true);
   });
 
-  test('BRow / BCol (no autorizado y no encontrado) mantienen la rejilla', async ({ page }) => {
+  test('la pantalla 404 actual mantiene su composición sin overflow', async ({ page }) => {
     await page.goto('/app/no-existe-e2e-bs5');
     await waitForApp(page);
-    await expect(page.locator('.row').first()).toBeVisible();
-    await expect(page.locator('.row > [class*="col"]').first()).toBeVisible();
+    await expect(page.locator('.pxerr-hero')).toBeVisible();
+    await expect(page.locator('.pxerr-content')).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await page.setViewportSize({ width: 390, height: 844 });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
 
   test('navegación SPA entre pantallas migradas (Router 4) sin recarga', async ({ page }) => {

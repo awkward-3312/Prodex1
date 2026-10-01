@@ -24,7 +24,7 @@
     align-items: center;
     gap: var(--px-space-2);
     margin-bottom: var(--px-space-2);
-    color: var(--px-primary);
+    color: var(--px-primary-text);
     font-size: 0.75rem;
     line-height: 1.2;
     font-weight: 700;
@@ -87,7 +87,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--px-primary);
+    color: var(--px-primary-text);
     background: var(--px-primary-soft);
     border-radius: var(--px-radius-md);
   }
@@ -282,7 +282,7 @@
   .btn:focus { box-shadow: 0 0 0 3px var(--px-primary-soft) !important; }
   .btn:active:not(:disabled) { transform: translateY(1px); }
 
-  .btn-primary { background: var(--px-primary) !important; border-color: var(--px-primary) !important; }
+  .btn-primary { color: var(--primary-contrast) !important; background: var(--px-primary) !important; border-color: var(--px-primary) !important; }
   .btn-primary:hover:not(:disabled) { background: var(--px-primary-hover) !important; border-color: var(--px-primary-hover) !important; }
 
   .btn-secondary,

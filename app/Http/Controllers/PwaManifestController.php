@@ -16,7 +16,6 @@ class PwaManifestController extends Controller
             'display'          => 'standalone',
             'orientation'      => 'any',
             'background_color' => '#ffffff',
-            'theme_color'      => '#2f3640',
         ],
         'store' => [
             'short_name'       => 'Tienda',
@@ -26,7 +25,6 @@ class PwaManifestController extends Controller
             'display'          => 'standalone',
             'orientation'      => 'any',
             'background_color' => '#ffffff',
-            'theme_color'      => '#6c5ce7',
         ],
         'customer-display' => [
             'short_name'       => 'Pantalla',
@@ -36,7 +34,6 @@ class PwaManifestController extends Controller
             'display'          => 'fullscreen',
             'orientation'      => 'landscape',
             'background_color' => '#0b0c10',
-            'theme_color'      => '#0b0c10',
         ],
         'portal' => [
             'short_name'       => 'Portal',
@@ -46,7 +43,6 @@ class PwaManifestController extends Controller
             'display'          => 'standalone',
             'orientation'      => 'any',
             'background_color' => '#f1f5f9',
-            'theme_color'      => '#2f3640',
         ],
     ];
 
@@ -63,7 +59,7 @@ class PwaManifestController extends Controller
             'display'          => $surface['display'],
             'orientation'      => $surface['orientation'],
             'background_color' => $surface['background_color'],
-            'theme_color'      => $surface['theme_color'],
+            'theme_color'      => config('brand.colors.ink'),
             'lang'             => 'es-HN',
             'dir'              => 'ltr',
             'icons'            => $this->icons(),
@@ -96,8 +92,6 @@ class PwaManifestController extends Controller
         return [
             ['src' => $icon192, 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'any'],
             ['src' => $icon512, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'any'],
-            ['src' => $icon192, 'sizes' => '192x192', 'type' => 'image/png', 'purpose' => 'maskable'],
-            ['src' => $icon512, 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
         ];
     }
 }

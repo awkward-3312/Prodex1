@@ -2,8 +2,8 @@
   <div class="main-header">
     <div class="logo">
        <router-link to="/app/dashboard">
-        <img v-if="currentUser && currentUser.logo" :src="$imgUrl('settings', currentUser.logo)" alt width="60" height="60">
-        <img v-else :src="$imgUrl('settings', 'logo-default.png')" alt width="60" height="60">
+        <img v-if="currentUser && currentUser.logo" :src="$imgUrl('settings', currentUser.logo)" alt="Logo" width="60" height="60" style="object-fit: contain">
+        <img v-else :src="$imgUrl('settings', 'logo-default.png')" alt="Logo" width="60" height="60" style="object-fit: contain">
        </router-link>
     </div>
 
@@ -309,8 +309,8 @@ export default { components: { BDropdown },
 .main-header button.dropdown-toggle-no-caret:focus,
 .main-header button.dropdown-toggle-no-caret:active {
   background: #f9fafb !important;
-  color: var(--primary-color, #663399) !important;
-  border-color: var(--primary-color, #663399) !important;
+  color: var(--primary-color, var(--prodex-ink)) !important;
+  border-color: var(--primary-color, var(--prodex-ink)) !important;
   box-shadow: none !important;
   outline: none !important;
 }
@@ -319,8 +319,8 @@ export default { components: { BDropdown },
 .main-header .dropdown-toggle-no-caret:focus-visible,
 .main-header .dropdown-toggle-no-caret.btn:focus-visible,
 .main-header button.dropdown-toggle-no-caret:focus-visible {
-  box-shadow: 0 0 0 3px var(--primary-color-soft, rgba(102, 51, 153, 0.25)) !important;
-  border-color: var(--primary-color, #663399) !important;
+  box-shadow: 0 0 0 3px var(--primary-color-soft) !important;
+  border-color: var(--primary-color, var(--prodex-ink)) !important;
   outline: none !important;
 }
 
@@ -394,7 +394,7 @@ body.dark-theme .main-header .dropdown-menu {
   padding: 8px 16px;
   border-radius: 8px;
   background: #fff;
-  color: var(--primary-color, #663399);
+  color: var(--primary-color, var(--prodex-ink));
   border: 1px solid #e5e7eb;
   transition: all 0.3s;
   box-shadow: none;
@@ -406,14 +406,14 @@ body.dark-theme .main-header .dropdown-menu {
 .btn-primary:not(:disabled):not(.disabled):active,
 .btn-primary:not(:disabled):not(.disabled).active {
   background: #f9fafb !important;
-  color: var(--primary-color, #663399) !important;
-  border-color: var(--primary-color, #663399) !important;
+  color: var(--primary-color, var(--prodex-ink)) !important;
+  border-color: var(--primary-color, var(--prodex-ink)) !important;
   box-shadow: none !important;
   outline: none !important;
 }
 
 .btn-primary:focus-visible {
-  box-shadow: 0 0 0 3px var(--primary-color-soft, rgba(102, 51, 153, 0.25)) !important;
+  box-shadow: 0 0 0 3px var(--primary-color-soft) !important;
   outline: none !important;
 }
 
@@ -441,8 +441,8 @@ body.dark-theme .main-header .dropdown-menu {
 
 .nav-icon-btn:hover {
   background: #f9fafb;
-  color: var(--primary-color, #663399);
-  border-color: var(--primary-color, #663399);
+  color: var(--primary-color, var(--prodex-ink));
+  border-color: var(--primary-color, var(--prodex-ink));
 }
 
 .nav-icon-btn:focus:not(:focus-visible),
@@ -453,8 +453,8 @@ body.dark-theme .main-header .dropdown-menu {
 
 .nav-icon-btn:focus-visible {
   outline: none !important;
-  box-shadow: 0 0 0 3px var(--primary-color-soft, rgba(102, 51, 153, 0.25)) !important;
-  border-color: var(--primary-color, #663399);
+  box-shadow: 0 0 0 3px var(--primary-color-soft) !important;
+  border-color: var(--primary-color, var(--prodex-ink));
 }
 
 .nav-icon-btn i {
@@ -581,13 +581,13 @@ body.dark-theme .main-header .dropdown-menu {
 }
 
 .notif-content a {
-  color: var(--primary-color, #663399);
+  color: var(--primary-color, var(--prodex-ink));
   text-decoration: none;
   display: block;
 }
 
 .notif-content a:hover {
-  color: var(--primary-color-darker, #5a2a80);
+  color: var(--primary-color-darker, var(--prodex-ink));
 }
 
 .user-dropdown-menu {
@@ -611,7 +611,7 @@ body.dark-theme .main-header .dropdown-menu {
 
 .dropdown-item:hover {
   background: #f5f5f5;
-  color: var(--primary-color, #663399);
+  color: var(--primary-color, var(--prodex-ink));
 }
 
 /* Dark Mode */
@@ -701,7 +701,7 @@ body.dark-theme .dropdown-item:hover {
     justify-content: center;
     gap: 0;
     background: #fff;
-    color: var(--primary-color, #663399);
+    color: var(--primary-color, var(--prodex-ink));
     border: 1px solid #e5e7eb;
   }
 
@@ -709,8 +709,8 @@ body.dark-theme .dropdown-item:hover {
   .nav-right .btn.btn-primary:focus,
   .nav-right .btn.btn-primary:active {
     background: #f9fafb;
-    color: var(--primary-color, #663399);
-    border-color: var(--primary-color, #663399);
+    color: var(--primary-color, var(--prodex-ink));
+    border-color: var(--primary-color, var(--prodex-ink));
     box-shadow: none;
   }
 
@@ -730,7 +730,7 @@ body.dark-theme .dropdown-item:hover {
 
 .header-icon:focus-visible {
   outline: none !important;
-  box-shadow: 0 0 0 3px var(--primary-color-soft, rgba(102, 51, 153, 0.25)) !important;
+  box-shadow: 0 0 0 3px var(--primary-color-soft) !important;
 }
 </style>
 

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
   <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
     <meta charset="utf-8" />
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -9,14 +10,14 @@
     {{-- auth.css sets `font-family: "Inter"`; load the face so the tenant login matches the app. --}}
     <link rel="stylesheet" href="{{ global_asset('assets_super/css/inter.css') }}">
     <link rel="stylesheet" href="{{ global_asset('css/auth.css') }}">
-    <link rel="icon" href="{{ global_asset(upload_path('settings') . '/' . ($app_settings->favicon ?? 'favicon.ico')) }}">
+    <link rel="icon" href="{{ \App\Support\PlatformBrand::tenantUrl($app_settings->favicon ?? null, 'icon') }}">
     <title>{{ $app_settings->app_name ?? 'PRODEX' }}</title>
   </head>
 
   <body class="auth-login">
     <div class="auth-page">
       <section class="auth-hero">
-        <img class="hero-illustration" src="{{ global_asset('images/auth/login-illustration.png') }}" alt="PRODEX">
+        <img class="hero-illustration" src="{{ global_asset(config('brand.assets.white')) }}" alt="PRODEX">
       </section>
 
       @php

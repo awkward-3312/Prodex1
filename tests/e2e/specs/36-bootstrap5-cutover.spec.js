@@ -13,7 +13,7 @@ const PAGES = ['/app/dashboard', '/app/sales/list', '/app/sales/store', '/app/pu
   '/app/settings/System_settings', '/app/settings/pos_settings', '/app/settings/Cash_Drawers', '/app/hrm/employees/store', '/app/pos', '/app/People/Customers'];
 
 test.describe('Bootstrap 5 es la hoja activa @smoke', () => {
-  test('hoja de estilos: Bootstrap 5 sí; Bootstrap 4, bootstrap-vue.css y el puente de la fase 1 no', async ({ page }) => {
+  test('hoja de estilos: Bootstrap 5 sí; Bootstrap 4, bootstrap-vue.css y el puente de la fase 1 no @instrumentation', async ({ page }) => {
     await page.goto('/app/_ui?probe=ui');
     await waitForApp(page);
     await page.waitForFunction(() => typeof window.__pxCutover === 'function', undefined, { timeout: 30_000 });
@@ -27,7 +27,7 @@ test.describe('Bootstrap 5 es la hoja activa @smoke', () => {
     expect(r.bootstrapVue2, 'reglas de bootstrap-vue.css').toEqual({ avatarRule: false, spinbuttonRule: false, toastRule: false });
   });
 
-  test('utilidades de BS5 con efecto real en LTR y RTL (ms/me/ps/pe, text-start/end, float, fw, visually-hidden)', async ({ page }) => {
+  test('utilidades de BS5 con efecto real en LTR y RTL (ms/me/ps/pe, text-start/end, float, fw, visually-hidden) @instrumentation', async ({ page }) => {
     await page.goto('/app/_ui?probe=ui');
     await waitForApp(page);
     await page.waitForFunction(() => typeof window.__pxProbe === 'function', undefined, { timeout: 30_000 });

@@ -410,7 +410,7 @@ class CheckSubscriptionExpiry extends Command
             '{plan}'    => $sub->plan?->name ?? 'N/A',
             '{date}'    => $referenceDate?->format('M d, Y') ?? 'N/A',
             '{days}'    => (string) $offsetDays,
-            '{app}'     => config('app.name', 'Stocky'),
+            '{app}'     => config('app.name', 'PRODEX'),
         ]);
     }
 

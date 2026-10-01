@@ -86,7 +86,7 @@ export default {
   background: var(--pc-surface);
   padding: 2.25rem 2.25rem 2rem;
   border-radius: 18px;
-  box-shadow: 0 18px 50px -12px rgba(15, 23, 42, 0.18), 0 6px 18px -8px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 18px 50px -12px rgba(15, 23, 42, 0.18), 0 6px 18px -8px rgba(var(--prodex-ink-rgb), 0.2);
   border: 1px solid var(--pc-border);
   width: 100%;
   max-width: 420px;
@@ -100,9 +100,9 @@ export default {
 .pc-login-brand { text-align: center; margin-bottom: 1.75rem; }
 .pc-login-mark {
   width: 56px; height: 56px; border-radius: 16px;
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #7c3aed 100%);
+  background: var(--prodex-ink);
   color: #fff; display: inline-flex; align-items: center; justify-content: center;
-  margin-bottom: 0.85rem; box-shadow: 0 10px 25px -8px rgba(79, 70, 229, 0.6);
+  margin-bottom: 0.85rem; box-shadow: 0 10px 25px -8px rgba(var(--prodex-ink-rgb), 0.6);
 }
 .pc-login-card h1 { margin: 0 0 0.4rem; font-size: 1.45rem; font-weight: 700; color: var(--pc-text); letter-spacing: -0.01em; }
 .pc-sub { color: var(--pc-text-muted); font-size: 0.92rem; margin: 0; }
@@ -116,14 +116,14 @@ export default {
   border-radius: 10px; font-size: 0.95rem; background: var(--pc-surface-alt); color: var(--pc-text);
   transition: border-color 0.15s, background 0.15s, box-shadow 0.15s; box-sizing: border-box;
 }
-.pc-input-wrap input:focus { outline: none; background: var(--pc-surface); border-color: var(--pc-primary); box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15); }
+.pc-input-wrap input:focus { outline: none; background: var(--pc-surface); border-color: var(--pc-primary); box-shadow: 0 0 0 3px rgba(var(--prodex-ink-rgb), 0.15); }
 .pc-alert { margin: 0; padding: 0.65rem 0.85rem; border-radius: 8px; font-size: 0.88rem; font-weight: 500; }
 .pc-alert-error { background: var(--pc-danger-bg); color: var(--pc-danger); border: 1px solid #fecaca; }
 .pc-btn-primary {
   display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem; width: 100%; padding: 0.8rem 1rem;
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%); color: #fff; border: none; border-radius: 10px;
+  background: var(--prodex-ink); color: #fff; border: none; border-radius: 10px;
   font-size: 0.98rem; font-weight: 600; cursor: pointer; transition: transform 0.15s, box-shadow 0.15s, filter 0.15s;
-  box-shadow: 0 8px 20px -8px rgba(79, 70, 229, 0.6);
+  box-shadow: 0 8px 20px -8px rgba(var(--prodex-ink-rgb), 0.6);
 }
 .pc-btn-primary:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.05); }
 .pc-btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }

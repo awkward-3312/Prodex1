@@ -218,7 +218,7 @@
                             name="termii_sender"
                             class="form-control @error('termii_sender') is-invalid @enderror"
                             value="{{ old('termii_sender', $setting->termii_sender) }}"
-                            placeholder="Stocky"
+                            placeholder="PRODEX"
                             autocomplete="off"
                         >
                         @error('termii_sender')

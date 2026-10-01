@@ -351,7 +351,7 @@ export default {
     // Hero
     heroStyle() {
       return {
-        background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #ec4899 100%)",
+        background: "var(--primary-color)",
         borderRadius: "14px",
         padding: "22px 26px",
         color: "#fff",
@@ -445,7 +445,7 @@ export default {
         alignItems: "center",
         justifyContent: "center",
         padding: "28px 20px",
-        border: `2px dashed ${hover ? "#4f46e5" : "#cbd5e1"}`,
+        border: `2px dashed ${hover ? "var(--primary-color)" : "#cbd5e1"}`,
         borderRadius: "12px",
         background: hover
           ? "linear-gradient(135deg, #eef2ff 0%, #faf5ff 100%)"
@@ -461,7 +461,7 @@ export default {
         width: "58px",
         height: "58px",
         borderRadius: "14px",
-        background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+        background: "var(--primary-color)",
         color: "#fff",
         display: "flex",
         alignItems: "center",
@@ -491,7 +491,7 @@ export default {
         alignItems: "center",
         justifyContent: "space-between",
         padding: "10px 16px",
-        background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+        background: "var(--primary-color)",
         color: "#fff",
         fontSize: "13px",
         fontWeight: "700",
@@ -544,7 +544,7 @@ export default {
         height: "24px",
         borderRadius: "6px",
         background: "#eef2ff",
-        color: "#4f46e5",
+        color: "var(--primary-color)",
         fontSize: "11px",
         fontWeight: "700"
       };
@@ -572,7 +572,7 @@ export default {
         textAlign: "right",
         fontWeight: "700",
         fontSize: "15px",
-        color: "#4f46e5"
+        color: "var(--primary-color)"
       };
     },
 
@@ -608,7 +608,7 @@ export default {
       return {
         padding: "9px 22px",
         fontWeight: "600",
-        background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+        background: "var(--primary-color)",
         border: "none",
         borderRadius: "10px",
         color: "#fff",
@@ -624,7 +624,7 @@ export default {
         marginTop: "4px",
         padding: "1px 7px",
         background: "#eef2ff",
-        color: "#4f46e5",
+        color: "var(--primary-color)",
         fontSize: "10px",
         fontWeight: "700",
         borderRadius: "10px",
@@ -647,7 +647,7 @@ export default {
         alignItems: "center",
         justifyContent: "space-between",
         padding: "8px 12px",
-        background: "linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)",
+        background: "var(--primary-color)",
         color: "#fff",
         fontSize: "12px",
         fontWeight: "700",
@@ -670,7 +670,7 @@ export default {
         fontSize: "11px",
         fontWeight: "600",
         background: "#ffffff",
-        color: "#4f46e5",
+        color: "var(--primary-color)",
         border: "none",
         borderRadius: "6px",
         cursor: "pointer",
@@ -895,7 +895,7 @@ export default {
         padding: "10px 14px",
         textAlign: align,
         fontSize: "13px",
-        color: accent ? "#4f46e5" : "#1f2937",
+        color: accent ? "var(--primary-color)" : "#1f2937",
         verticalAlign: "middle"
       };
       if (strong || accent) base.fontWeight = "600";
@@ -1459,7 +1459,7 @@ export default {
 }
 
 :deep(.form-control:focus){
-  border-color: #7c3aed;
+  border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
 }
 

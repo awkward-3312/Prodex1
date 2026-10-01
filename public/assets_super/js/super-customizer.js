@@ -1,5 +1,5 @@
 (function () {
-    var DEFAULT_COLOR = '#018A00';
+    var DEFAULT_COLOR = getComputedStyle(document.documentElement).getPropertyValue('--prodex-ink').trim();
     var STORAGE_KEY = 'super_primary_color';
 
     var fab = document.getElementById('superCustomizerFab');
@@ -33,14 +33,33 @@
         return { r: rgb.r * (1 - amount), g: rgb.g * (1 - amount), b: rgb.b * (1 - amount) };
     }
 
+    function luminance(rgb) {
+        var values = [rgb.r, rgb.g, rgb.b].map(function (c) {
+            c /= 255; return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+        });
+        return values[0] * 0.2126 + values[1] * 0.7152 + values[2] * 0.0722;
+    }
+
+    function contrastForeground(rgb) {
+        var light = luminance(rgb);
+        var root = getComputedStyle(document.documentElement);
+        var ink = root.getPropertyValue('--prodex-ink').trim();
+        if (1.05 / (light + 0.05) >= 4.5) return root.getPropertyValue('--prodex-white').trim();
+        var dark = luminance(hexToRgb(ink));
+        return (Math.max(light, dark) + 0.05) / (Math.min(light, dark) + 0.05) >= 4.5
+            ? ink : root.getPropertyValue('--prodex-black').trim();
+    }
+
     function applyColor(hex) {
         if (!isValidHex(hex)) return;
         var rgb = hexToRgb(hex);
-        var darkRgb = darken(rgb, 0.15);
+        var foreground = contrastForeground(rgb);
+        var darkRgb = foreground.toUpperCase() === '#FFFFFF' ? darken(rgb, 0.15) : rgb;
         var darkHex = rgbToHex(darkRgb.r, darkRgb.g, darkRgb.b);
 
         var css = ':root{'
             + '--color-primary:' + hex + ';'
+            + '--color-primary-contrast:' + foreground + ';'
             + '--color-primary-dark:' + darkHex + ';'
             + '--color-primary-light:rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.10);'
             + '--color-primary-lighter:rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.05);'
@@ -48,6 +67,7 @@
             + '}'
             + 'body.dark-mode{'
             + '--color-primary:' + hex + ';'
+            + '--color-primary-contrast:' + foreground + ';'
             + '--color-primary-dark:' + darkHex + ';'
             + '--color-primary-light:rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.14);'
             + '--color-primary-lighter:rgba(' + rgb.r + ',' + rgb.g + ',' + rgb.b + ',0.07);'

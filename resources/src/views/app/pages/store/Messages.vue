@@ -301,7 +301,7 @@ export default { components: { BInputGroup, BFormInput, BFormCheckbox, BBadge, B
 }
 
 .messages-search .form-control:focus {
-  border-color: #4f46e5;
+  border-color: var(--primary-color);
   box-shadow: none;
 }
 
@@ -313,8 +313,8 @@ export default { components: { BInputGroup, BFormInput, BFormCheckbox, BBadge, B
   justify-content: center;
   border-top-right-radius: 8px;
   border-bottom-right-radius: 8px;
-  background: #4f46e5;
-  border-color: #4f46e5;
+  background: var(--primary-color);
+  border-color: var(--primary-color);
   color: #fff;
   box-shadow: none;
 }

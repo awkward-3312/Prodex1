@@ -2606,11 +2606,11 @@ html[dir="rtl"] .stat-card-icon {
   }
 
   .dashboard-page-root .mobile-tabbar__item--active {
-    color: #6d28d9;
+    color: var(--primary-color);
   }
 
   .dashboard-page-root .mobile-tabbar__item--active i {
-    color: #6d28d9;
+    color: var(--primary-color);
   }
 
   .dashboard-page-root .mobile-tabbar__item:active {
@@ -2621,7 +2621,7 @@ html[dir="rtl"] .stat-card-icon {
     border-radius: 0 0 22px 22px;
     padding: 1.2rem 1rem 1rem;
     margin-bottom: 0.75rem !important;
-    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.35);
+    box-shadow: 0 8px 32px rgba(var(--prodex-ink-rgb), 0.25);
   }
 
   .dashboard-page-root .dashboard-header-titles h2 {

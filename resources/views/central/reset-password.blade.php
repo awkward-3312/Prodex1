@@ -2,16 +2,17 @@
 @php
     $isRtl = in_array(app()->getLocale(), ['ar', 'he', 'fa', 'ur']);
     $generalSettings = \App\Models\Central\GeneralSetting::instance();
-    $appName = $generalSettings->app_name ?: 'Stocky';
+    $appName = $generalSettings->app_name ?: 'PRODEX';
 @endphp
 <html lang="{{ app()->getLocale() }}" @if($isRtl) dir="rtl" @endif>
 <head>
+    <link rel="stylesheet" href="{{ global_asset('css/prodex-brand.css') }}">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ __('landing.reset_title') }} — {{ $appName }}</title>
     @php $faviconUrl = $generalSettings->getFaviconUrl(); @endphp
-    <link rel="icon" href="{{ $faviconUrl ?: asset('images/super/settings/favicon.ico') }}" type="image/x-icon">
+    <link rel="icon" href="{{ $faviconUrl ?: asset('favicon.ico') }}" type="image/x-icon">
     <link href="{{ asset('assets_super/css/plus-jakarta-sans.css') }}" rel="stylesheet">
     <link href="{{ asset('assets_super/css/auth.css') }}" rel="stylesheet">
 </head>

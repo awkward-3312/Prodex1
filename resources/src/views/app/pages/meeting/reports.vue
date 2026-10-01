@@ -295,7 +295,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
 
 <style scoped>
 .meeting-reports {
-  --mr-primary: #4361ee;
+  --mr-primary: var(--primary-color);
   --mr-info: #06b6d4;
   --mr-success: #22c55e;
   --mr-danger: #ef4444;

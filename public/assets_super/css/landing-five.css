@@ -9,19 +9,19 @@
     --l5-surface-2: #f1f4fa;
     --l5-border: rgba(15, 23, 42, 0.08);
     --l5-border-strong: rgba(15, 23, 42, 0.14);
-    --l5-text: #0f172a;
+    --l5-text: var(--prodex-ink);
     --l5-text-soft: #334155;
     --l5-muted: #64748b;
     --l5-muted-dim: #94a3b8;
-    --l5-accent: #1273eb;
-    --l5-accent-hover: #106bda;
-    --l5-accent-muted: rgba(18, 115, 235, 0.12);
-    --l5-glow: rgba(18, 115, 235, 0.22);
-    --l5-mesh-a: rgba(18, 115, 235, 0.1);
-    --l5-mesh-b: rgba(8, 145, 178, 0.09);
+    --l5-accent: var(--prodex-ink);
+    --l5-accent-hover: var(--prodex-ink);
+    --l5-accent-muted: var(--primary-color-soft);
+    --l5-glow: rgba(var(--prodex-aqua-rgb), .22);
+    --l5-mesh-a: rgba(var(--prodex-aqua-rgb), .1);
+    --l5-mesh-b: rgba(var(--prodex-ink-rgb), .09);
     --l5-page-bloom: rgba(18, 115, 235, 0.05);
     --l5-page-bloom-sky: rgba(8, 145, 178, 0.045);
-    --l5-infographic-navy: #0c2744;
+    --l5-infographic-navy: var(--prodex-ink);
     --l5-grid-line: rgba(15, 23, 42, 0.038);
     --l5-grid-line-strong: rgba(15, 23, 42, 0.055);
     --l5-max: 1140px;
@@ -1393,3 +1393,7 @@ body.l5-body {
     }
 }
 
+
+/* Official and configured logos retain their intrinsic proportions. */
+.l5-brand__mark:has(img) { width: auto; height: 36px; background: transparent; border: 0; box-shadow: none; overflow: visible; }
+.l5-brand__mark img { width: auto; height: 36px; max-width: 160px; object-fit: contain; filter: none; }

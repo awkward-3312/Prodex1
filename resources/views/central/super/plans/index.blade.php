@@ -18,8 +18,8 @@
     @forelse($plans as $p)
     @php
         $gradients = [
-            ['#6366f1', '#8b5cf6'],
-            ['#3b82f6', '#06b6d4'],
+            ['var(--prodex-ink)', 'var(--prodex-aqua)'],
+            ['var(--prodex-aqua)', 'var(--prodex-ink)'],
             ['#10b981', '#059669'],
             ['#f59e0b', '#f97316'],
             ['#ec4899', '#f43f5e'],

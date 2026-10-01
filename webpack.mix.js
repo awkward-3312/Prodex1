@@ -1,3 +1,4 @@
+require('node:child_process').execFileSync(process.execPath, ['scripts/generate-brand.mjs']);
 const mix = require('laravel-mix');
 const MomentLocalesPlugin = require('moment-locales-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');

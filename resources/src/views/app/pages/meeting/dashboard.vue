@@ -263,7 +263,7 @@ export default { directives: { 'b-tooltip': vBTooltip },
 
 <style scoped>
 .meeting-dashboard {
-  --md-primary: #4361ee;
+  --md-primary: var(--primary-color);
   --md-info: #06b6d4;
   --md-purple: #8b5cf6;
   --md-warning: #f59e0b;
