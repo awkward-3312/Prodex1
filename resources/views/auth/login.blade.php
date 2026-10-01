@@ -17,7 +17,7 @@
   <body class="auth-login">
     <div class="auth-page">
       <section class="auth-hero">
-        <img class="hero-illustration" src="{{ global_asset(config('brand.assets.white')) }}" alt="PRODEX">
+        <img class="hero-illustration" src="{{ global_asset('images/auth/login-illustration.png') }}" alt="" aria-hidden="true" />
       </section>
 
       @php
